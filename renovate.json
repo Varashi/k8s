@@ -4,10 +4,11 @@
   "ignorePaths": [
     "**/vars/cluster-secrets.yaml"
   ],
-  "flux": {
-    "managerFilePatterns": ["/^cluster-talos/.+\\.ya?ml$/"]
-  },
   "kubernetes": {
+    "managerFilePatterns": ["/^cluster-talos/.+\\.ya?ml$/"],
+    "ignorePaths": ["cluster-talos/talos/nodes/patches/**"]
+  },
+  "flux": {
     "managerFilePatterns": ["/^cluster-talos/.+\\.ya?ml$/"]
   },
   "customManagers": [
