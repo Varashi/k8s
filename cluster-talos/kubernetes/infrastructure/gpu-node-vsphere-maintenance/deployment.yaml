@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-node-vsphere-maintenance
+  namespace: gpu-node-vsphere-maintenance
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpu-node-vsphere-maintenance
+  template:
+    metadata:
+      labels:
+        app: gpu-node-vsphere-maintenance
+    spec:
+      serviceAccountName: gpu-node-vsphere-maintenance
+      tolerations:
+        - key: node.cloudprovider.kubernetes.io/uninitialized
+          value: "true"
+          effect: NoSchedule
+      containers:
+        - name: controller
+          image: ghcr.io/varashi/gpu-node-vsphere-maintenance-controller:v0.2.2
+          envFrom:
+            - secretRef:
+                name: vsphere-credentials
+            - configMapRef:
+                name: controller-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: DoesNotExist

@@ -1,0 +1,9 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: bitwarden-sdk-server
+  namespace: flux-system
+spec:
+  type: oci
+  url: oci://ghcr.io/external-secrets/charts
+  interval: 1h

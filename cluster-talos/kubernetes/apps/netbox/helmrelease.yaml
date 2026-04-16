@@ -1,0 +1,139 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: netbox
+  namespace: netbox
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: netbox
+      version: 5.0.*
+      sourceRef:
+        kind: HelmRepository
+        name: netbox
+        namespace: flux-system
+      interval: 30m
+  install:
+    remediation:
+      retries: 3
+    timeout: 15m
+  upgrade:
+    remediation:
+      retries: 3
+    cleanupOnFail: true
+    timeout: 15m
+  values:
+    # Disable bundled Postgres — use external CNPG cluster
+    postgresql:
+      enabled: false
+    externalDatabase:
+      host: netbox-pg-rw.netbox.svc.cluster.local
+      port: 5432
+      database: netbox
+      username: netbox
+      existingSecretName: netbox-db-app
+      existingSecretKey: password
+      sslMode: prefer
+
+    # Use plain redis:7-alpine Deployment (see redis.yaml) instead of
+    # the chart's bundled bitnami subchart — avoids bitnamilegacy drift.
+    # tasksRedis + cachingRedis default host is "netbox-redis" (our Service).
+    redis:
+      enabled: false
+    tasksRedis:
+      host: netbox-redis
+      port: 6379
+      database: 0
+    cachingRedis:
+      host: netbox-redis
+      port: 6379
+      database: 1
+
+    existingSecret: netbox
+
+    # Shared media/reports/scripts PVCs are RWO on vsan — can't stay bound on
+    # two nodes during RollingUpdate. Use Recreate so the old pod group fully
+    # terminates before the new one attaches the volumes on a (possibly new)
+    # node. Affects main, worker, and housekeeping.
+    updateStrategy:
+      type: Recreate
+
+    # First-run migrations on vSAN can exceed default probe window (~105s).
+    # Extend to ~20min to cover cold-start migration + static collection.
+    startupProbe:
+      enabled: true
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 120
+      successThreshold: 1
+
+    superuser:
+      enabled: true
+      name: admin
+      email: admin@${SECRET_DOMAIN}
+
+    persistence:
+      enabled: true
+      storageClass: vsan
+      size: 10Gi
+
+    reportsPersistence:
+      enabled: true
+      storageClass: vsan
+      size: 1Gi
+
+    scriptsPersistence:
+      enabled: true
+      storageClass: vsan
+      size: 1Gi
+
+    service:
+      type: ClusterIP
+      port: 80
+
+    ingress:
+      enabled: false
+
+    allowedHosts:
+      - ipam.${SECRET_DOMAIN}
+      - netbox.netbox.svc.cluster.local
+
+    # LDAP enabled in follow-up PR
+    remoteAuth:
+      enabled: false
+
+    # keep pods off GPU workers + tolerate uninitialized-taint on bootstrap
+    affinity: &noGpu
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: intel.feature.node.kubernetes.io/gpu
+                  operator: DoesNotExist
+    tolerations: &uninitTol
+      - key: node.cloudprovider.kubernetes.io/uninitialized
+        operator: Exists
+        effect: NoSchedule
+    worker:
+      affinity: *noGpu
+      tolerations: *uninitTol
+    housekeeping:
+      # Pin to same node as main netbox pod — shared RWO PVCs (media/reports/
+      # scripts) on vsan can't attach across nodes, causing Multi-Attach errors.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: DoesNotExist
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: netbox
+                  app.kubernetes.io/component: netbox
+              topologyKey: kubernetes.io/hostname
+      tolerations: *uninitTol

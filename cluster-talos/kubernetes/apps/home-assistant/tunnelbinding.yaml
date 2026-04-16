@@ -1,0 +1,14 @@
+apiVersion: networking.cfargotunnel.com/v1alpha1
+kind: TunnelBinding
+metadata:
+  name: home-assistant
+  namespace: home-assistant
+subjects:
+  - name: home-assistant
+    spec:
+      fqdn: ha.${SECRET_DOMAIN}
+      target: http://home-assistant.home-assistant.svc.cluster.local:8123
+      protocol: http
+tunnelRef:
+  kind: ClusterTunnel
+  name: k8s-talos

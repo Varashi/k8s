@@ -1,0 +1,39 @@
+cluster:
+  name: k8s-talos
+  endpoint: https://172.16.4.1:6443
+  # Extra API server cert SANs. Defaults to []; populate via gitignored
+  # values.local.yaml to keep external DNS names out of the committed tree.
+  apiCertSANs: []
+
+# Installer image — schematic embeds vmtoolsd-guest-agent
+# Schematic: 903b2da78f99adef03cbbd4df6714563823f63218508800751560d3bc3557e40
+# Regenerate at: https://factory.talos.dev (POST /schematics with officialExtensions=[siderolabs/vmtoolsd-guest-agent])
+installer:
+  image: factory.talos.dev/installer/903b2da78f99adef03cbbd4df6714563823f63218508800751560d3bc3557e40
+  version: v1.12.6
+  disk: /dev/sda
+
+machine:
+  nameservers:
+    - 172.16.0.2
+    - 172.16.128.2
+  timeServers:
+    - 172.16.0.2
+    - 172.16.128.2
+  kubelet:
+    nodeIPSubnets:
+      - 172.16.4.0/24
+
+# Per-node network config — override in nodes/values/<node>.yaml
+node:
+  ip: ""          # primary NIC IP (eth0), e.g. 172.16.4.10/24
+  gateway: 172.16.4.254
+  vip: ""         # VIP (CPs only), e.g. 172.16.4.1
+  storageIP: ""   # storage NIC IP (workers only), e.g. 10.5.1.20/24
+  labels: {}                 # optional: machine.nodeLabels
+  taints: {}                 # optional: machine.nodeTaints, format "<value>:<effect>".
+                             # MUST match registerWithTaints exactly or NodeApplyController
+                             # issues a PATCH kubelet is forbidden to make.
+  registerWithTaints: ""     # optional: kubelet --register-with-taints, e.g. "gpu=intel-arc:NoSchedule".
+                             # Applied once at first join; taints survive reboots because kubelet
+                             # can only register-with-taints on initial Node create.

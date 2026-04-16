@@ -1,0 +1,23 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: home-assistant
+  namespace: home-assistant
+spec:
+  parentRefs:
+    - name: main
+      namespace: cilium
+      sectionName: https
+  hostnames:
+    - ha.${SECRET_DOMAIN}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      timeouts:
+        request: 3600s
+        backendRequest: 3600s
+      backendRefs:
+        - name: home-assistant
+          port: 8123

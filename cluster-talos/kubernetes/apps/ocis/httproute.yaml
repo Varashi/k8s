@@ -1,0 +1,20 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ocis
+  namespace: ocis
+spec:
+  parentRefs:
+    - name: main
+      namespace: cilium
+      sectionName: https
+  hostnames:
+    - files.${SECRET_DOMAIN}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: ocis
+          port: 9200

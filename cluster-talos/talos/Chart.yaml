@@ -1,0 +1,15 @@
+apiVersion: v2
+name: k8s-talos
+description: Talos day-2 machine config management for k8s-talos cluster
+type: application
+version: 0.1.0
+
+globalOptions:
+  talosconfig: clusterconfig/talosconfig
+
+templateOptions:
+  withSecrets: "secrets.yaml"
+
+applyOptions:
+  preserve: true
+  timeout: 5m

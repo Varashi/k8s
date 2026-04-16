@@ -1,0 +1,6 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: recyclarr
+  labels:
+    k10.kasten.io/backup: "true"

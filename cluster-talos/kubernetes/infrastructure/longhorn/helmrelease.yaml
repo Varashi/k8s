@@ -1,0 +1,90 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: longhorn
+  namespace: longhorn-system
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: longhorn
+      version: "1.x.x"
+      sourceRef:
+        kind: HelmRepository
+        name: longhorn
+        namespace: flux-system
+      interval: 1h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # Run Longhorn data plane on every worker (longhorn=enabled). GPU workers
+    # carry the actual disks (/var/mnt/longhorn UserVolume); regular workers
+    # join as CSI-client-only nodes so they can mount Longhorn volumes
+    # (needed for Kasten block-mode export of Longhorn-backed apps).
+    global:
+      nodeSelector:
+        longhorn: enabled
+      tolerations:
+        - key: intel.feature.node.kubernetes.io/gpu
+          operator: Exists
+          effect: NoSchedule
+        - key: node.cloudprovider.kubernetes.io/uninitialized
+          operator: Exists
+          effect: NoSchedule
+    defaultSettings:
+      # UserVolumeConfig mounts ext4 on /dev/sdb1 at /var/mnt/longhorn (gpu-workers only)
+      defaultDataPath: /var/mnt/longhorn
+      # Longhorn spawns engine-image / instance-manager / CSI plugin DaemonSets
+      # from longhorn-manager, NOT via chart values. These settings pin them
+      # to nodes labelled longhorn=enabled (matches global.nodeSelector above).
+      systemManagedComponentsNodeSelector: "longhorn:enabled"
+      taintToleration: "intel.feature.node.kubernetes.io/gpu=true:NoSchedule;node.cloudprovider.kubernetes.io/uninitialized=:NoSchedule"
+      defaultReplicaCount: 2
+      # Only register the default disk on nodes carrying the explicit label
+      # node.longhorn.io/create-default-disk=true (gpu-workers). Regular workers
+      # have no /var/mnt/longhorn mount — without this gate, Longhorn would
+      # auto-register the path under root fs and waste root disk.
+      createDefaultDiskLabeledNodes: true
+      replicaSoftAntiAffinity: true
+      storageOverProvisioningPercentage: 100
+      storageMinimalAvailablePercentage: 10
+      allowRecurringJobWhileVolumeDetached: true
+    persistence:
+      # vsan stays cluster default; Longhorn is opt-in via StorageClass.
+      defaultClass: false
+      defaultClassReplicaCount: 2
+      reclaimPolicy: Retain
+      defaultDataLocality: best-effort
+      defaultFsType: ext4
+    # Ship chart-managed StorageClass off; we define our own below for clarity.
+    ingress:
+      enabled: false
+    longhornUI:
+      replicas: 1
+    # Reduce preflight strictness on Talos (modules load on demand via iscsid).
+    preUpgradeChecker:
+      jobEnabled: false
+    csi:
+      # attacher+provisioner have PDB minAvailable=1; at replicaCount=1 they
+      # block kubectl drain of any longhorn=enabled node. Keep >=2.
+      attacherReplicaCount: 2
+      provisionerReplicaCount: 2
+      resizerReplicaCount: 1
+      snapshotterReplicaCount: 1
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: longhorn-snapshot
+  labels:
+    velero.io/csi-volumesnapshot-class: "true"
+  annotations:
+    k10.kasten.io/is-snapshot-class: "true"
+driver: driver.longhorn.io
+deletionPolicy: Delete
+parameters:
+  type: snap

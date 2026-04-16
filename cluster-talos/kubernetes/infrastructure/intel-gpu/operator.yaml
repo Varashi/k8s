@@ -1,0 +1,43 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: intel-device-plugins-operator
+  namespace: inteldeviceplugins-system
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: intel-device-plugins-operator
+      version: 0.35.0
+      sourceRef:
+        kind: HelmRepository
+        name: intel-device-plugins
+        namespace: flux-system
+  install:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  upgrade:
+    crds: CreateReplace
+    cleanupOnFail: true
+    remediation:
+      strategy: rollback
+      retries: 3
+  values:
+    manager:
+      devices:
+        gpu: true
+        sgx: false
+        qat: false
+        dsa: false
+        iaa: false
+        dlb: false
+        fpga: false
+    # operator runs on CP/non-GPU only — it doesn't need the GPU itself
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: intel.feature.node.kubernetes.io/gpu
+                  operator: DoesNotExist

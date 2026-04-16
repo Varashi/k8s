@@ -1,0 +1,18 @@
+apiVersion: config.kio.kasten.io/v1alpha1
+kind: Profile
+metadata:
+  name: skw-vcsa
+  namespace: kasten-io
+spec:
+  type: Infra
+  infra:
+    type: VSphere
+    credential:
+      secretType: VSphereKey
+      secret:
+        apiVersion: v1
+        kind: secret
+        name: k10-vsphere-creds
+        namespace: kasten-io
+    vsphere:
+      serverAddress: skw-vcsa.${SECRET_DOMAIN}

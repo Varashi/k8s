@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: krb5-conf
+  namespace: external-dns
+data:
+  krb5.conf: |
+    [logging]
+        default = STDERR
+
+    [libdefaults]
+        default_realm = ${SECRET_EXTERNAL_DNS_KERBEROS_REALM}
+        dns_lookup_kdc = false
+        ticket_lifetime = 24h
+        renew_lifetime = 7d
+        forwardable = true
+
+    [realms]
+        ${SECRET_EXTERNAL_DNS_KERBEROS_REALM} = {
+            kdc = ${SECRET_EXTERNAL_DNS_KDC_1}
+            kdc = ${SECRET_EXTERNAL_DNS_KDC_2}
+        }
+
+    [domain_realm]
+        .${SECRET_DOMAIN} = ${SECRET_EXTERNAL_DNS_KERBEROS_REALM}
+        ${SECRET_DOMAIN} = ${SECRET_EXTERNAL_DNS_KERBEROS_REALM}

@@ -1,0 +1,17 @@
+apiVersion: deviceplugin.intel.com/v1
+kind: GpuDevicePlugin
+metadata:
+  name: gpudeviceplugin
+spec:
+  image: intel/intel-gpu-plugin:0.35.0
+  initImage: intel/intel-gpu-initcontainer:0.35.0
+  sharedDevNum: 32
+  logLevel: 2
+  enableMonitoring: true
+  nodeSelector:
+    intel.feature.node.kubernetes.io/gpu: "true"
+  tolerations:
+    - key: intel.feature.node.kubernetes.io/gpu
+      operator: Equal
+      value: "true"
+      effect: NoSchedule

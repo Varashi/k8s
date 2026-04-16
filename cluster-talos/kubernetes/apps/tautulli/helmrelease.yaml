@@ -1,0 +1,86 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: tautulli
+  namespace: tautulli
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 4.6.2
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    defaultPodOptions:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: DoesNotExist
+      tolerations:
+        - key: node.cloudprovider.kubernetes.io/uninitialized
+          operator: Exists
+          effect: NoSchedule
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+    controllers:
+      tautulli:
+        initContainers:
+          install-plexapi:
+            image:
+              repository: python
+              tag: 3-slim
+            command:
+              - sh
+              - -c
+              - |
+                mkdir -p /config/scripts/lib
+                pip install --target=/config/scripts/lib --quiet --upgrade plexapi
+        containers:
+          app:
+            image:
+              repository: ghcr.io/home-operations/tautulli
+              tag: 2.17.0
+              pullPolicy: IfNotPresent
+            env:
+              TZ: Europe/Brussels
+              TAUTULLI__PORT: 8181
+            resources:
+              requests:
+                cpu: 26m
+                memory: 1Gi
+              limits:
+                memory: 2Gi
+    service:
+      app:
+        controller: tautulli
+        ports:
+          http:
+            port: 8181
+    persistence:
+      config:
+        type: persistentVolumeClaim
+        existingClaim: tautulli-config
+        globalMounts:
+          - path: /config
+      backup:
+        type: nfs
+        server: skw-truenas-data.${SECRET_DOMAIN}
+        path: /mnt/DATA/backup/tautulli
+        globalMounts:
+          - path: /config/backups

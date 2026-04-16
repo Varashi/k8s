@@ -1,0 +1,102 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: k10
+  namespace: kasten-io
+spec:
+  interval: 15m
+  chart:
+    spec:
+      chart: k10
+      sourceRef:
+        kind: HelmRepository
+        name: kasten
+        namespace: flux-system
+      interval: 15m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    eula:
+      accept: true
+      company: ${SECRET_DOMAIN}
+      email: ${SECRET_ACME_EMAIL}
+    networkPolicy:
+      create: false
+    global:
+      persistence:
+        storageClass: vsan
+    # vSphere infra profile created post-install as Profile CR (uses k10-secrets keys
+    # vsphere-username/password) — avoids placing creds in chart values.
+    cacertconfigmap:
+      name: ad-ca
+    ingress:
+      create: false
+    externalGateway:
+      create: false
+    auth:
+      # Email claim path: dex emits email (= userPrincipalName), no issuer prefix
+      # is added, so chart-rendered CRBs match the impersonated identity directly.
+      k10AdminUsers:
+        - administrator@${SECRET_DOMAIN}
+        - ${SECRET_KASTEN_ADMIN_USER}@${SECRET_DOMAIN}
+      k10AdminGroups:
+        - "Domain Admins"
+      ldap:
+        enabled: true
+        restartPod: true
+        dashboardURL: https://kasten-talos.${SECRET_DOMAIN}/k10/
+        host: "${SECRET_DOMAIN}:636"
+        insecureNoSSL: false
+        insecureSkipVerifySSL: false
+        startTLS: false
+        bindDN: "${SECRET_LDAP_BIND_DN}"
+        bindPWSecretName: k10-secrets
+        usernamePrompt: Username
+        usernameClaim: email
+        usernamePrefix: ""
+        groupnameClaim: groups
+        groupnamePrefix: ""
+        userSearch:
+          baseDN: "${SECRET_LDAP_BASE_DN}"
+          filter: (objectClass=user)
+          username: sAMAccountName
+          idAttr: sAMAccountName
+          emailAttr: userPrincipalName
+          nameAttr: givenName
+        groupSearch:
+          baseDN: "${SECRET_LDAP_BASE_DN}"
+          filter: (objectClass=group)
+          nameAttr: cn
+          userMatchers:
+            - userAttr: distinguishedName
+              groupAttr: member
+  postRenderers:
+    - kustomize:
+        patches:
+          # keep K10 off GPU workers
+          - target:
+              kind: Deployment
+            patch: |-
+              - op: add
+                path: /spec/template/spec/affinity
+                value:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                        - matchExpressions:
+                            - key: "intel.feature.node.kubernetes.io/gpu"
+                              operator: "DoesNotExist"
+          # tolerate uninitialized-taint on fresh bootstrap
+          - target:
+              kind: Deployment
+            patch: |-
+              - op: add
+                path: /spec/template/spec/tolerations
+                value:
+                  - key: node.cloudprovider.kubernetes.io/uninitialized
+                    operator: Exists
+                    effect: NoSchedule

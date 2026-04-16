@@ -1,0 +1,136 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: tdarr
+  namespace: tdarr
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 4.6.2
+      interval: 30m
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  values:
+    controllers:
+      tdarr-main:
+        containers:
+          app:
+            image:
+              repository: ghcr.io/haveagitgat/tdarr
+              tag: 2.68.01
+              pullPolicy: Always
+            env:
+              TZ: Europe/Brussels
+              auth: "true"
+            resources:
+              requests:
+                memory: 1024Mi
+              limits:
+                memory: 4096Mi
+        pod:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: intel.feature.node.kubernetes.io/gpu
+                        operator: NotIn
+                        values:
+                          - "true"
+
+      tdarr-gpu-workers:
+        type: daemonset
+        containers:
+          worker:
+            image:
+              repository: ghcr.io/haveagitgat/tdarr_node
+              tag: 2.68.01
+              pullPolicy: Always
+            env:
+              - name: nodeID
+                valueFrom:
+                  fieldRef:
+                    fieldPath: spec.nodeName
+              - name: serverIP
+                value: tdarr.tdarr.svc
+              - name: serverPort
+                value: "8266"
+              - name: apiKey
+                value: tapi_fBPCHpc0u
+            resources:
+              requests:
+                memory: 2048Mi
+                cpu: 1
+              limits:
+                gpu.intel.com/i915: 1
+                cpu: 3
+                memory: 4096Mi
+        pod:
+          nodeSelector:
+            intel.feature.node.kubernetes.io/gpu: "true"
+          tolerations:
+            - key: "intel.feature.node.kubernetes.io/gpu"
+              operator: "Equal"
+              value: "true"
+              effect: "NoSchedule"
+
+    service:
+      app:
+        controller: tdarr-main
+        ports:
+          http:
+            port: 8265
+          server:
+            protocol: TCP
+            port: 8266
+
+    route:
+      app:
+        hostnames:
+          - "tdarr.${SECRET_DOMAIN}"
+        parentRefs:
+          - name: main
+            namespace: cilium
+            sectionName: https
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: app
+                port: http
+
+    persistence:
+      config:
+        type: persistentVolumeClaim
+        existingClaim: tdarr-config
+        advancedMounts:
+          tdarr-main:
+            app:
+              - path: /app/server
+      cache:
+        type: nfs
+        server: skw-truenas-data.${SECRET_DOMAIN}
+        path: /mnt/SSD/tdarrcache
+        globalMounts:
+          - path: /cache
+      media:
+        type: nfs
+        server: skw-truenas-data.${SECRET_DOMAIN}
+        path: /mnt/DATA/media
+        globalMounts:
+          - path: /media
+      backup:
+        type: nfs
+        server: skw-truenas-data.${SECRET_DOMAIN}
+        path: /mnt/DATA/backup/tdarr
+        advancedMounts:
+          tdarr-main:
+            app:
+              - path: /app/server/Tdarr/Backups

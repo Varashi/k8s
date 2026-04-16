@@ -1,0 +1,13 @@
+apiVersion: networking.cfargotunnel.com/v1alpha2
+kind: ClusterTunnel
+metadata:
+  name: k8s-talos
+  namespace: cloudflare-operator-system
+spec:
+  newTunnel:
+    name: k8s-talos
+  cloudflare:
+    email: ${SECRET_CLOUDFLARE_ACCOUNT_EMAIL}
+    domain: ${SECRET_DOMAIN}
+    secret: cloudflare-secrets
+    accountId: ${SECRET_CLOUDFLARE_ACCOUNT_ID}

@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - ad-ca-configmap.yaml
+  - externalsecret.yaml
+  - helmrelease.yaml
+  - httproute.yaml
+  - clusterrolebinding.yaml
+  - profile-b2.yaml
+  - profile-backblaze.yaml
+  - profile-vsphere.yaml
+  - policypreset.yaml
+  - policypreset-k8s-backup.yaml
+  - policy.yaml
+  - policy-k8s-backup.yaml
+  - policy-dr.yaml

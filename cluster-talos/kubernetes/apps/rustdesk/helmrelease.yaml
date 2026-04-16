@@ -1,0 +1,79 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: rustdesk
+  namespace: rustdesk
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 4.6.2
+      interval: 30m
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  values:
+    controllers:
+      rustdesk:
+        replicas: 1
+        strategy: Recreate
+        containers:
+          hbbs:
+            image:
+              repository: rustdesk/rustdesk-server
+              tag: "1.1.14"
+            command:
+              - hbbs
+            args:
+              - -r
+              - support.${SECRET_DOMAIN}:21117
+            env:
+              RELAY: support.${SECRET_DOMAIN}:21117
+          hbbr:
+            image:
+              repository: rustdesk/rustdesk-server
+              tag: "1.1.14"
+            command:
+              - hbbr
+
+    service:
+      rustdesk:
+        controller: rustdesk
+        type: LoadBalancer
+        externalTrafficPolicy: Local
+        annotations:
+          io.cilium/lb-ipam-ips: "172.16.4.107"
+          external-dns.alpha.kubernetes.io/hostname: "rustdesk.${SECRET_DOMAIN},support.${SECRET_DOMAIN}"
+        ports:
+          hbbs-tcp:
+            port: 21115
+            protocol: TCP
+            targetPort: 21115
+          nat-tcp:
+            port: 21116
+            protocol: TCP
+            targetPort: 21116
+          nat-udp:
+            port: 21116
+            protocol: UDP
+            targetPort: 21116
+          relay-tcp:
+            port: 21117
+            protocol: TCP
+            targetPort: 21117
+
+    persistence:
+      data:
+        type: persistentVolumeClaim
+        accessMode: ReadWriteOnce
+        size: 100Mi
+        storageClass: vsan
+        advancedMounts:
+          rustdesk:
+            hbbs:
+              - path: /root
+            hbbr:
+              - path: /root

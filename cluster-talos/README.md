@@ -1,0 +1,219 @@
+# k8s-talos Cluster
+
+Single Talos Linux cluster replacing k8s-adm (Talos+Rancher) and k8s (RKE2).
+See **[BOOTSTRAP.md](BOOTSTRAP.md)** for the full lifecycle guide (provision, bootstrap, teardown).
+
+## Stack
+
+| Layer | Tool | Purpose |
+|---|---|---|
+| Talos config (day-0 + day-2) | [talm](https://github.com/cozystack/talm) | Helm-like templating — renders full machine configs with PKI + applies them to maintenance-mode or running nodes |
+| VM provisioning | OpenTofu + vSphere provider | Creates VMs on vSphere from Talos OVA; injects minimal bootstrap config via guestinfo |
+| CNI + BGP + Ingress | Cilium 1.19.x | Pod networking, BGP LB IP advertisement, Gateway API |
+| GitOps | FluxCD | Reconciles Kubernetes manifests from git |
+| App secrets | ESO + Bitwarden Secrets Manager EU | Pulls secrets from Bitwarden into Kubernetes |
+| Internal PKI | cert-manager (self-signed CA) | TLS certs for internal cluster services |
+| Public TLS | cert-manager + Let's Encrypt (Cloudflare DNS-01) | TLS certs for internet-facing services |
+| Public DNS | external-dns (Cloudflare + RFC2136/AD) | HTTPRoute hostnames → DNS records |
+| Storage (RWO) | vSphere CSI + Longhorn (GPU workers) | `vsan` SC on all workers, `longhorn` SC on gpu-worker-* for Kasten |
+| Backup | Kasten K10 + `talos-backup` CronJob | App-level restore; daily age-encrypted etcd snapshot to B2 |
+| Observability | Prometheus (lean) + metrics-server | Freelens Helm provider; VCF Ops 9 external collector via HTTPRoute + basic auth |
+| GPU workloads | Intel GPU device plugin (+ NFD) | `gpu.intel.com/i915` on gpu-worker-*; ClusterPlex HW transcode |
+
+## Cluster Spec
+
+| Parameter | Value |
+|---|---|
+| Cluster name | k8s-talos |
+| Talos version | v1.12.6 |
+| Kubernetes version | v1.35.0 |
+| VLAN | 104 — `dv-SKW-K8s` portgroup |
+| Subnet | 172.16.4.0/24 |
+| Gateway / BGP peer | 172.16.4.254 (OPNsense, AS 64512) |
+| API VIP | 172.16.4.1 |
+| Control planes | 172.16.4.10 / .11 / .12 (4 vCPU, 8 GB, 50 GB) |
+| Workers | 172.16.4.20 / .21 / .22 (4 vCPU, 16 GB, 100 GB) — NIC1 k8s + NIC2 storage (10.5.1.20–22/24). Active count = `var.worker_count` (default 2); entries in `worker_nodes` beyond N are declared but not provisioned. |
+| GPU workers | 172.16.4.30 / .31 / .32 (2 vCPU, 8 GB, 100 GB + 100 GB Longhorn VMDK) — NIC1 k8s + NIC2 storage (10.5.1.30–32/24) + Intel ARC A380 passthrough. Active count = `var.gpu_worker_count` (default 1). |
+| LB IP pool | 172.16.4.100–.200 (BGP via Cilium, AS 64513) |
+| Talos schematic | `903b2da78f99adef03cbbd4df6714563823f63218508800751560d3bc3557e40` |
+
+Schematic includes `siderolabs/vmtoolsd-guest-agent` (VMware Tools) only.
+
+---
+
+## Directory Structure
+
+```
+cluster-talos/
+├── BOOTSTRAP.md              # Full lifecycle guide — read this first
+├── tofu/                     # OpenTofu — vSphere VM provisioning
+│   ├── main.tf               # Provider, portgroup, content library, OVA
+│   ├── nodes.tf              # VM resources (CP + worker); local.active_worker_nodes filters by worker_count
+│   ├── variables.tf          # Cluster spec, node maps, worker_count, vSphere settings
+│   ├── outputs.tf            # Node IPs
+│   ├── terraform.tfvars      # (gitignored) vSphere credentials
+│   └── terraform.tfvars.example
+├── talos/                    # talm — Talos machine config management (day-0 + day-2)
+│   ├── Chart.yaml            # talm chart root
+│   ├── values.yaml           # Cluster-wide defaults
+│   ├── secrets.yaml          # Cluster PKI (gitignored — back up to Bitwarden)
+│   ├── secrets.encrypted.yaml# AGE-encrypted secrets (committed)
+│   ├── templates/            # controlplane + worker Go templates + _helpers.tpl
+│   ├── scripts/
+│   │   └── validate-rendered.py   # Fails CI if rendered configs leak talm --full default subnets
+│   ├── nodes/
+│   │   ├── bootstrap/        # Full offline-rendered configs (gitignored, consumed by tofu guestinfo)
+│   │   ├── values/           # Per-node value overrides (IP, VIP, storageIP) — source of truth
+│   │   ├── patches/          # talm modelines + day-2 patches
+│   │   └── *.yaml            # Full rendered configs (gitignored, produced by `make render` or `make bootstrap-template`)
+│   └── clusterconfig/        # Generated (gitignored): talosconfig + kubeconfig
+└── kubernetes/               # FluxCD GitOps manifests
+    ├── bootstrap/
+    │   └── flux-system/      # Flux install + all cluster Kustomization CRs
+    │       ├── gotk-components.yaml     # (gitignored) Flux controllers
+    │       ├── gotk-sync.yaml           # (gitignored) Root GitRepository + Kustomization
+    │       └── cluster-kustomizations.yaml  # All Kustomizations — self-managed after bootstrap
+    ├── flux/
+    │   ├── repositories/     # HelmRepository / OCI sources for all charts
+    │   └── cluster/          # Kustomization definitions (reference copy; canonical in bootstrap/)
+    ├── infrastructure/
+    │   ├── controllers/      # Operators / core services — reconciled first
+    │   │   ├── gateway-api/             # Gateway API CRDs (installed before configs)
+    │   │   ├── cilium/                  # CNI + Gateway (HelmRelease post-bootstrap)
+    │   │   ├── cert-manager/
+    │   │   ├── external-secrets/
+    │   │   ├── kubelet-csr-approver/
+    │   │   ├── metrics-server/          # kubectl top + HPA
+    │   │   ├── snapshot-controller/     # CSI volume snapshots (Kasten)
+    │   │   ├── vsphere-cpi/             # vSphere cloud-controller
+    │   │   ├── vsphere-csi/             # vSAN PVCs
+    │   │   ├── cnpg/                    # CloudNativePG operator (NetBox etc.)
+    │   │   └── prometheus/              # Lean Prom + KSM + node-exporter + HTTPRoute (basic-auth via ESO)
+    │   ├── certs/            # Internal PKI — reconciled after controllers
+    │   ├── configs/          # Config objects — reconciled after certs
+    │   │   ├── cilium/       # BGP config, LB IP pool, GatewayClass, shared Gateway (main)
+    │   │   ├── cert-manager/ # letsencrypt-prod ClusterIssuer
+    │   │   ├── external-secrets/ # bitwarden-sdk-server HelmRelease + ClusterSecretStore
+    │   │   ├── vsphere-csi/  # StorageClass
+    │   │   └── vcfops-collector/ # Read-only SA + CRB + token for external VCF Ops 9 adapter
+    │   ├── etcd-backup/                 # talos-backup CronJob → B2 (age-encrypted)
+    │   ├── external-dns/                # RFC2136 / GSS-TSIG → AD DNS (internal)
+    │   ├── external-dns-cloudflare/     # Cloudflare public records
+    │   ├── cloudflare-operator/         # ClusterTunnel (external ingress via CF Tunnel)
+    │   ├── intel-gpu/                   # NFD + intel-device-plugins-operator
+    │   ├── intel-gpu-config/            # GpuDevicePlugin CR (sharedDevNum=32)
+    │   ├── gpu-node-vsphere-maintenance/ # Controller: drain + power-off GPU workers for ESXi maint
+    │   ├── longhorn/                    # RWO storage on GPU workers (Kasten backup source)
+    │   ├── kasten-io/                   # Kasten K10 (LDAPS to AD)
+    │   └── renovate/                    # Dependency update bot
+    └── apps/                 # Workloads
+        ├── home-assistant/
+        ├── clusterplex/      # Plex + distributed transcoders (Intel GPU)
+        ├── netbox/           # IPAM (CNPG-backed)
+        └── ocis/             # ownCloud Infinite Scale
+```
+
+---
+
+## Flux Dependency Chain
+
+```
+flux-repositories           (HelmRepository sources — no dependencies)
+infrastructure-controllers  (cilium, cert-manager, ESO, kubelet-csr-approver)
+    └── infrastructure-certs   (internal cluster CA + bitwarden-sdk-server TLS cert)
+            └── infrastructure-configs  (BGP, ClusterIssuer, bitwarden-sdk-server, ClusterSecretStore)
+                    └── apps
+```
+
+All Kustomizations are defined in `bootstrap/flux-system/cluster-kustomizations.yaml` and are
+self-managed by Flux from the moment `flux bootstrap` completes. No manual `kubectl apply`
+steps are needed after bootstrap.
+
+---
+
+## Bootstrap Secrets (manual, one-time)
+
+Two secrets must be created manually after `infrastructure-controllers` reconciles (when
+the namespaces first exist). Everything else is pulled from Bitwarden automatically via ESO.
+
+```bash
+# Bitwarden SM machine account token
+kubectl create secret generic bitwarden-credentials \
+  --namespace external-secrets \
+  --from-literal=token=<machine-account-token>
+
+# Cloudflare API token (DNS-01 for Let's Encrypt)
+kubectl create secret generic cloudflare-api-token \
+  --namespace cert-manager \
+  --from-literal=api-token=<cloudflare-token>
+```
+
+See BOOTSTRAP.md Step 6 for full context and timing.
+
+---
+
+## Key Design Decisions
+
+**Cilium native routing** — `ipv4NativeRoutingCIDR: 10.244.0.0/16` covers the full pod CIDR.
+Must match the pod network, not the node subnet — masquerading pod-to-pod traffic breaks
+cross-node connectivity in native routing mode.
+
+**CoreDNS upstream DNS** — With Cilium native routing, the Talos hostDNS address
+(`169.254.20.10`) is unreachable from pods. `forwardKubeDNSToHost: false` in the machine
+config leaves CoreDNS using `/etc/resolv.conf`, which Talos populates from
+`machine.network.nameservers`. External DNS works without any CoreDNS patching.
+
+**Gateway API CRDs** — Committed to `infrastructure/controllers/gateway-api/` and installed
+by `infrastructure-controllers` Kustomization (with `wait: true`), ensuring they exist
+before `infrastructure-configs` reconciles.
+
+**Cilium pre-Flux** — Cilium must be installed before Flux because Flux pods need pod
+networking. Installed via `make bootstrap-cilium` (helm upgrade --install with pinned flags).
+Flux's HelmRelease then reconciles against the already-installed release.
+
+**Two-stage Talos config** — tofu injects a minimal bootstrap machine config
+(`talos/nodes/bootstrap/*.yaml`) via guestinfo: hostname + primary NIC static IP + install image,
+no cluster/PKI. VMs come up on their final IPs, then `talm template -i` + `talm apply -i`
+push the full cluster config with PKI. Same `templates/` + `nodes/values/` used day-0 and
+day-2, so day-2 applies don't drift from the bootstrap state. See BOOTSTRAP.md Steps 1–3.
+
+**bitwarden-sdk-server TLS** — ESO's Bitwarden provider requires TLS for SDK server
+communication. Certs are issued by the internal cluster CA (cert-manager). The
+`infrastructure-certs` Kustomization creates the CA and cert before `infrastructure-configs`
+deploys the SDK server HelmRelease.
+
+**Control plane metrics exposure** — `controllerManager.extraArgs.bind-address=0.0.0.0` +
+`scheduler.extraArgs.bind-address=0.0.0.0` in `talos/templates/controlplane.yaml` let
+Prometheus scrape kube-scheduler + kube-controller-manager. Default Talos binds them to
+localhost only. Also an apiserver `certSAN` for a stable external DNS name so external
+collectors can hit the API with a non-rotating hostname.
+
+**Prometheus external exposure** — Prometheus is exposed on the shared
+Cilium Gateway, fronted by its own `--web.config.file` basic auth (no sidecar proxy). The
+web config, plus a `server.probeHeaders` snippet that lets Prom scrape itself through the
+auth layer, are rendered by an ExternalSecret pulling from BW SM and merged into the
+HelmRelease via `valuesFrom`. This is how the external VCF Ops 9 VM scrapes the cluster.
+
+**VCF Ops 9 K8s adapter** — separate read-only path: `vcfops-collector` SA in its own
+namespace, bound to a custom ClusterRole granting `get/list/watch` on `*/*` plus node
+subresources (`metrics`/`stats`/`proxy`/`spec`) and all `nonResourceURLs`. No write verbs.
+Token lives in a `kubernetes.io/service-account-token` Secret; the external VM consumes it
+alongside the Prom basic-auth creds.
+
+**Site-identifying info kept out of git** — public DNS zone, account email, API endpoint
+hostnames, vCenter FQDN and API cert SANs are all parameterized so the committed tree is
+site-neutral. Three mechanisms, one per tool:
+
+| Layer | Value source | Reference variable in committed YAML |
+|---|---|---|
+| Flux-reconciled manifests (apps + infra) | `cluster-vars` Secret in `flux-system` | `${SECRET_DOMAIN}` etc., via `postBuild.substituteFrom` on the parent Kustomization |
+| Flux manifests that must not have the value even in `cluster-vars` (e.g. CF account email) | Bitwarden SM → ESO → `cloudflare-substvars` Secret in `flux-system` | `${SECRET_CLOUDFLARE_ACCOUNT_EMAIL}`, `${SECRET_CLOUDFLARE_ACCOUNT_ID}`, … |
+| OpenTofu vSphere provider | Gitignored `tofu/terraform.tfvars` | `var.vsphere_server` (no default — required) |
+| Talm machine configs (not flux-reconciled) | Gitignored `talos/values.local.yaml` | `.Values.cluster.apiCertSANs` |
+
+Rules of thumb when adding new identifying info:
+- Prefer `${SECRET_DOMAIN}` (cluster-vars) — already substituted on most parent Kustomizations.
+- If the parent ks lacks `postBuild.substituteFrom`, add it in `bootstrap/flux-system/cluster-kustomizations.yaml`.
+- For values that shouldn't even be in `cluster-vars` (e.g. account identity), add a new key to the matching ExternalSecret (prefix `SECRET_`) and list the backing secret as a second `substituteFrom`. Commit the ES change first and wait for ESO sync before swapping consumers.
+- For talm templates, loop over a value in `values.yaml` (default `[]`) and keep the real list in `talos/values.local.yaml`. `make render` chains `--values values.local.yaml` before per-node values.
+- An example of each gitignored file is committed next to it (`*.example`).

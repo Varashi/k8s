@@ -1,0 +1,29 @@
+apiVersion: config.kio.kasten.io/v1alpha1
+kind: Policy
+metadata:
+  name: k10-disaster-recovery-policy
+  namespace: kasten-io
+spec:
+  frequency: '@daily'
+  retention:
+    daily: 3
+  selector:
+    matchLabels:
+      k10.kasten.io/appNamespace: kasten-io
+  kdrSnapshotConfiguration:
+    takeLocalCatalogSnapshot: true
+    exportCatalogSnapshot: true
+  actions:
+    - action: backup
+      backupParameters:
+        profile:
+          name: backblaze-b2
+          namespace: kasten-io
+    - action: export
+      exportParameters:
+        frequency: '@daily'
+        profile:
+          name: backblaze-b2
+          namespace: kasten-io
+        exportData:
+          enabled: true

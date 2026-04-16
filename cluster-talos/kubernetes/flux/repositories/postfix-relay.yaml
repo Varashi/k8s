@@ -1,0 +1,14 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: postfix-relay
+  namespace: flux-system
+spec:
+  interval: 30m
+  url: https://github.com/eldada/postfix-relay-kubernetes/
+  ref:
+    branch: master
+  ignore: |-
+    /*
+    !/helm/

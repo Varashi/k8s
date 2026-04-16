@@ -1,0 +1,39 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: tracearr-db
+  namespace: tracearr
+spec:
+  instances: 2
+  imageName: ghcr.io/imusmanmalik/timescaledb-postgis:17-3.5
+
+  postgresql:
+    parameters:
+      timescaledb.max_tuples_decompressed_per_dml_transaction: "0"
+      max_locks_per_transaction: "4096"
+      timescaledb.telemetry_level: "off"
+    shared_preload_libraries:
+      - timescaledb
+
+  bootstrap:
+    initdb:
+      database: tracearr
+      owner: tracearr
+      secret:
+        name: tracearr-db-credentials
+      postInitTemplateSQL:
+        - CREATE EXTENSION IF NOT EXISTS timescaledb;
+        - CREATE EXTENSION IF NOT EXISTS timescaledb_toolkit;
+
+  storage:
+    size: 20Gi
+    storageClass: vsan
+
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: intel.feature.node.kubernetes.io/gpu
+                operator: DoesNotExist

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tautulli-config
+  namespace: tautulli
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: vsan
+  resources:
+    requests:
+      storage: 15Gi

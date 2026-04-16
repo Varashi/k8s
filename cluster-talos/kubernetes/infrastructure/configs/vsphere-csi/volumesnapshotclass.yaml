@@ -1,0 +1,10 @@
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: vsphere-csi-snapshot
+  labels:
+    velero.io/csi-volumesnapshot-class: "true"
+  annotations:
+    k10.kasten.io/is-snapshot-class: "true"
+driver: csi.vsphere.vmware.com
+deletionPolicy: Delete

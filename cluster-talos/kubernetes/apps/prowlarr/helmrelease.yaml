@@ -1,0 +1,68 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: prowlarr
+  namespace: prowlarr
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 4.6.2
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    defaultPodOptions:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: DoesNotExist
+      tolerations:
+        - key: node.cloudprovider.kubernetes.io/uninitialized
+          operator: Exists
+          effect: NoSchedule
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+    controllers:
+      prowlarr:
+        containers:
+          app:
+            image:
+              repository: ghcr.io/home-operations/prowlarr
+              tag: 2.3.5.5327
+              pullPolicy: IfNotPresent
+            env:
+              TZ: Europe/Brussels
+    service:
+      app:
+        controller: prowlarr
+        ports:
+          http:
+            port: 9696
+    persistence:
+      config:
+        type: persistentVolumeClaim
+        existingClaim: prowlarr-config
+        globalMounts:
+          - path: /config
+      backup:
+        type: nfs
+        server: skw-truenas-data.${SECRET_DOMAIN}
+        path: /mnt/DATA/backup/prowlarr
+        globalMounts:
+          - path: /backup

@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars and fill in credentials
+# terraform.tfvars is gitignored
+
+vsphere_server   = "vcenter.example.local"
+vsphere_user     = "administrator@vsphere.local"
+vsphere_password = "changeme"

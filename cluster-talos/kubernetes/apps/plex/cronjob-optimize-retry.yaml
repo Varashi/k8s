@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plex-optimize-retry-script
+  namespace: plex
+data:
+  retry.py: |
+    #!/usr/bin/env python3
+    # Retries Plex optimize items stuck in 'disabled' or 'error' state.
+    import os, re, sys, urllib.request, urllib.error, json
+
+    PLEX_URL = os.environ.get("PLEX_URL", "http://plex:32400")
+    JOB_ID = os.environ.get("OPTIMIZE_JOB_ID", "15792")
+    PREFS = "/config/Library/Application Support/Plex Media Server/Preferences.xml"
+    RETRY_STATES = {"disabled", "error"}
+
+    with open(PREFS) as f:
+        m = re.search(r'PlexOnlineToken="([^"]+)"', f.read())
+    if not m:
+        print("no PlexOnlineToken in Preferences.xml", file=sys.stderr); sys.exit(1)
+    token = m.group(1)
+
+    url = f"{PLEX_URL}/playlists/1066/items/{JOB_ID}/items?X-Plex-Token={token}"
+    req = urllib.request.Request(url, headers={"Accept": "application/json"})
+    data = json.load(urllib.request.urlopen(req, timeout=30))["MediaContainer"]
+    items = data.get("Metadata", [])
+    targets = [it for it in items if it.get("processingState") in RETRY_STATES]
+    print(f"total={len(items)} retry_candidates={len(targets)}")
+
+    ok = fail = 0
+    for it in targets:
+        rk = it["ratingKey"]; title = it.get("title", "?")
+        state = it.get("processingState")
+        u = f"{PLEX_URL}/playlists/1066/items/{JOB_ID}/{rk}/reprocess?X-Plex-Token={token}"
+        r = urllib.request.Request(u, method="PUT")
+        try:
+            urllib.request.urlopen(r, timeout=15)
+            print(f"RETRY {state:8s} {rk} {title}")
+            ok += 1
+        except urllib.error.HTTPError as e:
+            print(f"FAIL  {state:8s} {rk} {title} http={e.code}")
+            fail += 1
+    print(f"done ok={ok} fail={fail}")
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: plex-optimize-retry
+  namespace: plex
+spec:
+  schedule: "0 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          nodeSelector:
+            intel.feature.node.kubernetes.io/gpu: "true"
+          tolerations:
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: plex
+                  topologyKey: kubernetes.io/hostname
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          containers:
+            - name: retry
+              image: python:3.12-slim
+              env:
+                - name: PLEX_URL
+                  value: http://plex:32400
+                - name: OPTIMIZE_JOB_ID
+                  value: "15792"
+              command: ["python3", "/scripts/retry.py"]
+              volumeMounts:
+                - name: config-pms
+                  mountPath: /config
+                  readOnly: true
+                - name: script
+                  mountPath: /scripts
+          volumes:
+            - name: config-pms
+              persistentVolumeClaim:
+                claimName: plex-config-pms
+            - name: script
+              configMap:
+                name: plex-optimize-retry-script

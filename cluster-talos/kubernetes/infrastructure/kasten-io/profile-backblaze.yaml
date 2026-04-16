@@ -1,0 +1,22 @@
+apiVersion: config.kio.kasten.io/v1alpha1
+kind: Profile
+metadata:
+  name: backblaze
+  namespace: kasten-io
+spec:
+  type: Location
+  locationSpec:
+    credential:
+      secretType: AwsAccessKey
+      secret:
+        apiVersion: v1
+        kind: secret
+        name: k10-b2-creds
+        namespace: kasten-io
+    type: ObjectStore
+    objectStore:
+      endpoint: s3.eu-central-003.backblazeb2.com
+      name: skw-talos-kasten
+      objectStoreType: S3
+      pathType: Directory
+      region: eu-central-003

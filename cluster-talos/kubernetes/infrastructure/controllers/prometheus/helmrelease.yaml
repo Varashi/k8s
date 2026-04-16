@@ -1,0 +1,72 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: prometheus
+      version: 27.x.x
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: flux-system
+  install:
+    crds: CreateReplace
+    timeout: 15m
+    remediation:
+      retries: 3
+  upgrade:
+    crds: CreateReplace
+    timeout: 15m
+    remediation:
+      retries: 3
+  values:
+    alertmanager:
+      enabled: false
+    prometheus-pushgateway:
+      enabled: false
+
+    server:
+      retention: 7d
+      global:
+        scrape_interval: 60s
+        evaluation_interval: 60s
+      persistentVolume:
+        enabled: true
+        size: 10Gi
+        storageClass: vsan
+      resources:
+        requests:
+          cpu: 50m
+          memory: 300Mi
+        limits:
+          memory: 1Gi
+      tolerations:
+        - key: node.cloudprovider.kubernetes.io/uninitialized
+          operator: Exists
+          effect: NoSchedule
+    kube-state-metrics:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 128Mi
+      tolerations:
+        - key: node.cloudprovider.kubernetes.io/uninitialized
+          operator: Exists
+          effect: NoSchedule
+
+    prometheus-node-exporter:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 24Mi
+        limits:
+          memory: 64Mi
+      tolerations:
+        - operator: Exists

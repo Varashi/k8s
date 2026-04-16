@@ -1,0 +1,45 @@
+# talm: nodes=["172.16.4.11"], endpoints=["172.16.4.10"], templates=["templates/controlplane.yaml"]
+machine:
+  kubelet:
+    extraArgs:
+      rotate-server-certificates: "true"
+    nodeIP:
+      validSubnets:
+        - 172.16.4.0/24
+  network:
+    interfaces:
+      - deviceSelector:
+          busPath: "0000:0b:00.0"
+        addresses:
+          - 172.16.4.11/24
+        routes:
+          - network: 0.0.0.0/0
+            gateway: 172.16.4.254
+        vip:
+          ip: 172.16.4.1
+    nameservers:
+      - 172.16.0.2
+      - 172.16.128.2
+  install:
+    disk: /dev/sda
+    image: factory.talos.dev/installer/903b2da78f99adef03cbbd4df6714563823f63218508800751560d3bc3557e40:v1.12.6
+  time:
+    servers:
+      - 172.16.4.254
+  features:
+    hostDNS:
+      enabled: true
+      forwardKubeDNSToHost: false
+cluster:
+  network:
+    cni:
+      name: none
+  etcd:
+    advertisedSubnets:
+      - 172.16.4.0/24
+  proxy:
+    disabled: true
+---
+apiVersion: v1alpha1
+kind: HostnameConfig
+hostname: k8s-talos-cp-2

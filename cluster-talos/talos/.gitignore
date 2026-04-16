@@ -1,0 +1,13 @@
+# Talos cluster secrets — contain PKI private keys, never commit
+secrets.yaml
+talsecret.yaml
+talm.key
+
+# Rendered node configs — contain embedded PKI from secrets.yaml
+# Source of truth is nodes/values/*.yaml + templates/
+# Regenerate with: make bootstrap-render
+nodes/*.yaml
+
+# Kubeconfig and talosconfig — generated at bootstrap time
+clusterconfig/kubeconfig
+clusterconfig/talosconfig

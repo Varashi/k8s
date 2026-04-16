@@ -1,0 +1,17 @@
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: rustdesk-cloudflare
+  namespace: rustdesk
+  annotations:
+    external-dns.alpha.kubernetes.io/public: "true"
+spec:
+  endpoints:
+    - dnsName: support.${SECRET_DOMAIN}
+      recordType: CNAME
+      targets:
+        - skw.wan.${SECRET_DOMAIN}
+    - dnsName: rustdesk.${SECRET_DOMAIN}
+      recordType: CNAME
+      targets:
+        - skw.wan.${SECRET_DOMAIN}

@@ -1,0 +1,142 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: ocis
+  namespace: ocis
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 4.6.2
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    defaultPodOptions:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: DoesNotExist
+      tolerations:
+        - key: node.cloudprovider.kubernetes.io/uninitialized
+          operator: Exists
+          effect: NoSchedule
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+
+    controllers:
+      ocis:
+        initContainers:
+          init-config:
+            image: &image
+              repository: docker.io/owncloud/ocis
+              tag: 8.0.1
+            command: ["/bin/sh", "-c"]
+            args:
+              - |
+                if [ ! -f /etc/ocis/ocis.yaml ]; then
+                  ocis init --admin-password "$IDM_ADMIN_PASSWORD" --insecure true
+                fi
+            envFrom: &envFrom
+              - secretRef:
+                  name: ocis-admin
+            env: &env
+              OCIS_INSECURE: "true"
+              OCIS_URL: https://files.${SECRET_DOMAIN}
+              OCIS_CONFIG_DIR: /etc/ocis
+            securityContext: &secctx
+              runAsUser: 1000
+              runAsGroup: 1000
+              runAsNonRoot: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+        containers:
+          ocis:
+            image: *image
+            envFrom: *envFrom
+            env:
+              <<: *env
+              DEMO_USERS: "false"
+              OCIS_LOG_COLOR: "true"
+              OCIS_LOG_LEVEL: info
+              OCIS_LOG_PRETTY: "true"
+              PROXY_TLS: "false"
+              NOTIFICATIONS_SMTP_HOST: smtp.${SECRET_DOMAIN}
+              NOTIFICATIONS_SMTP_PORT: "25"
+              NOTIFICATIONS_SMTP_SENDER: BoeyeFiles <files@${SECRET_DOMAIN}>
+            probes:
+              liveness: &probe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 9200
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              readiness: *probe
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+            securityContext: *secctx
+
+    service:
+      app:
+        controller: ocis
+        ports:
+          http:
+            port: 9200
+      ocis-public:
+        type: ExternalName
+        externalName: skw.wan.${SECRET_DOMAIN}
+        annotations:
+          external-dns.alpha.kubernetes.io/hostname: files.${SECRET_DOMAIN}
+          external-dns.alpha.kubernetes.io/public: "true"
+        ports:
+          http:
+            port: 443
+
+    persistence:
+      config:
+        existingClaim: ocis-config
+        globalMounts:
+          - path: /etc/ocis
+            subPath: config
+      web-config:
+        type: configMap
+        name: ocis-web
+        globalMounts:
+          - path: /etc/ocis/web.yaml
+            subPath: web.yaml
+            readOnly: true
+      data:
+        # TrueNAS NFS. Expendable per project stance; ZFS snapshots on TrueNAS side.
+        type: nfs
+        server: skw-truenas-data.${SECRET_DOMAIN}
+        path: /mnt/DATA/files
+        globalMounts:
+          - path: /var/lib/ocis
+            subPath: data
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp

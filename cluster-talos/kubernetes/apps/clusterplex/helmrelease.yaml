@@ -1,0 +1,180 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: clusterplex
+  namespace: clusterplex
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 4.6.2
+      interval: 30m
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  values:
+    controllers:
+      orchestrator:
+        containers:
+          app:
+            image:
+              repository: ghcr.io/pabloromeo/clusterplex_orchestrator
+              tag: 1.4.16
+            env:
+              TZ: Europe/Brussels
+              LISTENING_PORT: "3500"
+              WORKER_SELECTION_STRATEGY: "LOAD_RANK"
+        pod:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+
+      pms:
+        containers:
+          app:
+            image:
+              repository: ghcr.io/linuxserver/plex
+              tag: 1.43.0.10492-121068a07-ls297
+            env:
+              TZ: Europe/Brussels
+              VERSION: docker
+              DOCKER_MODS: "ghcr.io/pabloromeo/clusterplex_dockermod:1.4.16"
+              ORCHESTRATOR_URL: "http://clusterplex-orchestrator.clusterplex.svc:3500"
+              PMS_SERVICE: "clusterplex-pms.clusterplex.svc"
+              PMS_PORT: "32400"
+              LOCAL_RELAY_ENABLED: "1"
+              LOCAL_RELAY_PORT: "32499"
+              TRANSCODE_OPERATING_MODE: "remote"
+            resources:
+              limits:
+                gpu.intel.com/i915: 1
+        pod:
+          nodeSelector:
+            intel.feature.node.kubernetes.io/gpu: "true"
+          tolerations:
+            - key: "intel.feature.node.kubernetes.io/gpu"
+              operator: "Equal"
+              value: "true"
+              effect: "NoSchedule"
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+
+      worker:
+        type: daemonset
+        containers:
+          app:
+            image:
+              repository: ghcr.io/linuxserver/plex
+              tag: 1.43.0.10492-121068a07-ls297
+            env:
+              TZ: Europe/Brussels
+              VERSION: docker
+              DOCKER_MODS: "ghcr.io/pabloromeo/clusterplex_worker_dockermod:1.4.16"
+              ORCHESTRATOR_URL: "http://clusterplex-orchestrator.clusterplex.svc:3500"
+              LISTENING_PORT: "3501"
+            resources:
+              limits:
+                gpu.intel.com/i915: 1
+        pod:
+          nodeSelector:
+            intel.feature.node.kubernetes.io/gpu: "true"
+          tolerations:
+            - key: "intel.feature.node.kubernetes.io/gpu"
+              operator: "Equal"
+              value: "true"
+              effect: "NoSchedule"
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+
+    service:
+      orchestrator:
+        controller: orchestrator
+        ports:
+          http:
+            port: 3500
+      pms:
+        controller: pms
+        ports:
+          http:
+            port: 32400
+          relay:
+            port: 32499
+      pms-lb:
+        type: LoadBalancer
+        annotations:
+          io.cilium/lb-ipam-ips: "172.16.4.106"
+          external-dns.alpha.kubernetes.io/hostname: "clusterplex-pms.${SECRET_DOMAIN}"
+        externalTrafficPolicy: Local
+        controller: pms
+        ports:
+          http:
+            port: 32400
+      worker:
+        controller: worker
+        ports:
+          http:
+            port: 3501
+      clusterplex-public:
+        controller: pms
+        type: ExternalName
+        externalName: skw.wan.${SECRET_DOMAIN}
+        annotations:
+          external-dns.alpha.kubernetes.io/hostname: clusterplex.${SECRET_DOMAIN}
+          external-dns.alpha.kubernetes.io/public: "true"
+        ports:
+          http:
+            port: 32400
+
+    route:
+      app:
+        hostnames:
+          - "clusterplex.${SECRET_DOMAIN}"
+        parentRefs:
+          - name: main
+            namespace: cilium
+            sectionName: https
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: pms
+                port: http
+
+    persistence:
+      config:
+        type: persistentVolumeClaim
+        existingClaim: clusterplex-config
+        advancedMounts:
+          pms:
+            app:
+              - path: /config
+      transcode:
+        type: nfs
+        server: skw-truenas-data.${SECRET_DOMAIN}
+        path: /mnt/SSD/plextranscode
+        advancedMounts:
+          pms:
+            app:
+              - path: /transcode
+          worker:
+            app:
+              - path: /transcode
+      media:
+        type: nfs
+        server: skw-truenas-data.${SECRET_DOMAIN}
+        path: /mnt/DATA/media
+        advancedMounts:
+          pms:
+            app:
+              - path: /media
+          worker:
+            app:
+              - path: /media

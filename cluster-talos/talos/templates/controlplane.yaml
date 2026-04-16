@@ -1,0 +1,82 @@
+version: v1alpha1
+debug: false
+persist: true
+machine:
+  type: controlplane
+  kubelet:
+    extraArgs:
+      rotate-server-certificates: "true"
+      cloud-provider: external
+    nodeIP:
+      validSubnets:
+        {{- range .Values.machine.kubelet.nodeIPSubnets }}
+        - {{ . }}
+        {{- end }}
+  network:
+    nameservers:
+      {{- range .Values.machine.nameservers }}
+      - {{ . }}
+      {{- end }}
+    interfaces:
+      {{- if .Values.node.ip }}
+      - deviceSelector:
+          busPath: "0000:0b:00.0"
+        addresses:
+          - {{ .Values.node.ip }}
+        routes:
+          - network: 0.0.0.0/0
+            gateway: {{ .Values.node.gateway | quote }}
+        {{- if .Values.node.vip }}
+        vip:
+          ip: {{ .Values.node.vip }}
+        {{- end }}
+      {{- else }}
+{{ include "talm.discovered.existing_interfaces_configuration" . | indent 6 }}
+      {{- end }}
+  install:
+    disk: {{ .Values.installer.disk }}
+    image: {{ include "k8s-talos.installImage" . }}
+    wipe: false
+  time:
+    servers:
+      {{- range .Values.machine.timeServers }}
+      - {{ . }}
+      {{- end }}
+  features:
+    hostDNS:
+      enabled: true
+      forwardKubeDNSToHost: false
+    kubernetesTalosAPIAccess:
+      enabled: true
+      allowedRoles:
+        - os:etcd:backup
+      allowedKubernetesNamespaces:
+        - etcd-backup
+cluster:
+  controlPlane:
+    endpoint: {{ .Values.cluster.endpoint }}
+  clusterName: {{ .Values.cluster.name }}
+  apiServer:
+    certSANs:
+      {{- range .Values.cluster.apiCertSANs }}
+      - {{ . }}
+      {{- end }}
+  network:
+    cni:
+      name: none
+    {{- include "k8s-talos.emptyClusterSubnets" . | nindent 4 }}
+  etcd:
+    advertisedSubnets:
+      - 172.16.4.0/24
+  proxy:
+    disabled: true
+  controllerManager:
+    extraArgs:
+      bind-address: 0.0.0.0
+  scheduler:
+    extraArgs:
+      bind-address: 0.0.0.0
+---
+apiVersion: v1alpha1
+kind: HostnameConfig
+hostname: {{ if .Values.hostname }}{{ .Values.hostname }}{{ else }}{{ include "talm.discovered.hostname" . }}{{ end }}

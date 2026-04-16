@@ -1,0 +1,11 @@
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: k8s-pool
+spec:
+  # start/stop ignored by Cilium BGP v2 control plane (upstream bug).
+  # Use explicit CIDR blocks to avoid overlap with nodes (.1, .10-.22) and VIP (.1).
+  blocks:
+    - cidr: 172.16.4.100/30   # .100-.103
+    - cidr: 172.16.4.104/29   # .104-.111
+    - cidr: 172.16.4.112/28   # .112-.127

@@ -1,0 +1,323 @@
+# All cluster-level Flux Kustomizations — applied as part of the flux-system bootstrap
+# so they are self-managed from the moment flux bootstrap completes.
+# Sources of truth: flux/cluster/ (kept for reference); canonical definitions are here.
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: flux-repositories
+  namespace: flux-system
+spec:
+  interval: 1h
+  path: ./cluster-talos/kubernetes/flux/repositories
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-crds
+  namespace: flux-system
+spec:
+  interval: 1h
+  path: ./cluster-talos/kubernetes/infrastructure/controllers/gateway-api
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+  timeout: 5m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-controllers
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: infrastructure-crds
+  path: ./cluster-talos/kubernetes/infrastructure/controllers
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+  timeout: 10m
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-certs
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: infrastructure-controllers
+  path: ./cluster-talos/kubernetes/infrastructure/certs
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+  timeout: 5m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-configs
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: infrastructure-controllers
+    - name: infrastructure-certs
+  path: ./cluster-talos/kubernetes/infrastructure/configs
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-external-dns
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: infrastructure-configs
+  path: ./cluster-talos/kubernetes/infrastructure/external-dns
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-external-dns-cloudflare
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: infrastructure-configs
+  path: ./cluster-talos/kubernetes/infrastructure/external-dns-cloudflare
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-renovate
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: infrastructure-configs
+  path: ./cluster-talos/kubernetes/infrastructure/renovate
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-kasten-io
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: infrastructure-controllers
+    - name: infrastructure-configs
+  path: ./cluster-talos/kubernetes/infrastructure/kasten-io
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
+      - kind: Secret
+        name: kasten-substvars
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-cloudflare-operator
+  namespace: flux-system
+spec:
+  interval: 1h
+  path: ./config/default
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: cloudflare-operator
+  dependsOn:
+    - name: infrastructure-controllers
+  wait: true
+  timeout: 5m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-cloudflare-tunnel
+  namespace: flux-system
+spec:
+  interval: 1h
+  path: ./cluster-talos/kubernetes/infrastructure/cloudflare-operator
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure-cloudflare-operator
+    - name: infrastructure-configs
+  wait: true
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
+      - kind: Secret
+        name: cloudflare-substvars
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-intel-gpu
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: infrastructure-controllers
+  path: ./cluster-talos/kubernetes/infrastructure/intel-gpu
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+  timeout: 10m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-intel-gpu-config
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: infrastructure-intel-gpu
+  path: ./cluster-talos/kubernetes/infrastructure/intel-gpu-config
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+  timeout: 5m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-longhorn
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: infrastructure-controllers
+    - name: infrastructure-configs
+  path: ./cluster-talos/kubernetes/infrastructure/longhorn
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
+  wait: true
+  timeout: 15m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-etcd-backup
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: infrastructure-configs
+  path: ./cluster-talos/kubernetes/infrastructure/etcd-backup
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+  timeout: 5m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-gpu-node-vsphere-maintenance
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: infrastructure-controllers
+    - name: infrastructure-configs
+  path: ./cluster-talos/kubernetes/infrastructure/gpu-node-vsphere-maintenance
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
+  wait: true
+  timeout: 5m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: infrastructure-configs
+    - name: infrastructure-cloudflare-operator
+  path: ./cluster-talos/kubernetes/apps
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars

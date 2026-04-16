@@ -1,0 +1,5 @@
+node:
+  ip: 172.16.4.20/24
+  gateway: 172.16.4.254
+  storageIP: 10.5.1.20/24
+hostname: k8s-talos-worker-1

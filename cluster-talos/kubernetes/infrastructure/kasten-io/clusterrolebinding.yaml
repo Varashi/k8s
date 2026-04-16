@@ -1,0 +1,15 @@
+# K10's k10-admin ClusterRole does not grant rbac.authorization.k8s.io verbs,
+# so the RBAC panels in the K10 UI fail for users bound only to k10-admin.
+# Bind the admin user to cluster-admin to allow listing Roles/RoleBindings.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k10-admin-cluster-admin
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: ${SECRET_KASTEN_ADMIN_USER}@${SECRET_DOMAIN}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin

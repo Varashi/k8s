@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: controller-config
+  namespace: gpu-node-vsphere-maintenance
+data:
+  POLL_INTERVAL_SECONDS: "30"
+  DRAIN_TIMEOUT_SECONDS: "600"
+  POWER_ON_TIMEOUT_SECONDS: "300"
+  MAX_CONCURRENT_DRAINS: "1"
+  GPU_NODE_LABEL: "intel.feature.node.kubernetes.io/gpu=true"
+  DRY_RUN: "false"

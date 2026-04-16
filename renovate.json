@@ -1,0 +1,49 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "ignorePaths": [
+    "**/vars/cluster-secrets.yaml"
+  ],
+  "flux": {
+    "managerFilePatterns": ["/^cluster-talos/.+\\.ya?ml$/"]
+  },
+  "kubernetes": {
+    "managerFilePatterns": ["/^cluster-talos/.+\\.ya?ml$/"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Talos installer version in talm values.yaml",
+      "managerFilePatterns": ["/^cluster-talos/talos/values\\.yaml$/"],
+      "matchStrings": [
+        "version:\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "siderolabs/talos"
+    },
+    {
+      "customType": "regex",
+      "description": "Cilium version in bootstrap Makefile",
+      "managerFilePatterns": ["/^cluster-talos/talos/Makefile$/"],
+      "matchStrings": [
+        "--version\\s+(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "helm",
+      "registryUrlTemplate": "https://helm.cilium.io",
+      "depNameTemplate": "cilium"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["flux"],
+      "groupName": "helm charts",
+      "automerge": false
+    },
+    {
+      "matchDepNames": ["siderolabs/talos", "cilium"],
+      "matchFileNames": ["cluster-talos/**"],
+      "groupName": "cluster-talos infra",
+      "automerge": false
+    }
+  ]
+}

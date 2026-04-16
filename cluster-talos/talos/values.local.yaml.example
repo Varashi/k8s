@@ -1,0 +1,5 @@
+# Copy to values.local.yaml (gitignored) and fill in site-specific values.
+# Consumed by Makefile `render` in addition to values.yaml + per-node values.
+cluster:
+  apiCertSANs:
+    - k8s-api.example.local

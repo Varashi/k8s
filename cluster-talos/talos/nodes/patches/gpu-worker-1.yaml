@@ -1,0 +1,50 @@
+# talm: nodes=["172.16.4.30"], endpoints=["172.16.4.10"], templates=["templates/worker.yaml"]
+machine:
+  nodeLabels:
+    gpu: intel-arc
+  nodeTaints:
+    intel.feature.node.kubernetes.io/gpu: "true:NoSchedule"
+  kubelet:
+    extraArgs:
+      rotate-server-certificates: "true"
+      register-with-taints: "intel.feature.node.kubernetes.io/gpu=true:NoSchedule"
+    nodeIP:
+      validSubnets:
+        - 172.16.4.0/24
+  network:
+    interfaces:
+      - deviceSelector:
+          busPath: "0000:0b:00.0"
+        addresses:
+          - 172.16.4.30/24
+        routes:
+          - network: 0.0.0.0/0
+            gateway: 172.16.4.254
+      - deviceSelector:
+          busPath: "0000:13:00.0"
+        addresses:
+          - 10.5.1.30/24
+    nameservers:
+      - 172.16.0.2
+      - 172.16.128.2
+  install:
+    disk: /dev/sda
+    image: factory.talos.dev/installer/d561b3847baff0099e71d536c1144eab0eeab32fada49913901d034a3d7d4503:v1.12.6
+  time:
+    servers:
+      - 172.16.0.2
+      - 172.16.128.2
+  features:
+    hostDNS:
+      enabled: true
+      forwardKubeDNSToHost: false
+cluster:
+  network:
+    cni:
+      name: none
+  proxy:
+    disabled: true
+---
+apiVersion: v1alpha1
+kind: HostnameConfig
+hostname: k8s-talos-gpu-worker-1

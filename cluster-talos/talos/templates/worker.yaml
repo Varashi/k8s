@@ -1,0 +1,120 @@
+version: v1alpha1
+debug: false
+persist: true
+machine:
+  type: worker
+  {{- if .Values.node.labels }}
+  nodeLabels:
+    {{- range $k, $v := .Values.node.labels }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+  {{- end }}
+  {{- if .Values.node.taints }}
+  # NodeApplyController reconciles this. Must match kubelet register-with-taints
+  # exactly, otherwise the controller issues a PATCH which NodeRestriction
+  # forbids kubelets from doing (self-taint modification blocked).
+  nodeTaints:
+    {{- range $k, $v := .Values.node.taints }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+  {{- end }}
+  kubelet:
+    extraArgs:
+      rotate-server-certificates: "true"
+      cloud-provider: external
+      {{- if .Values.node.registerWithTaints }}
+      register-with-taints: {{ .Values.node.registerWithTaints | quote }}
+      {{- end }}
+    nodeIP:
+      validSubnets:
+        {{- range .Values.machine.kubelet.nodeIPSubnets }}
+        - {{ . }}
+        {{- end }}
+    extraMounts:
+      - destination: /var/lib/kubelet/plugins_registry
+        type: bind
+        source: /var/lib/kubelet/plugins_registry
+        options:
+          - bind
+          - rshared
+          - rw
+      - destination: /var/lib/kubelet/plugins
+        type: bind
+        source: /var/lib/kubelet/plugins
+        options:
+          - bind
+          - rshared
+          - rw
+      - destination: /var/lib/kubelet/pods
+        type: bind
+        source: /var/lib/kubelet/pods
+        options:
+          - bind
+          - rshared
+          - rw
+  network:
+    nameservers:
+      {{- range .Values.machine.nameservers }}
+      - {{ . }}
+      {{- end }}
+    interfaces:
+      {{- if .Values.node.ip }}
+      - deviceSelector:
+          busPath: "0000:0b:00.0"
+        addresses:
+          - {{ .Values.node.ip }}
+        routes:
+          - network: 0.0.0.0/0
+            gateway: {{ .Values.node.gateway | quote }}
+      {{- if .Values.node.storageIP }}
+      - deviceSelector:
+          busPath: "0000:13:00.0"
+        addresses:
+          - {{ .Values.node.storageIP }}
+      {{- end }}
+      {{- else }}
+{{ include "talm.discovered.existing_interfaces_configuration" . | indent 6 }}
+      {{- end }}
+  install:
+    disk: {{ .Values.installer.disk }}
+    image: {{ include "k8s-talos.installImage" . }}
+    wipe: false
+  time:
+    servers:
+      {{- range .Values.machine.timeServers }}
+      - {{ . }}
+      {{- end }}
+  features:
+    hostDNS:
+      enabled: true
+      forwardKubeDNSToHost: false
+  {{- if and .Values.longhorn .Values.longhorn.enabled }}
+  kernel:
+    modules:
+      - name: iscsi_tcp
+  {{- end }}
+cluster:
+  controlPlane:
+    endpoint: {{ .Values.cluster.endpoint }}
+  clusterName: {{ .Values.cluster.name }}
+  network:
+    {{- include "k8s-talos.emptyClusterSubnets" . | nindent 4 }}
+---
+apiVersion: v1alpha1
+kind: HostnameConfig
+hostname: {{ if .Values.hostname }}{{ .Values.hostname }}{{ else }}{{ include "talm.discovered.hostname" . }}{{ end }}
+{{- if and .Values.longhorn .Values.longhorn.enabled }}
+---
+# Longhorn data disk. Selects non-system disk >50 GiB on vmw_pvscsi.
+# Mounted automatically by Talos at /var/mnt/longhorn.
+apiVersion: v1alpha1
+kind: UserVolumeConfig
+name: longhorn
+provisioning:
+  diskSelector:
+    match: '!system_disk && disk.transport == "vmw_pvscsi" && disk.size > 50u * GiB'
+  minSize: 90GiB
+  maxSize: 200GiB
+filesystem:
+  type: ext4
+{{- end }}

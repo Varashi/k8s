@@ -1,0 +1,75 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: external-dns
+  namespace: external-dns
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: external-dns
+      version: "1.20.0"
+      sourceRef:
+        kind: HelmRepository
+        name: external-dns
+        namespace: flux-system
+  values:
+    provider:
+      name: rfc2136
+
+    sources:
+      - gateway-httproute
+      - service
+
+    txtOwnerId: k8s-talos
+
+    policy: sync
+
+    extraArgs:
+      # Ignore resources explicitly marked public; those belong to
+      # external-dns-cloudflare.
+      - --annotation-filter=external-dns.alpha.kubernetes.io/public notin (true)
+      - --rfc2136-host=$(EXTERNAL_DNS_RFC2136_HOST)
+      - --rfc2136-port=53
+      - --rfc2136-zone=$(EXTERNAL_DNS_DOMAIN)
+      - --rfc2136-gss-tsig
+      - --rfc2136-kerberos-username=$(EXTERNAL_DNS_KERBEROS_USERNAME)
+      - --rfc2136-kerberos-password=$(EXTERNAL_DNS_KERBEROS_PASSWORD)
+      - --rfc2136-kerberos-realm=$(EXTERNAL_DNS_KERBEROS_REALM)
+
+    env:
+      - name: EXTERNAL_DNS_RFC2136_HOST
+        valueFrom:
+          secretKeyRef:
+            name: external-dns-credentials
+            key: rfc2136-host
+      - name: EXTERNAL_DNS_DOMAIN
+        valueFrom:
+          secretKeyRef:
+            name: external-dns-credentials
+            key: domain
+      - name: EXTERNAL_DNS_KERBEROS_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: external-dns-credentials
+            key: username
+      - name: EXTERNAL_DNS_KERBEROS_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: external-dns-credentials
+            key: password
+      - name: EXTERNAL_DNS_KERBEROS_REALM
+        valueFrom:
+          secretKeyRef:
+            name: external-dns-credentials
+            key: kerberos-realm
+
+    extraVolumes:
+      - name: krb5-conf
+        configMap:
+          name: krb5-conf
+
+    extraVolumeMounts:
+      - name: krb5-conf
+        mountPath: /etc/krb5.conf
+        subPath: krb5.conf

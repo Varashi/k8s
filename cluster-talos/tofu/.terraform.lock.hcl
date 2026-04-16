@@ -1,0 +1,26 @@
+# This file is maintained automatically by "tofu init".
+# Manual edits may be lost in future updates.
+
+provider "registry.opentofu.org/hashicorp/vsphere" {
+  version     = "2.15.2"
+  constraints = "~> 2.10"
+  hashes = [
+    "h1:HLBsEcO43Ss24Vv/ayggZogXuOqX7c6MKJNZB5C/lFw=",
+    "zh:063f009d3a62b4cbe82d86d65561cc7b12d6730fc9edd6d82318761ae02ab803",
+    "zh:06d42bb967deb9ea55c4681e2e91e2ca96b7ccddcbabb55908c2316266016b74",
+    "zh:0934aab2accee88e7880852673b4174d9445cfc886fd58038da895406479c71c",
+    "zh:25d3f943f8b0a702ad0bcb04299d5852c060b08351b836851321e7a77e278aca",
+    "zh:2efb2acc76a604823dfb73f7f9fd71c04d09518701ce86baf727381382a1457a",
+    "zh:341f3e7d1f43e04996c68997b27a4d962acb919cd76c4d4357c12e8aebf5a1df",
+    "zh:4dadbc89624522158899eb6ce32f5f0f76dee8ccec2aa0229ee900847a7025f5",
+    "zh:52e7b4ab805a98dcc79ccefd0ee9d657659914bf524beebf7514cfb48ff54ba2",
+    "zh:52f5256ff093f199b4de638abad33d63ed63bf624e09e755dec88709c8088f07",
+    "zh:5ab37c0c7c01ad9b28212b72ce667d822c546eeda5c024b22ca62602e6bc4d34",
+    "zh:5e2025412f67e31b4beb4b8c3e988abb1188ece6e321c84e85aeb7177f4cb29b",
+    "zh:a8929b74b8a187db62d5532d138172f6dadcd42d0960864a216f3f377d6ac058",
+    "zh:ac5b0db96f83445678ede52169385f346c740555e1ae48261818469dc661280b",
+    "zh:cfdac28f29d14d79838c102f10848bd8b0778558e0997882d09eb3ae3269f478",
+    "zh:d368161f07646f73f945c9055e30cb3dc54630d8cc59c04de68d72ef7598e3c5",
+    "zh:e6793ab8596874b3127f92f18776d22a155362b5a25632e320b669c8701f8feb",
+  ]
+}

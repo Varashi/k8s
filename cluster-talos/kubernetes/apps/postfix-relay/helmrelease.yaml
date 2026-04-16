@@ -1,0 +1,67 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: postfix-relay
+  namespace: postfix-relay
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: helm/postfix
+      sourceRef:
+        kind: GitRepository
+        name: postfix-relay
+        namespace: flux-system
+      interval: 30m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  valuesFrom:
+    - kind: Secret
+      name: postfix-relay-smtp
+      valuesKey: values.yaml
+  values:
+    replicaCount: 1
+    tolerations:
+      - key: node.cloudprovider.kubernetes.io/uninitialized
+        operator: Exists
+        effect: NoSchedule
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: intel.feature.node.kubernetes.io/gpu
+                  operator: DoesNotExist
+    service:
+      type: LoadBalancer
+      port: 25
+      exporterPort: 9154
+    smtp:
+      relayHost: smtp.office365.com:587
+      relayMyhostname: smtp.${SECRET_DOMAIN}
+      relayNetworks: '10.0.0.0/8,127.0.0.0/8,172.16.0.0/16,192.0.0.0/8,198.48.0.0/12'
+    postfixCustomConfig: "smtp_tls_security_level = may"
+    resources:
+      requests:
+        cpu: 40m
+        memory: 40Mi
+      limits:
+        memory: 100Mi
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Service
+              name: postfix-relay
+            patch: |-
+              - op: add
+                path: /metadata/annotations
+                value:
+                  io.cilium/lb-ipam-ips: "172.16.4.105"
+                  external-dns.alpha.kubernetes.io/hostname: "smtp.${SECRET_DOMAIN}"

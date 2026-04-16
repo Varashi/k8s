@@ -1,0 +1,92 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cilium
+  namespace: cilium
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: cilium
+      version: "1.19.2"
+      sourceRef:
+        kind: HelmRepository
+        name: cilium
+        namespace: flux-system
+  values:
+    # Talos-specific: replace kube-proxy with eBPF
+    kubeProxyReplacement: true
+    k8sServiceHost: 172.16.4.1
+    k8sServicePort: 6443
+
+    # Native routing via BGP
+    routingMode: native
+    autoDirectNodeRoutes: true
+    # Must cover the pod CIDR so cross-node pod traffic is not masqueraded.
+    # Masquerading pod-to-pod traffic breaks cross-node connectivity in native routing mode
+    # because the SNAT state lives on the sending node and the receiving node can't reverse it.
+    ipv4NativeRoutingCIDR: 10.244.0.0/16
+
+    # BGP control plane (replaces MetalLB)
+    bgpControlPlane:
+      enabled: true
+
+    # Gateway API (replaces ingress-nginx)
+    gatewayAPI:
+      enabled: true
+
+    # IPAM
+    ipam:
+      mode: kubernetes
+
+    # Load balancer
+    loadBalancer:
+      algorithm: maglev
+      mode: dsr
+
+    # eBPF masquerade
+    bpf:
+      masquerade: true
+
+    # Hubble observability
+    hubble:
+      enabled: true
+      relay:
+        enabled: true
+      ui:
+        enabled: true
+
+    operator:
+      replicas: 2
+
+    # Talos-specific security capabilities
+    securityContext:
+      capabilities:
+        ciliumAgent:
+          - CHOWN
+          - KILL
+          - NET_ADMIN
+          - NET_RAW
+          - IPC_LOCK
+          - SYS_ADMIN
+          - SYS_RESOURCE
+          - DAC_READ_SEARCH
+          - NET_BIND_SERVICE
+          - PERFMON
+          - BPF
+        cleanCiliumState:
+          - NET_ADMIN
+          - SYS_ADMIN
+          - SYS_RESOURCE
+        mountCgroup:
+          - SYS_ADMIN
+          - SYS_CHROOT
+          - SYS_PTRACE
+        applySysctls:
+          - SYS_ADMIN
+
+    # Talos: cgroup is already mounted by the OS
+    cgroup:
+      autoMount:
+        enabled: false
+      hostRoot: /sys/fs/cgroup

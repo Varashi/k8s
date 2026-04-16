@@ -1,0 +1,5 @@
+node:
+  ip: 172.16.4.11/24
+  gateway: 172.16.4.254
+  vip: 172.16.4.1
+hostname: k8s-talos-cp-2

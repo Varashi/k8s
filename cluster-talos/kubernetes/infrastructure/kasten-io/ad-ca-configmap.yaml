@@ -1,0 +1,10 @@
+# AD root CA bundle for LDAPS trust. PEM is base64-encoded in BW SM and
+# injected via Flux postBuild substitution into binaryData (which the kubelet
+# base64-decodes back to the original PEM on volume mount).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ad-ca
+  namespace: kasten-io
+binaryData:
+  custom-ca-bundle.pem: ${SECRET_AD_CA_PEM_B64}

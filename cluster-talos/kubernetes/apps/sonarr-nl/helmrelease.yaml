@@ -1,0 +1,80 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: sonarr-nl
+  namespace: sonarr-nl
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 4.6.2
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    defaultPodOptions:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: DoesNotExist
+      tolerations:
+        - key: node.cloudprovider.kubernetes.io/uninitialized
+          operator: Exists
+          effect: NoSchedule
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+    controllers:
+      sonarr-nl:
+        containers:
+          app:
+            image:
+              repository: ghcr.io/home-operations/sonarr
+              tag: 4.0.17
+              pullPolicy: IfNotPresent
+            env:
+              TZ: Europe/Brussels
+    service:
+      app:
+        controller: sonarr-nl
+        ports:
+          http:
+            port: 8989
+    persistence:
+      config:
+        type: persistentVolumeClaim
+        existingClaim: sonarr-nl-config
+        globalMounts:
+          - path: /config
+      media:
+        type: nfs
+        server: skw-truenas-data.${SECRET_DOMAIN}
+        path: /mnt/DATA
+        globalMounts:
+          - path: /mnt/skw-truenas-data
+      backup:
+        type: nfs
+        server: skw-truenas-data.${SECRET_DOMAIN}
+        path: /mnt/DATA/backup/sonarr-nl
+        globalMounts:
+          - path: /backup
+      ssd:
+        type: nfs
+        server: skw-truenas-data.${SECRET_DOMAIN}
+        path: /mnt/SSD
+        globalMounts:
+          - path: /mnt/skw-truenas-ssd

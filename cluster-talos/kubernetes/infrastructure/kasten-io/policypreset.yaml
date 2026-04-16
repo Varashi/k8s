@@ -1,0 +1,27 @@
+apiVersion: config.kio.kasten.io/v1alpha1
+kind: PolicyPreset
+metadata:
+  name: k8s-app-backup
+  namespace: kasten-io
+spec:
+  backup:
+    frequency: '@daily'
+    retention: {}
+    subFrequency:
+      days: [1]
+      hours: [5]
+      minutes: [0]
+      months: [1]
+      weekdays: [0]
+  export:
+    profile:
+      name: backblaze-b2
+      namespace: kasten-io
+    blockModeProfile:
+      name: backblaze-b2
+      namespace: kasten-io
+    exportData:
+      enabled: true
+    retention:
+      daily: 7
+      weekly: 4
