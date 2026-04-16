@@ -7,7 +7,7 @@ subjects:
   - name: guacamole-svc
     spec:
       fqdn: guac.${SECRET_DOMAIN}
-      target: http://guacamole-svc.guacamole.svc.cluster.local:8080/guacamole
+      target: http://guacamole-svc.guacamole.svc.cluster.local:8080
       protocol: http
 tunnelRef:
   kind: ClusterTunnel
