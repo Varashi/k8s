@@ -47,7 +47,7 @@ spec:
         runAsUser: 1000
       containers:
         - name: redis
-          image: docker.io/redis:7-alpine
+          image: docker.io/redis:8-alpine
           imagePullPolicy: IfNotPresent
           args:
             - redis-server
