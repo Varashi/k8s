@@ -1,0 +1,14 @@
+apiVersion: networking.cfargotunnel.com/v1alpha1
+kind: TunnelBinding
+metadata:
+  name: guacamole
+  namespace: guacamole
+subjects:
+  - name: guacamole-svc
+    spec:
+      fqdn: guac.${SECRET_DOMAIN}
+      target: http://guacamole-svc.guacamole.svc.cluster.local:8080/guacamole
+      protocol: http
+tunnelRef:
+  kind: ClusterTunnel
+  name: k8s-talos
