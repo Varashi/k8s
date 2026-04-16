@@ -8,7 +8,7 @@ spec:
   chart:
     spec:
       chart: netbox
-      version: 5.0.*
+      version: 8.1.*
       sourceRef:
         kind: HelmRepository
         name: netbox
@@ -36,16 +36,16 @@ spec:
       existingSecretKey: password
       sslMode: prefer
 
-    # Use plain redis:7-alpine Deployment (see redis.yaml) instead of
-    # the chart's bundled bitnami subchart — avoids bitnamilegacy drift.
-    # tasksRedis + cachingRedis default host is "netbox-redis" (our Service).
-    redis:
+    # Use plain redis:8-alpine Deployment (see redis.yaml) instead of
+    # the chart's bundled valkey subchart — avoids bitnamilegacy drift.
+    # tasksDatabase + cachingDatabase default host is "netbox-redis" (our Service).
+    valkey:
       enabled: false
-    tasksRedis:
+    tasksDatabase:
       host: netbox-redis
       port: 6379
       database: 0
-    cachingRedis:
+    cachingDatabase:
       host: netbox-redis
       port: 6379
       database: 1
