@@ -213,7 +213,7 @@ sonarr:
           - e6258996055b9fbab7e9cb2f75819294	#	WEB Tier 01
           - 58790d4e2fdcd9733aa7ae68ba2bb503	#	WEB Tier 02
           - d84935abd3f8556dcd51d4f27e22d0a6	#	WEB Tier 03
-          - d0c516558625b04b363fa6c5c2c7cfd4	#	WEB Scene 
+          - d0c516558625b04b363fa6c5c2c7cfd4	#	WEB Scene
           # HDR Formats
           - 505d871304820ba7106b693be6fe4a9e	#	HDR
           - 0c4b99df9206d2cfac3c05ab897dd62a	#	HDR10+ Boost
@@ -286,7 +286,7 @@ sonarr:
           - e6258996055b9fbab7e9cb2f75819294	#	WEB Tier 01
           - 58790d4e2fdcd9733aa7ae68ba2bb503	#	WEB Tier 02
           - d84935abd3f8556dcd51d4f27e22d0a6	#	WEB Tier 03
-          - d0c516558625b04b363fa6c5c2c7cfd4	#	WEB Scene 
+          - d0c516558625b04b363fa6c5c2c7cfd4	#	WEB Scene
           # HDR Formats
           - 505d871304820ba7106b693be6fe4a9e	#	HDR
           - 0c4b99df9206d2cfac3c05ab897dd62a	#	HDR10+ Boost
@@ -485,7 +485,7 @@ radarr:
           - 90a6f9a284dff5103f6346090e6280c8	#	LQ
           - e204b80c87be9497a8a6eaff48f72905	#	LQ (Release Title)
           # Don't care about x265 being bad, I think:
-          # - 839bea857ed2c0a8e084f3cbdbd65ecb	#	x265 (no HDR/DV) 
+          # - 839bea857ed2c0a8e084f3cbdbd65ecb	#	x265 (no HDR/DV)
           - b8cd450cbfa689c0259a01d9e29ba3d6	#	3D
           - 0a3f082873eb454bde444150b70253cc	#	Extras
           - 712d74cd88bceb883ee32f773656b1f5	#	Sing-Along Versions
