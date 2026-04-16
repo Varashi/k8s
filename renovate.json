@@ -54,6 +54,13 @@
       "matchFileNames": ["cluster-talos/kubernetes/infrastructure/controllers/vsphere-csi/**"],
       "matchPackageNames": ["registry.k8s.io/sig-storage/**"],
       "enabled": false
+    },
+    {
+      "description": "Split risky major helm bumps into per-chart PRs",
+      "matchManagers": ["flux"],
+      "matchUpdateTypes": ["major"],
+      "matchDepNames": ["external-secrets", "netbox", "prometheus"],
+      "groupName": null
     }
   ]
 }
