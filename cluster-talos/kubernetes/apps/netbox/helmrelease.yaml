@@ -17,12 +17,12 @@ spec:
   install:
     remediation:
       retries: 3
-    timeout: 15m
+    timeout: 30m
   upgrade:
     remediation:
       retries: 3
     cleanupOnFail: true
-    timeout: 15m
+    timeout: 30m
   values:
     # Disable bundled Postgres — use external CNPG cluster
     postgresql:
