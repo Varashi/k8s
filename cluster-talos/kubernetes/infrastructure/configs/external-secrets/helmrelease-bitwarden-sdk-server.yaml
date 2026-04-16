@@ -8,7 +8,7 @@ spec:
   chart:
     spec:
       chart: bitwarden-sdk-server
-      version: "v0.5.1"
+      version: "v0.6.0"
       sourceRef:
         kind: HelmRepository
         name: bitwarden-sdk-server

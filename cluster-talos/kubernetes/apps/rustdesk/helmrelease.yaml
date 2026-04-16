@@ -24,7 +24,7 @@ spec:
           hbbs:
             image:
               repository: rustdesk/rustdesk-server
-              tag: "1.1.14"
+              tag: "1.1.15"
             command:
               - hbbs
             args:
@@ -35,7 +35,7 @@ spec:
           hbbr:
             image:
               repository: rustdesk/rustdesk-server
-              tag: "1.1.14"
+              tag: "1.1.15"
             command:
               - hbbr
 
