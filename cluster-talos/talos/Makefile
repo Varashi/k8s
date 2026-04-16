@@ -144,7 +144,7 @@ bootstrap-cilium:
 		pod-security.kubernetes.io/warn=privileged \
 		pod-security.kubernetes.io/audit=privileged
 	helm upgrade --install cilium cilium/cilium \
-		--version 1.19.2 \
+		--version 1.19.3 \
 		--namespace cilium \
 		--set kubeProxyReplacement=true \
 		--set k8sServiceHost=172.16.4.1 \
