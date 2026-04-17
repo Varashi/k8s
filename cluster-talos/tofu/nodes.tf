@@ -64,14 +64,19 @@ resource "vsphere_virtual_machine" "cp" {
   }
 }
 
-# GPU worker — Intel ARC Dynamic DirectPath passthrough.
+# GPU worker — Intel ARC fixed PCI passthrough, host-pinned.
 #
-# PCI device attach is NOT automated here. Terraform's vsphere provider lacks
-# clean support for Dynamic DirectPath (vendor/device allowedDevice list,
-# DRS-compatible). After `tofu apply` creates the VM, attach the GPU once
-# manually via vSphere UI: Edit VM → Add New Device → PCI Device → pick
-# Intel ARC (vendor 0x8086 / device 0x56A6). Memory reservation locked to max
-# + latency-high are set here; both are required for any PCI passthrough.
+# Each GPU worker is pinned to a specific ESXi host (gpu_worker_hosts) with a
+# fixed BDF. Fully declarative; no vSphere UI step. Trade-off vs Dynamic
+# DirectPath: node can't cold-migrate between hosts. Acceptable because PCI
+# passthrough already blocks vMotion, and ESXi maintenance already requires
+# node power-off. With 3 GPU workers + 3-replica Longhorn, one node off during
+# maintenance is failsafe.
+#
+# Two-pass deploy (tofu limitation, vmware/terraform-provider-vsphere#1918):
+#   1. tofu apply -target='...["gpu-worker-N"]' -var=gpu_worker_storage_nic=false \
+#                                               -var=gpu_pci_enabled=false
+#   2. tofu apply -target='...["gpu-worker-N"]'   # adds storage NIC + PCI
 #
 # Second VMDK on SKW-VSAN is for Longhorn (local-disk-style storage bound to
 # this node; replaces vSphere CSI for GPU-node workloads where vSAN FCD
@@ -81,6 +86,7 @@ resource "vsphere_virtual_machine" "gpu_worker" {
 
   name             = "${var.cluster_name}-${each.key}"
   resource_pool_id = data.vsphere_compute_cluster.cluster.resource_pool_id
+  host_system_id   = data.vsphere_host.gpu_worker[each.key].id
   datastore_id     = data.vsphere_datastore.datastore.id
   folder           = var.vsphere_folder
 
@@ -122,6 +128,8 @@ resource "vsphere_virtual_machine" "gpu_worker" {
     unit_number      = 1
   }
 
+  pci_device_id = var.gpu_pci_enabled ? [var.gpu_worker_hosts[each.key].pci_bdf] : []
+
   clone {
     template_uuid = vsphere_content_library_item.talos_gpu.id
   }
@@ -138,8 +146,6 @@ resource "vsphere_virtual_machine" "gpu_worker" {
       clone,
       disk[0].io_reservation,
       disk[1].io_reservation,
-      # PCI passthrough device added manually post-clone; don't let tofu strip it.
-      pci_device_id,
     ]
   }
 }

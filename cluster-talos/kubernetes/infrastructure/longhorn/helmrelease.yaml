@@ -43,7 +43,7 @@ spec:
       # to nodes labelled longhorn=enabled (matches global.nodeSelector above).
       systemManagedComponentsNodeSelector: "longhorn:enabled"
       taintToleration: "intel.feature.node.kubernetes.io/gpu=true:NoSchedule;node.cloudprovider.kubernetes.io/uninitialized=:NoSchedule"
-      defaultReplicaCount: 2
+      defaultReplicaCount: 3
       # Only register the default disk on nodes carrying the explicit label
       # node.longhorn.io/create-default-disk=true (gpu-workers). Regular workers
       # have no /var/mnt/longhorn mount — without this gate, Longhorn would

@@ -1,0 +1,116 @@
+version: v1alpha1
+debug: false
+persist: true
+machine:
+  type: worker
+  # Class: GPU worker. Longhorn + Intel Arc labels/taints/install image baked
+  # in unconditionally — no .Values gating. Per-node values (ip/hostname) still
+  # apply for offline bootstrap render; day-2 apply uses live discovery.
+  nodeLabels:
+    gpu: intel-arc
+    longhorn: "enabled"
+    node.longhorn.io/create-default-disk: "true"
+  # NodeApplyController reconciles this. Must match kubelet register-with-taints
+  # exactly, otherwise the controller issues a PATCH which NodeRestriction
+  # forbids kubelets from doing (self-taint modification blocked).
+  nodeTaints:
+    intel.feature.node.kubernetes.io/gpu: "true:NoSchedule"
+  kubelet:
+    extraArgs:
+      rotate-server-certificates: "true"
+      cloud-provider: external
+      register-with-taints: "intel.feature.node.kubernetes.io/gpu=true:NoSchedule"
+    nodeIP:
+      validSubnets:
+        {{- range .Values.machine.kubelet.nodeIPSubnets }}
+        - {{ . }}
+        {{- end }}
+    # rshared self-binds required by Longhorn for propagating volume mounts out
+    # of the longhorn-csi-plugin container. Scoped to Longhorn nodes only because
+    # they put /var/lib/kubelet/plugins in /var's shared peer group, which makes
+    # every vSphere CSI globalmount appear twice in /proc/mounts and triggers
+    # isBlockVolumeMounted "mounted in multiple places" → stuck VolumeAttachment.
+    extraMounts:
+      - destination: /var/lib/kubelet/plugins_registry
+        type: bind
+        source: /var/lib/kubelet/plugins_registry
+        options:
+          - bind
+          - rshared
+          - rw
+      - destination: /var/lib/kubelet/plugins
+        type: bind
+        source: /var/lib/kubelet/plugins
+        options:
+          - bind
+          - rshared
+          - rw
+      - destination: /var/lib/kubelet/pods
+        type: bind
+        source: /var/lib/kubelet/pods
+        options:
+          - bind
+          - rshared
+          - rw
+  network:
+    nameservers:
+      {{- range .Values.machine.nameservers }}
+      - {{ . }}
+      {{- end }}
+    interfaces:
+      {{- if .Values.node.ip }}
+      - deviceSelector:
+          busPath: "0000:0b:00.0"
+        addresses:
+          - {{ .Values.node.ip }}
+        routes:
+          - network: 0.0.0.0/0
+            gateway: {{ .Values.node.gateway | quote }}
+      {{- if .Values.node.storageIP }}
+      - deviceSelector:
+          busPath: "0000:13:00.0"
+        addresses:
+          - {{ .Values.node.storageIP }}
+      {{- end }}
+      {{- else }}
+{{ include "talm.discovered.existing_interfaces_configuration" . | indent 6 }}
+      {{- end }}
+  install:
+    disk: {{ .Values.installer.disk }}
+    image: {{ include "k8s-talos.gpuInstallImage" . }}
+    wipe: false
+  time:
+    servers:
+      {{- range .Values.machine.timeServers }}
+      - {{ . }}
+      {{- end }}
+  features:
+    hostDNS:
+      enabled: true
+      forwardKubeDNSToHost: false
+  kernel:
+    modules:
+      - name: iscsi_tcp
+cluster:
+  controlPlane:
+    endpoint: {{ .Values.cluster.endpoint }}
+  clusterName: {{ .Values.cluster.name }}
+  network:
+    {{- include "k8s-talos.emptyClusterSubnets" . | nindent 4 }}
+---
+apiVersion: v1alpha1
+kind: HostnameConfig
+hostname: {{ if .Values.hostname }}{{ .Values.hostname }}{{ else }}{{ include "talm.discovered.hostname" . }}{{ end }}
+---
+# Longhorn data disk. Selects non-system disk >50 GiB on vmw_pvscsi.
+# Mounted automatically by Talos at /var/mnt/longhorn.
+apiVersion: v1alpha1
+kind: UserVolumeConfig
+name: longhorn
+provisioning:
+  diskSelector:
+    match: '!system_disk && disk.transport == "vmw_pvscsi" && disk.size > 50u * GiB'
+  minSize: 90GiB
+  maxSize: 300GiB  # headroom for future disk bumps; actual size capped by VMDK
+filesystem:
+  type: ext4

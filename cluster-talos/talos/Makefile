@@ -7,10 +7,38 @@ export TALOSCONFIG KUBECONFIG
 # ──────────────────────────────────────────────
 # Day-2: apply (nodes must be running)
 # ──────────────────────────────────────────────
+# Two apply paths, chosen per node class:
+#
+#   workers + GPU workers → `talm apply -f nodes/<name>.yaml --mode auto`
+#     Thin modeline-only stub. talm re-renders the class template on-host
+#     using live discovery (talm.discovered.*) + cluster-wide values.yaml.
+#     All class-level bits (GPU schematic, labels, taints, Longhorn
+#     UserVolume, rshared extraMounts) live in the class template.
+#
+#   CPs → `talosctl apply-config -f nodes/bootstrap/<name>.yaml --mode auto`
+#     Full offline render that includes apiCertSANs from values.local.yaml
+#     (gitignored). talm apply cannot load values.local.yaml, so any
+#     modeline-driven re-render would strip `k8s-api.<domain>` from certSANs.
+#
+# Background on why talm apply does NOT work for fully-rendered files:
+# it silently drops non-patch fields (install.image, nodeLabels, nodeTaints,
+# UserVolumeConfig). See memory/feedback_talm_apply_strips_fields.md.
 
-## apply NODE=nodes/cp-1.yaml — apply rendered template to running node (reboot only if needed)
+## apply NODE=nodes/<name>.yaml — apply to running node (reboot only if needed).
+## Auto-routes: cp-* → talosctl apply-config; worker-*/gpu-worker-* → talm apply.
 apply:
-	talm apply -f $(NODE) --mode auto
+	@name=$$(basename $(NODE) .yaml); \
+	case $$name in \
+		cp-*) \
+			ip=$$(yq '.node.ip' nodes/values/$$name.yaml | cut -d/ -f1); \
+			echo "=== talosctl apply-config $$name ($$ip) from bootstrap ==="; \
+			talosctl apply-config -n $$ip -e 172.16.4.10 \
+				-f nodes/bootstrap/$$name.yaml --mode auto ;; \
+		worker-*|gpu-worker-*) \
+			echo "=== talm apply $$name (modeline re-render) ==="; \
+			talm apply -f $(NODE) --mode auto ;; \
+		*) echo "unknown node class: $$name"; exit 1 ;; \
+	esac
 
 ## apply-workers — apply all workers sequentially
 apply-workers:
@@ -18,88 +46,78 @@ apply-workers:
 	$(MAKE) apply NODE=nodes/worker-2.yaml
 	$(MAKE) apply NODE=nodes/worker-3.yaml
 
+## apply-gpu-workers — apply all GPU workers sequentially
+apply-gpu-workers:
+	@for n in $$(ls nodes/values/gpu-worker-*.yaml 2>/dev/null | xargs -n1 basename | sed 's/.yaml$$//'); do \
+		$(MAKE) apply NODE=nodes/$$n.yaml; \
+	done
+
 ## apply-cps — apply all CPs sequentially (cp-3 first, cp-1 last)
 apply-cps:
 	$(MAKE) apply NODE=nodes/cp-3.yaml
 	$(MAKE) apply NODE=nodes/cp-2.yaml
 	$(MAKE) apply NODE=nodes/cp-1.yaml
 
-## apply-all — apply workers then CPs
-apply-all: apply-workers apply-cps
+## apply-all — apply workers, GPU workers, then CPs
+apply-all: apply-workers apply-gpu-workers apply-cps
 
 ## upgrade NODE=nodes/worker-1.yaml VERSION=v1.13.0 — upgrade Talos on one node
 upgrade:
-	talm upgrade -f $(NODE) --image $(shell yq '.machine.install.image' nodes/patches/$(notdir $(NODE)) | cut -d: -f1):$(VERSION)
+	talm upgrade -f $(NODE) --image $(shell yq '.machine.install.image' nodes/bootstrap/$(notdir $(NODE)) | cut -d: -f1):$(VERSION)
+
+# ──────────────────────────────────────────────
+# Render (bootstrap + day-2 stubs)
+# ──────────────────────────────────────────────
+
+## render — regenerate both bootstrap configs (nodes/bootstrap/*.yaml) and
+## day-2 stubs (nodes/*.yaml). Safe to run against live cluster (no node queries).
+render: render-bootstrap render-day2
+	@$(MAKE) validate-rendered
+
+## render-bootstrap — offline-render full machineconfigs to nodes/bootstrap/*.yaml
+## for tofu guestinfo injection. Needs values files because no live node exists
+## during VM clone.
+render-bootstrap:
+	@mkdir -p nodes/bootstrap
+	@for n in cp-1 cp-2 cp-3; do \
+		echo "  bootstrap/$$n..."; \
+		talm template --full --offline --with-secrets $(SECRETS) \
+			-t templates/controlplane.yaml \
+			--values values.local.yaml --values nodes/values/$$n.yaml \
+			> nodes/bootstrap/$$n.yaml; \
+	done
+	@for n in worker-1 worker-2 worker-3; do \
+		echo "  bootstrap/$$n..."; \
+		talm template --full --offline --with-secrets $(SECRETS) \
+			-t templates/worker.yaml --values nodes/values/$$n.yaml \
+			> nodes/bootstrap/$$n.yaml; \
+	done
+	@for n in $$(ls nodes/values/gpu-worker-*.yaml 2>/dev/null | xargs -n1 basename | sed 's/.yaml$$//'); do \
+		echo "  bootstrap/$$n..."; \
+		talm template --full --offline --with-secrets $(SECRETS) \
+			-t templates/worker-gpu.yaml --values nodes/values/$$n.yaml \
+			> nodes/bootstrap/$$n.yaml; \
+	done
+
+## render-day2 — emit thin modeline-only stubs to nodes/*.yaml. Each stub just
+## pins node IP + endpoint + class template; `talm apply` re-renders on-host
+## with live discovery. Class-level bits live in the template, not here.
+render-day2:
+	@mkdir -p nodes
+	@set -eu; python3 scripts/render-day2-stubs.py
 
 # ──────────────────────────────────────────────
 # Bootstrap (fresh cluster, run once)
 # ──────────────────────────────────────────────
 
-## render — offline-render all node configs into nodes/*.yaml AND
-## nodes/bootstrap/*.yaml. Safe to run against a live cluster (no node queries).
-## Use after template/values changes to keep day-2 apply + tofu guestinfo
-## injection in sync.
-render:
-	@mkdir -p nodes nodes/bootstrap
-	@for n in cp-1 cp-2 cp-3; do \
-		echo "  $$n..."; \
-		talm template --full --offline --with-secrets $(SECRETS) \
-			-t templates/controlplane.yaml \
-			--values values.local.yaml --values nodes/values/$$n.yaml \
-			> nodes/$$n.yaml; \
-		cp nodes/$$n.yaml nodes/bootstrap/$$n.yaml; \
-	done
-	@for n in worker-1 worker-2 worker-3; do \
-		echo "  $$n..."; \
-		talm template --full --offline --with-secrets $(SECRETS) \
-			-t templates/worker.yaml --values nodes/values/$$n.yaml \
-			> nodes/$$n.yaml; \
-		cp nodes/$$n.yaml nodes/bootstrap/$$n.yaml; \
-	done
-	@# GPU workers: rendered from worker.yaml template; per-node values override
-	@# installer image to the GPU schematic (i915/intel-ucode/iscsi/util-linux).
-	@for n in $$(ls nodes/values/gpu-worker-*.yaml 2>/dev/null | xargs -n1 basename | sed 's/.yaml$$//'); do \
-		echo "  $$n..."; \
-		talm template --full --offline --with-secrets $(SECRETS) \
-			-t templates/worker.yaml --values nodes/values/$$n.yaml \
-			> nodes/$$n.yaml; \
-		cp nodes/$$n.yaml nodes/bootstrap/$$n.yaml; \
-	done
-	@$(MAKE) validate-rendered
-
-## bootstrap-template — fresh-cluster online render via maintenance-mode nodes.
-## Prereq: VMs up on static IPs in maintenance mode (minimal guestinfo via tofu).
-## Use `make render` instead for day-2 template changes on running cluster.
-bootstrap-template:
-	@mkdir -p nodes
-	@echo "=== Rendering CP configs ==="
-	@for i in 1 2 3; do \
-		ip=172.16.4.1$$i; \
-		echo "  cp-$$i ($$ip)..."; \
-		talm template -n $$ip -e $$ip \
-			-t templates/controlplane.yaml \
-			--values values.local.yaml --values nodes/values/cp-$$i.yaml \
-			--full --with-secrets $(SECRETS) -i \
-			> nodes/cp-$$i.yaml; \
-	done
-	@echo "=== Rendering worker configs ==="
-	@for i in 1 2 3; do \
-		ip=172.16.4.2$$i; \
-		echo "  worker-$$i ($$ip)..."; \
-		talm template -n $$ip -e $$ip \
-			-t templates/worker.yaml \
-			--values nodes/values/worker-$$i.yaml \
-			--full --with-secrets $(SECRETS) -i \
-			> nodes/worker-$$i.yaml; \
-	done
-	@echo "Done. Next: make bootstrap-apply"
-
-## bootstrap-apply — push rendered configs to maintenance-mode nodes (insecure)
-## Node reboots into running state on same static IP after apply.
+## bootstrap-apply — push rendered bootstrap configs to maintenance-mode nodes.
+## -i bypasses the patch-diff path → whole-file push. Node reboots to running
+## state on the same static IP. Standard workers + GPU workers included.
 bootstrap-apply: validate-rendered
-	@for n in cp-1 cp-2 cp-3 worker-1 worker-2 worker-3; do \
-		echo "=== talm apply $$n ==="; \
-		talm apply -f nodes/$$n.yaml -i; \
+	@for n in cp-1 cp-2 cp-3 worker-1 worker-2 worker-3 \
+	          $$(ls nodes/values/gpu-worker-*.yaml 2>/dev/null | xargs -n1 basename | sed 's/.yaml$$//'); do \
+		echo "=== talm apply $$n (bootstrap) ==="; \
+		talm apply -f nodes/bootstrap/$$n.yaml -i; \
 	done
 
 ## validate-rendered — fail if rendered configs leak talm --full default subnets.
@@ -121,7 +139,7 @@ talosconfig:
 
 ## bootstrap-etcd — bootstrap etcd on cp-1 (run after VMs are up with static IPs)
 bootstrap-etcd:
-	talm bootstrap -f nodes/cp-1.yaml
+	talm bootstrap -f nodes/bootstrap/cp-1.yaml
 
 ## kubeconfig — fetch kubeconfig and merge into ~/.kube/config
 kubeconfig:
@@ -174,16 +192,16 @@ bootstrap-cilium:
 # Status / health
 # ──────────────────────────────────────────────
 
-## status — machine status of all live nodes (3 CP + 2 worker + 2 gpu-worker)
+## status — machine status of all live nodes (3 CP + 2 worker + 3 gpu-worker)
 status:
 	talosctl get machinestatus \
-		-n 172.16.4.10,172.16.4.11,172.16.4.12,172.16.4.20,172.16.4.21,172.16.4.30,172.16.4.31
+		-n 172.16.4.10,172.16.4.11,172.16.4.12,172.16.4.20,172.16.4.21,172.16.4.30,172.16.4.31,172.16.4.32
 
 ## etcd-health — etcd member list (via cp-1)
 etcd-health:
 	talosctl -n 172.16.4.10 etcd members
 
-.PHONY: apply apply-workers apply-cps apply-all upgrade \
-        render bootstrap-template bootstrap-apply validate-rendered \
+.PHONY: apply apply-workers apply-gpu-workers apply-cps apply-all upgrade \
+        render render-bootstrap render-day2 bootstrap-apply validate-rendered \
         talosconfig bootstrap-etcd \
         kubeconfig bootstrap-cilium status etcd-health

@@ -2,17 +2,4 @@ node:
   ip: 172.16.4.31/24
   gateway: 172.16.4.254
   storageIP: 10.5.1.31/24
-  labels:
-    gpu: intel-arc
-  taints:
-    intel.feature.node.kubernetes.io/gpu: "true:NoSchedule"
-  registerWithTaints: "intel.feature.node.kubernetes.io/gpu=true:NoSchedule"
 hostname: k8s-talos-gpu-worker-2
-# Override installer image to GPU schematic (i915 + intel-ucode + iscsi-tools + util-linux-tools + mei)
-# mei added to load Intel MEI GSC — required for HuC firmware on Arc dGPU; missing MEI caused GPU hangs on 4K encode.
-installer:
-  image: factory.talos.dev/installer/d561b3847baff0099e71d536c1144eab0eeab32fada49913901d034a3d7d4503
-# Longhorn local disk (sdb = 100 GB vSphere VMDK on SKW-VSAN, separate from system disk sda)
-# Talos UserVolume provisions ext4 on sdb, mounts at /var/mnt/longhorn (Longhorn defaultDataPath)
-longhorn:
-  enabled: true

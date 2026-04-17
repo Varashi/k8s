@@ -39,6 +39,13 @@ data "vsphere_network" "storage" {
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 
+# ESXi hosts pinned per GPU worker (fixed PCI passthrough requires host match).
+data "vsphere_host" "gpu_worker" {
+  for_each      = var.gpu_worker_hosts
+  name          = each.value.host
+  datacenter_id = data.vsphere_datacenter.dc.id
+}
+
 # VLAN 104 port group for k8s-talos cluster
 resource "vsphere_distributed_port_group" "k8s" {
   name                            = "dv-SKW-K8s"

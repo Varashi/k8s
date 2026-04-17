@@ -172,7 +172,7 @@ variable "gpu_worker_disk_size_gb" {
 variable "gpu_worker_longhorn_disk_gb" {
   description = "Secondary VMDK for Longhorn local storage (thin, SKW-VSAN). Mounted at /dev/sdb inside the VM."
   type        = number
-  default     = 100
+  default     = 200
 }
 
 variable "gpu_worker_storage_nic" {
@@ -185,16 +185,34 @@ variable "gpu_worker_storage_nic" {
   default = true
 }
 
-variable "gpu_pci_vendor_id" {
-  description = "PCI vendor ID for Dynamic DirectPath allowedDevice (decimal). 32902 = Intel (0x8086)."
-  type        = number
-  default     = 32902
+variable "gpu_worker_hosts" {
+  description = <<-EOT
+    Per-GPU-worker ESXi host pinning + Arc A380 PCI BDF for fixed passthrough.
+    Replaces Dynamic DirectPath UI attach flow — fully declarative.
+    Trade-off: VM pinned to host; ESXi maintenance requires node power-off
+    (already true for any PCI passthrough VM). BDFs differ per host — pulled
+    from `lspci -p | grep 8086:56a6` on each ESXi.
+  EOT
+  type = map(object({
+    host    = string
+    pci_bdf = string
+  }))
+  default = {
+    "gpu-worker-1" = { host = "skw-esxi4.boeye.net", pci_bdf = "0000:03:00.0" }
+    "gpu-worker-2" = { host = "skw-esxi5.boeye.net", pci_bdf = "0000:2a:00.0" }
+    "gpu-worker-3" = { host = "skw-esxi6.boeye.net", pci_bdf = "0000:2a:00.0" }
+  }
 }
 
-variable "gpu_pci_device_id" {
-  description = "PCI device ID for Dynamic DirectPath allowedDevice (decimal). 22182 = Intel ARC A380 (0x56A6)."
-  type        = number
-  default     = 22182
+variable "gpu_pci_enabled" {
+  description = <<-EOT
+    Attach the pinned Arc A380 via fixed PCI passthrough. Same two-pass
+    pattern as gpu_worker_storage_nic: tofu clone + PCI in one apply fails
+    (vmware/terraform-provider-vsphere#1918). First -target apply with
+    `false`, then re-apply with default `true`.
+  EOT
+  type    = bool
+  default = true
 }
 
 variable "worker_storage_nic" {

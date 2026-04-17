@@ -5,14 +5,16 @@ serviceSubnets. talm --full emits 10.244.0.0/16 + 10.96.0.0/12 defaults; Cilium
 native routing assigns pod CIDR itself, so presence of those here triggers a
 Talos overlap diagnostic that leaves the node unreachable. Templates must
 include k8s-talos.emptyClusterSubnets under cluster.network.
+
+Only checks nodes/bootstrap/*.yaml. nodes/*.yaml are thin modeline-only stubs
+by design (re-rendered by talm apply on-host); nothing to validate there.
 """
 
 import glob
 import sys
 import yaml
 
-patterns = ["nodes/*.yaml", "nodes/bootstrap/*.yaml"]
-files = sorted({f for p in patterns for f in glob.glob(p)})
+files = sorted(glob.glob("nodes/bootstrap/*.yaml"))
 
 fail = False
 for f in files:
