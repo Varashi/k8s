@@ -10,8 +10,6 @@ resources:
   - profile-b2.yaml
   - profile-backblaze.yaml
   - profile-vsphere.yaml
-  - policypreset.yaml
   - policypreset-k8s-backup.yaml
-  - policy.yaml
   - policy-k8s-backup.yaml
   - policy-dr.yaml

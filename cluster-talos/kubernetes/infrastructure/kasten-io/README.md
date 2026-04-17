@@ -14,8 +14,6 @@ Declarative K10 install + profiles + policies. All credentials via ESO ← Bitwa
 | `clusterrolebinding.yaml` | Admin user → `cluster-admin` (K10's `k10-admin` role lacks RBAC verbs) |
 | `profile-b2.yaml` | Location profile `backblaze-b2` |
 | `profile-vsphere.yaml` | Infra profile `skw-vcsa` |
-| `policypreset.yaml` | `k8s-app-backup` — daily backup, weekly export to B2 |
-| `policy.yaml` | `k8s-app-backup` policy, selector `k10.kasten.io/backup=true` |
 | `policy-dr.yaml` | `k10-disaster-recovery-policy` — daily×3, backup+export to B2 |
 
 ## BW SM secrets consumed
@@ -38,7 +36,7 @@ Label its namespace:
 kubectl label ns <app> k10.kasten.io/backup=true
 ```
 
-Policy `k8s-app-backup` picks it up on next reconcile.
+Policy `k8s-backup` picks it up on next reconcile.
 
 ## Cross-cluster migration from RKE2
 
