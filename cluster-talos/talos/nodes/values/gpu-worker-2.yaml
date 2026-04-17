@@ -10,9 +10,8 @@ node:
 hostname: k8s-talos-gpu-worker-2
 # Override installer image to GPU schematic (i915 + intel-ucode + iscsi-tools + util-linux-tools + mei)
 # mei added to load Intel MEI GSC — required for HuC firmware on Arc dGPU; missing MEI caused GPU hangs on 4K encode.
-# fbcon=map:0 pins Linux fbcon to fb0 (SVGA) so vSphere web console renders instead of Arc fb1 (no monitor).
 installer:
-  image: factory.talos.dev/installer/24800d16a0532652b3b66eae24361b6fbd61035971fdcb6ad523b5e6db4bb5bb
+  image: factory.talos.dev/installer/d561b3847baff0099e71d536c1144eab0eeab32fada49913901d034a3d7d4503
 # Longhorn local disk (sdb = 100 GB vSphere VMDK on SKW-VSAN, separate from system disk sda)
 # Talos UserVolume provisions ext4 on sdb, mounts at /var/mnt/longhorn (Longhorn defaultDataPath)
 longhorn:
