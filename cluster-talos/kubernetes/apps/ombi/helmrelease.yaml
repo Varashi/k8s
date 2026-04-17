@@ -54,6 +54,22 @@ spec:
         ports:
           http:
             port: 3579
+    route:
+      app:
+        hostnames:
+          - plexrequests.${SECRET_DOMAIN}
+        parentRefs:
+          - name: main
+            namespace: cilium
+            sectionName: https
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: app
+                port: http
     persistence:
       config:
         type: persistentVolumeClaim

@@ -4,5 +4,4 @@ resources:
   - namespace.yaml
   - pvc.yaml
   - helmrelease.yaml
-  - httproute.yaml
   - tunnelbinding.yaml
