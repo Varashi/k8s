@@ -171,6 +171,16 @@ before `infrastructure-configs` reconciles.
 networking. Installed via `make bootstrap-cilium` (helm upgrade --install with pinned flags).
 Flux's HelmRelease then reconciles against the already-installed release.
 
+**Longhorn extraMounts scoped to GPU workers** — `machine.kubelet.extraMounts` (self-binds
+on `/var/lib/kubelet/plugins{,_registry}` + `/pods` with `rshared`) is gated on
+`.Values.longhorn.enabled` in `templates/worker.yaml`, and only `nodes/values/gpu-worker-*.yaml`
+set it. Non-GPU workers omit the binds entirely. Reason: `rshared` places the bind in `/var`'s
+shared peer group, so every vSphere CSI globalmount under `/var/lib/kubelet/plugins`
+propagates to both mount points and appears twice in `/proc/mounts`. vSphere CSI's
+`isBlockVolumeMounted` rejects "mounted in multiple places", NodeUnstage fails, and
+VolumeAttachments orphan permanently on the vSAN StorageClass. GPU workers tolerate the
+extraMounts because they run Longhorn-only workloads (no vSphere CSI PVCs).
+
 **Two-stage Talos config** — tofu injects a minimal bootstrap machine config
 (`talos/nodes/bootstrap/*.yaml`) via guestinfo: hostname + primary NIC static IP + install image,
 no cluster/PKI. VMs come up on their final IPs, then `talm template -i` + `talm apply -i`

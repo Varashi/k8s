@@ -30,6 +30,12 @@ machine:
         {{- range .Values.machine.kubelet.nodeIPSubnets }}
         - {{ . }}
         {{- end }}
+    {{- if and .Values.longhorn .Values.longhorn.enabled }}
+    # rshared self-binds required by Longhorn for propagating volume mounts out
+    # of the longhorn-csi-plugin container. Scoped to Longhorn nodes only because
+    # they put /var/lib/kubelet/plugins in /var's shared peer group, which makes
+    # every vSphere CSI globalmount appear twice in /proc/mounts and triggers
+    # isBlockVolumeMounted "mounted in multiple places" → stuck VolumeAttachment.
     extraMounts:
       - destination: /var/lib/kubelet/plugins_registry
         type: bind
@@ -52,6 +58,7 @@ machine:
           - bind
           - rshared
           - rw
+    {{- end }}
   network:
     nameservers:
       {{- range .Values.machine.nameservers }}
