@@ -54,6 +54,22 @@ spec:
         ports:
           http:
             port: 9705
+    route:
+      app:
+        hostnames:
+          - neutarr.${SECRET_DOMAIN}
+        parentRefs:
+          - name: main
+            namespace: cilium
+            sectionName: https
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: app
+                port: http
     persistence:
       config:
         type: persistentVolumeClaim
