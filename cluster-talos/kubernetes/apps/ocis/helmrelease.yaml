@@ -115,6 +115,23 @@ spec:
           http:
             port: 443
 
+    route:
+      app:
+        hostnames:
+          - files.${SECRET_DOMAIN}
+        parentRefs:
+          - name: main
+            namespace: cilium
+            sectionName: https
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: app
+                port: http
+
     persistence:
       config:
         existingClaim: ocis-config

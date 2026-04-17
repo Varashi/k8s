@@ -54,6 +54,25 @@ spec:
         ports:
           http:
             port: 8080
+    route:
+      app:
+        hostnames:
+          - sabnzbd.${SECRET_DOMAIN}
+        parentRefs:
+          - name: main
+            namespace: cilium
+            sectionName: https
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            timeouts:
+              request: 3600s
+              backendRequest: 3600s
+            backendRefs:
+              - identifier: app
+                port: http
     persistence:
       config:
         type: persistentVolumeClaim

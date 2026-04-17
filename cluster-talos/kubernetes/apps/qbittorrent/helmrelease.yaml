@@ -73,6 +73,22 @@ spec:
           bittorrent-udp:
             port: 6881
             protocol: UDP
+    route:
+      app:
+        hostnames:
+          - qbittorrent.${SECRET_DOMAIN}
+        parentRefs:
+          - name: main
+            namespace: cilium
+            sectionName: https
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: app
+                port: http
     persistence:
       config:
         type: persistentVolumeClaim
