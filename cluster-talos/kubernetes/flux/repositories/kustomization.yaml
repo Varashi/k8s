@@ -10,7 +10,7 @@ resources:
   - external-dns.yaml
   - cloudflare-operator.yaml
   - metrics-server.yaml
-  - vsphere-cpi.yaml
+  - vsphere-tmm.yaml
   - kasten.yaml
   - cnpg.yaml
   - netbox.yaml

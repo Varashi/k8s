@@ -1,8 +1,8 @@
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
-  name: vsphere-cpi
+  name: vsphere-tmm
   namespace: flux-system
 spec:
   interval: 1h
-  url: https://kubernetes.github.io/cloud-provider-vsphere
+  url: https://vsphere-tmm.github.io/helm-charts

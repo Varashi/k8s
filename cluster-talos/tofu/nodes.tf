@@ -154,6 +154,8 @@ resource "vsphere_virtual_machine" "worker" {
 
   num_cpus                    = var.worker_cpu
   memory                      = var.worker_memory_mb
+  memory_hot_add_enabled      = true
+  cpu_hot_add_enabled         = true
   guest_id                    = "other5xLinux64Guest"
   hardware_version            = 19
   enable_disk_uuid            = true

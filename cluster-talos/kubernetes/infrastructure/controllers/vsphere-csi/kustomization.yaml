@@ -3,5 +3,4 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - externalsecret.yaml
-  - vsphere-csi-crds.yaml
-  - vsphere-csi-driver.yaml
+  - helmrelease.yaml
