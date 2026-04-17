@@ -42,9 +42,9 @@ spec:
       resources:
         requests:
           cpu: 50m
-          memory: 300Mi
-        limits:
           memory: 1Gi
+        limits:
+          memory: 4Gi
       tolerations:
         - key: node.cloudprovider.kubernetes.io/uninitialized
           operator: Exists
