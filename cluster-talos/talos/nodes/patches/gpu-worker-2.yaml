@@ -29,7 +29,7 @@ machine:
       - 172.16.128.2
   install:
     disk: /dev/sda
-    image: factory.talos.dev/installer/d561b3847baff0099e71d536c1144eab0eeab32fada49913901d034a3d7d4503:v1.12.6
+    image: factory.talos.dev/installer/24800d16a0532652b3b66eae24361b6fbd61035971fdcb6ad523b5e6db4bb5bb:v1.12.6
   time:
     servers:
       - 172.16.0.2
