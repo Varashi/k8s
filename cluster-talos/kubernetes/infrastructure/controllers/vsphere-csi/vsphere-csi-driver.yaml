@@ -282,7 +282,6 @@ spec:
           args:
             - "--fss-name=internal-feature-states.csi.vsphere.vmware.com"
             - "--fss-namespace=$(CSI_NAMESPACE)"
-            - "--enable-profile-server=false"
           imagePullPolicy: "Always"
           env:
             - name: CSI_ENDPOINT
@@ -347,7 +346,6 @@ spec:
             - "--leader-election-retry-period=10s"
             - "--fss-name=internal-feature-states.csi.vsphere.vmware.com"
             - "--fss-namespace=$(CSI_NAMESPACE)"
-            - "--enable-profile-server=false"
           imagePullPolicy: "Always"
           ports:
             - containerPort: 2113
