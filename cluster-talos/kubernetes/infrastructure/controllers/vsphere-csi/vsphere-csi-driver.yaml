@@ -240,7 +240,7 @@ spec:
       dnsPolicy: "Default"
       containers:
         - name: csi-attacher
-          image: registry.k8s.io/sig-storage/csi-attacher:v4.9.0
+          image: registry.k8s.io/sig-storage/csi-attacher:v4.7.0
           args:
             - "--v=4"
             - "--timeout=300s"
@@ -278,7 +278,7 @@ spec:
             - mountPath: /csi
               name: socket-dir
         - name: vsphere-csi-controller
-          image: registry.k8s.io/csi-vsphere/driver:v3.7.0
+          image: registry.k8s.io/csi-vsphere/driver:v3.4.0
           args:
             - "--fss-name=internal-feature-states.csi.vsphere.vmware.com"
             - "--fss-namespace=$(CSI_NAMESPACE)"
@@ -331,7 +331,7 @@ spec:
             periodSeconds: 180
             failureThreshold: 3
         - name: liveness-probe
-          image: registry.k8s.io/sig-storage/livenessprobe:v2.15.0
+          image: registry.k8s.io/sig-storage/livenessprobe:v2.14.0
           args:
             - "--v=4"
             - "--csi-address=/csi/csi.sock"
@@ -339,7 +339,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: vsphere-syncer
-          image: registry.k8s.io/csi-vsphere/syncer:v3.7.0
+          image: registry.k8s.io/csi-vsphere/syncer:v3.4.0
           args:
             - "--leader-election"
             - "--leader-election-lease-duration=30s"
@@ -451,7 +451,7 @@ spec:
       dnsPolicy: "ClusterFirstWithHostNet"
       containers:
         - name: node-driver-registrar
-          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.13.0
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.12.0
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
@@ -474,7 +474,7 @@ spec:
               - --mode=kubelet-registration-probe
             initialDelaySeconds: 3
         - name: vsphere-csi-node
-          image: registry.k8s.io/csi-vsphere/driver:v3.7.0
+          image: registry.k8s.io/csi-vsphere/driver:v3.4.0
           args:
             - "--fss-name=internal-feature-states.csi.vsphere.vmware.com"
             - "--fss-namespace=$(CSI_NAMESPACE)"
@@ -534,7 +534,7 @@ spec:
             periodSeconds: 5
             failureThreshold: 3
         - name: liveness-probe
-          image: registry.k8s.io/sig-storage/livenessprobe:v2.15.0
+          image: registry.k8s.io/sig-storage/livenessprobe:v2.14.0
           args:
             - "--v=4"
             - "--csi-address=/csi/csi.sock"
@@ -602,7 +602,7 @@ spec:
       hostNetwork: true
       containers:
         - name: node-driver-registrar
-          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.13.0
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.12.0
           command:
             - "csi-node-driver-registrar.exe"
           args:
@@ -623,7 +623,7 @@ spec:
             - name: registration-dir
               mountPath: /registration
         - name: vsphere-csi-node
-          image: registry.k8s.io/csi-vsphere/driver:v3.7.0
+          image: registry.k8s.io/csi-vsphere/driver:v3.4.0
           command:
             - "csi.exe"
           args:
@@ -674,7 +674,7 @@ spec:
             periodSeconds: 5
             failureThreshold: 3
         - name: liveness-probe
-          image: registry.k8s.io/sig-storage/livenessprobe:v2.15.0
+          image: registry.k8s.io/sig-storage/livenessprobe:v2.14.0
           command:
             - "livenessprobe.exe"
           args:
