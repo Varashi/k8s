@@ -183,6 +183,21 @@ spec:
     - name: infrastructure-controllers
   wait: true
   timeout: 5m
+  patches:
+    - target:
+        kind: Deployment
+        name: cloudflare-operator-controller-manager
+      patch: |
+        - op: add
+          path: /spec/template/spec/tolerations
+          value:
+            - key: node.cloudprovider.kubernetes.io/uninitialized
+              operator: Exists
+              effect: NoSchedule
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization

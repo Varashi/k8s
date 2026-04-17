@@ -25,13 +25,6 @@ spec:
       retries: 3
   values:
     defaultPodOptions:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: intel.feature.node.kubernetes.io/gpu
-                    operator: DoesNotExist
       tolerations:
         - key: node.cloudprovider.kubernetes.io/uninitialized
           operator: Exists
@@ -59,6 +52,15 @@ spec:
                 memory: 128Mi
 
       tracearr:
+        pod:
+          tolerations:
+            - key: node.cloudprovider.kubernetes.io/uninitialized
+              operator: Exists
+              effect: NoSchedule
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
         containers:
           app:
             image:

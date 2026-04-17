@@ -24,16 +24,11 @@ spec:
       strategy: rollback
       retries: 3
   values:
-    # keep operator off GPU workers (anti-affinity pattern mirrors k10)
-    affinity:
-      nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-            - matchExpressions:
-                - key: "intel.feature.node.kubernetes.io/gpu"
-                  operator: "DoesNotExist"
-    # tolerate uninitialized taint during fresh bootstrap
     tolerations:
       - key: node.cloudprovider.kubernetes.io/uninitialized
         operator: Exists
+        effect: NoSchedule
+      - key: intel.feature.node.kubernetes.io/gpu
+        operator: Equal
+        value: "true"
         effect: NoSchedule

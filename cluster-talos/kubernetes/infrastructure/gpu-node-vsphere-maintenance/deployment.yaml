@@ -18,6 +18,10 @@ spec:
         - key: node.cloudprovider.kubernetes.io/uninitialized
           value: "true"
           effect: NoSchedule
+        - key: intel.feature.node.kubernetes.io/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
       containers:
         - name: controller
           image: ghcr.io/varashi/gpu-node-vsphere-maintenance-controller:v0.2.2
@@ -41,10 +45,3 @@ spec:
               drop: ["ALL"]
             seccompProfile:
               type: RuntimeDefault
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: intel.feature.node.kubernetes.io/gpu
-                    operator: DoesNotExist

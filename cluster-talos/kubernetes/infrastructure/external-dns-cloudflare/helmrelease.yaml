@@ -57,3 +57,12 @@ spec:
 
     service:
       enabled: false
+
+    tolerations:
+      - key: node.cloudprovider.kubernetes.io/uninitialized
+        operator: Exists
+        effect: NoSchedule
+      - key: intel.feature.node.kubernetes.io/gpu
+        operator: Equal
+        value: "true"
+        effect: NoSchedule

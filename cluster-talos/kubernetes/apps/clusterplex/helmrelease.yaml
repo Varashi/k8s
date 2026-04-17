@@ -32,6 +32,11 @@ spec:
             runAsNonRoot: true
             runAsUser: 1000
             runAsGroup: 1000
+          tolerations:
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
 
       pms:
         containers:

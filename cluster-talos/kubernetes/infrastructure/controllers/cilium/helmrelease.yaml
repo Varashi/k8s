@@ -53,11 +53,21 @@ spec:
       enabled: true
       relay:
         enabled: true
+        tolerations: &gpuTol
+          - key: node.cloudprovider.kubernetes.io/uninitialized
+            operator: Exists
+            effect: NoSchedule
+          - key: intel.feature.node.kubernetes.io/gpu
+            operator: Equal
+            value: "true"
+            effect: NoSchedule
       ui:
         enabled: true
+        tolerations: *gpuTol
 
     operator:
       replicas: 2
+      tolerations: *gpuTol
 
     # Talos-specific security capabilities
     securityContext:

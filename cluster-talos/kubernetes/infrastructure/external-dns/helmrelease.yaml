@@ -73,3 +73,12 @@ spec:
       - name: krb5-conf
         mountPath: /etc/krb5.conf
         subPath: krb5.conf
+
+    tolerations:
+      - key: node.cloudprovider.kubernetes.io/uninitialized
+        operator: Exists
+        effect: NoSchedule
+      - key: intel.feature.node.kubernetes.io/gpu
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
