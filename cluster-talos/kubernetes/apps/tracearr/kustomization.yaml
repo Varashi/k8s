@@ -6,4 +6,3 @@ resources:
   - pvc.yaml
   - cluster.yaml
   - helmrelease.yaml
-  - httproute.yaml

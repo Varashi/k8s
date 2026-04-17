@@ -110,6 +110,23 @@ spec:
           http:
             port: 3000
 
+    route:
+      app:
+        hostnames:
+          - tracearr.${SECRET_DOMAIN}
+        parentRefs:
+          - name: main
+            namespace: cilium
+            sectionName: https
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: app
+                port: http
+
     persistence:
       redis-data:
         type: persistentVolumeClaim
