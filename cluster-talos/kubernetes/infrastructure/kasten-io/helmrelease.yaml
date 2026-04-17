@@ -24,6 +24,8 @@ spec:
       accept: true
       company: ${SECRET_DOMAIN}
       email: ${SECRET_ACME_EMAIL}
+    multicluster:
+      enabled: false
     networkPolicy:
       create: false
     global:
@@ -48,7 +50,7 @@ spec:
       ldap:
         enabled: true
         restartPod: true
-        dashboardURL: https://kasten-talos.${SECRET_DOMAIN}/k10/
+        dashboardURL: https://kasten.${SECRET_DOMAIN}/k10/
         host: "${SECRET_DOMAIN}:636"
         insecureNoSSL: false
         insecureSkipVerifySSL: false

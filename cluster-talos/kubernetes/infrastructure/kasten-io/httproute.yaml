@@ -9,7 +9,7 @@ spec:
       namespace: cilium
       sectionName: https
   hostnames:
-    - kasten-talos.${SECRET_DOMAIN}
+    - kasten.${SECRET_DOMAIN}
   rules:
     - matches:
         - path:

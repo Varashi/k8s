@@ -10,7 +10,7 @@ Declarative K10 install + profiles + policies. All credentials via ESO ← Bitwa
 | `ad-ca-configmap.yaml` | AD CA bundle (base64 from `SECRET_AD_CA_PEM_B64`) for LDAPS trust |
 | `externalsecret.yaml` | ESO: `k10-secrets`, `k10-b2-creds`, `k10-vsphere-creds`, `k8s-app-backup-migration-token`, `k10-dr-secret` |
 | `helmrelease.yaml` | K10 chart values (LDAPS email-claim path, GPU anti-affinity, uninit-taint toleration) |
-| `httproute.yaml` | `kasten-talos.${SECRET_DOMAIN}` via Gateway `main`, `/→/k10/` 301 |
+| `httproute.yaml` | `kasten.${SECRET_DOMAIN}` via Gateway `main`, `/→/k10/` 301 |
 | `clusterrolebinding.yaml` | Admin user → `cluster-admin` (K10's `k10-admin` role lacks RBAC verbs) |
 | `profile-b2.yaml` | Location profile `backblaze-b2` |
 | `profile-vsphere.yaml` | Infra profile `skw-vcsa` |
