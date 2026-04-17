@@ -17,13 +17,13 @@ spec:
     - action: backup
       backupParameters:
         profile:
-          name: backblaze-b2
+          name: backblaze
           namespace: kasten-io
     - action: export
       exportParameters:
         frequency: '@daily'
         profile:
-          name: backblaze-b2
+          name: backblaze
           namespace: kasten-io
         exportData:
           enabled: true
