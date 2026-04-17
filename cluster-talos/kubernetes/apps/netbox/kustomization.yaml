@@ -6,4 +6,3 @@ resources:
   - cluster.yaml
   - redis.yaml
   - helmrelease.yaml
-  - httproute.yaml

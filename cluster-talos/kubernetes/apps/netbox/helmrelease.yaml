@@ -96,6 +96,15 @@ spec:
     ingress:
       enabled: false
 
+    httpRoute:
+      enabled: true
+      parentRefs:
+        - name: main
+          namespace: cilium
+          sectionName: https
+      hostnames:
+        - ipam.${SECRET_DOMAIN}
+
     allowedHosts:
       - ipam.${SECRET_DOMAIN}
       - netbox.netbox.svc.cluster.local

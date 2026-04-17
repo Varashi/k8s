@@ -49,6 +49,15 @@ spec:
         - key: node.cloudprovider.kubernetes.io/uninitialized
           operator: Exists
           effect: NoSchedule
+      route:
+        main:
+          enabled: true
+          parentRefs:
+            - name: main
+              namespace: cilium
+              sectionName: https
+          hostnames:
+            - prom.${SECRET_DOMAIN}
     kube-state-metrics:
       resources:
         requests:
