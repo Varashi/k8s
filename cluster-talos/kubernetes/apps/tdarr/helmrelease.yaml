@@ -18,12 +18,7 @@ spec:
   values:
     defaultPodOptions:
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
         supplementalGroups: [568]
-        seccompProfile:
-          type: RuntimeDefault
     controllers:
       tdarr-main:
         containers:
@@ -34,6 +29,9 @@ spec:
               pullPolicy: Always
             env:
               TZ: Europe/Brussels
+              PUID: "1000"
+              PGID: "1000"
+              UMASK_SET: "002"
               auth: "true"
             resources:
               requests:
@@ -60,6 +58,12 @@ spec:
               tag: 2.69.01
               pullPolicy: Always
             env:
+              - name: PUID
+                value: "1000"
+              - name: PGID
+                value: "1000"
+              - name: UMASK_SET
+                value: "002"
               - name: nodeID
                 valueFrom:
                   fieldRef:
