@@ -78,17 +78,18 @@ cluster-talos/
 │   ├── secrets.yaml          # Cluster PKI + tokens (gitignored — backed up to Bitwarden)
 │   ├── secrets.encrypted.yaml# AGE-encrypted secrets (committed)
 │   ├── talm.key              # AGE private key (gitignored — backed up to Bitwarden)
-│   ├── templates/            # Go templates per node type
-│   │   ├── _helpers.tpl      # installImage helper
-│   │   ├── controlplane.yaml # CP template (full config — used day-0 + day-2)
-│   │   └── worker.yaml       # Worker template (includes storage NIC (NIC2))
+│   ├── templates/            # Go templates per node class
+│   │   ├── _helpers.tpl      # installImage + shared helpers
+│   │   ├── controlplane.yaml # CP class (full config — day-0 + day-2 via talosctl apply-config)
+│   │   ├── worker.yaml       # Standard worker class (no Longhorn, no GPU)
+│   │   └── worker-gpu.yaml   # GPU worker class (schematic, labels/taints, UserVolumeConfig, rshared extraMounts, iscsi_tcp)
 │   ├── nodes/                # Per-node files
-│   │   ├── bootstrap/        # Minimal guestinfo configs (committed, consumed by tofu)
-│   │   │   └── {cp,worker}-{1,2,3}.yaml
-│   │   ├── values/           # Per-node value overrides (IP, VIP, storageIP)
-│   │   ├── patches/          # Per-node patches with talm modelines (day-2 apply target)
-│   │   ├── cp-{1,2,3}.yaml   # Full configs rendered by `make bootstrap-template` (gitignored)
-│   │   └── worker-{1,2,3}.yaml
+│   │   ├── bootstrap/        # Full offline-rendered configs (committed, consumed by tofu guestinfo + CP day-2)
+│   │   │   └── {cp,worker,gpu-worker}-{1,2,3}.yaml
+│   │   ├── values/           # Per-node value overrides (IP, VIP, storageIP, gpu PCI address)
+│   │   ├── cp-{1,2,3}.yaml           # Modeline stubs (day-2 reference; CPs actually apply from bootstrap/)
+│   │   ├── worker-{1,2,3}.yaml       # Thin modeline-only stubs (day-2 apply target, talm re-renders on-host)
+│   │   └── gpu-worker-{1,2,3}.yaml   # Thin modeline-only stubs (day-2 apply target, talm re-renders on-host)
 │   ├── charts/talm/          # talm library chart (talm.discovered.* functions)
 │   └── clusterconfig/        # Generated files (gitignored)
 │       ├── talosconfig       # talosctl client config
@@ -116,8 +117,12 @@ cluster-talos/
    contains PKI, etcd, kubelet, VIP, and cluster bootstrap info. Pushed via
    `talm apply -i` after VMs are up.
 
-Same tool (talm) for day-0 render and day-2 apply. `templates/controlplane.yaml` and
-`templates/worker.yaml` are the source of truth for both.
+Same tool (talm) for day-0 render. Day-2 splits by node class: workers + GPU workers
+via `talm apply` of a thin modeline stub (re-renders class template on-host);
+CPs via `talosctl apply-config` of the full bootstrap render (`talm apply` can't
+load `values.local.yaml`, would drop `apiCertSANs`). See `talos/Makefile` `apply`
+target for the routing. `templates/controlplane.yaml`, `templates/worker.yaml`, and
+`templates/worker-gpu.yaml` are the source of truth for both paths.
 
 ```bash
 cd ~/git/k8s/cluster-talos/talos/
@@ -623,9 +628,10 @@ overlap` diagnostic, which prevents static IPs from being applied → node unrea
 `serviceSubnets: []` under `cluster.network`. Simply omitting the field in the template
 is **not enough** — talm merges in the defaults.
 
-**Fix (already applied):** both `templates/controlplane.yaml` and `templates/worker.yaml`
-include the shared helper `k8s-talos.emptyClusterSubnets` (`templates/_helpers.tpl`),
-which emits `podSubnets: []` + `serviceSubnets: []`. Any new template must include it.
+**Fix (already applied):** `templates/controlplane.yaml`, `templates/worker.yaml`, and
+`templates/worker-gpu.yaml` include the shared helper `k8s-talos.emptyClusterSubnets`
+(`templates/_helpers.tpl`), which emits `podSubnets: []` + `serviceSubnets: []`. Any
+new template must include it.
 
 **Safety net:** `make validate-rendered` (`scripts/validate-rendered.py`) fails if any
 rendered `nodes/*.yaml` or `nodes/bootstrap/*.yaml` has non-empty
@@ -790,11 +796,13 @@ For a new worker that isn't yet declared: first add an entry to `worker_nodes` i
 existing worker and adjust IPs), then `make render` regenerates the day-2 stub
 (`talos/nodes/worker-N.yaml`) + bootstrap config automatically.
 
-**Heterogeneous worker classes** (GPU, storage) should get their own
-`vsphere_virtual_machine "worker_<class>"` resource block with its own map + count
-variable + talm template — not be mixed into `worker_nodes`. They typically need
-different sizing, Talos schematic (e.g. nvidia extensions), and VM host pinning
-(PCI passthrough).
+**Heterogeneous worker classes** (GPU, storage) get their own
+`vsphere_virtual_machine "<class>_worker"` resource block with its own map + count
+variable + talm template — not mixed into `worker_nodes`. They typically need
+different sizing, Talos schematic (e.g. Intel Arc extensions), and VM host pinning
+(PCI passthrough). GPU workers live in `vsphere_virtual_machine "gpu_worker"` +
+`templates/worker-gpu.yaml`; see memory `reference_add_gpu_worker_talos.md` for the
+add procedure (fixed PCI passthrough BDF + `UserVolumeConfig` for Longhorn).
 
 ### Remove a node
 
