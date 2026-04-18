@@ -32,6 +32,9 @@ spec:
             runAsNonRoot: true
             runAsUser: 1000
             runAsGroup: 1000
+            supplementalGroups: [568]
+            seccompProfile:
+              type: RuntimeDefault
           tolerations:
             - key: intel.feature.node.kubernetes.io/gpu
               operator: Equal
@@ -47,6 +50,9 @@ spec:
             env:
               TZ: Europe/Brussels
               VERSION: docker
+              PUID: "1000"
+              PGID: "1000"
+              UMASK_SET: "002"
               DOCKER_MODS: "ghcr.io/pabloromeo/clusterplex_dockermod:1.4.16"
               ORCHESTRATOR_URL: "http://clusterplex-orchestrator.clusterplex.svc:3500"
               PMS_SERVICE: "clusterplex-pms.clusterplex.svc"
@@ -66,8 +72,7 @@ spec:
               value: "true"
               effect: "NoSchedule"
           securityContext:
-            runAsUser: 0
-            runAsGroup: 0
+            supplementalGroups: [568]
 
       worker:
         type: daemonset
@@ -79,6 +84,9 @@ spec:
             env:
               TZ: Europe/Brussels
               VERSION: docker
+              PUID: "1000"
+              PGID: "1000"
+              UMASK_SET: "002"
               DOCKER_MODS: "ghcr.io/pabloromeo/clusterplex_worker_dockermod:1.4.16"
               ORCHESTRATOR_URL: "http://clusterplex-orchestrator.clusterplex.svc:3500"
               LISTENING_PORT: "3501"
@@ -94,8 +102,7 @@ spec:
               value: "true"
               effect: "NoSchedule"
           securityContext:
-            runAsUser: 0
-            runAsGroup: 0
+            supplementalGroups: [568]
 
     service:
       orchestrator:
