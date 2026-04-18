@@ -36,12 +36,8 @@ spec:
           operator: Exists
           effect: NoSchedule
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        supplementalGroups: [568]
-        seccompProfile:
-          type: RuntimeDefault
+        runAsUser: 0
+        runAsGroup: 0
     controllers:
       ombi:
         containers:
@@ -50,11 +46,6 @@ spec:
               repository: ghcr.io/linuxserver/ombi
               tag: 4.53.4
               pullPolicy: IfNotPresent
-            securityContext:
-              allowPrivilegeEscalation: true
-              capabilities:
-                add: ["SETUID", "SETGID"]
-                drop: ["ALL"]
             env:
               TZ: Europe/Brussels
     service:
@@ -80,11 +71,6 @@ spec:
               - identifier: app
                 port: http
     persistence:
-      run:
-        type: emptyDir
-        medium: Memory
-        globalMounts:
-          - path: /run
       config:
         type: persistentVolumeClaim
         existingClaim: ombi-config
