@@ -36,8 +36,12 @@ spec:
           operator: Exists
           effect: NoSchedule
       securityContext:
-        runAsUser: 0
-        runAsGroup: 0
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        supplementalGroups: [568]
+        seccompProfile:
+          type: RuntimeDefault
     controllers:
       ombi:
         containers:
@@ -71,6 +75,11 @@ spec:
               - identifier: app
                 port: http
     persistence:
+      run:
+        type: emptyDir
+        medium: Memory
+        globalMounts:
+          - path: /run
       config:
         type: persistentVolumeClaim
         existingClaim: ombi-config
