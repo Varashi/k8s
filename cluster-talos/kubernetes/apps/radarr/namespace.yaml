@@ -4,4 +4,4 @@ metadata:
   name: radarr
   labels:
     k10.kasten.io/backup: "true"
-    storage-class: vsphere
+    k10.kasten.io/storage-class: vsphere

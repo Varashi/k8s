@@ -9,8 +9,7 @@ spec:
     namespace: kasten-io
   selector:
     matchLabels:
-      k10.kasten.io/backup: "true"
-      storage-class: longhorn
+      k10.kasten.io/storage-class: longhorn
   actions:
     - action: backup
     - action: export

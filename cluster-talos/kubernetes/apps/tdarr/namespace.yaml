@@ -4,7 +4,7 @@ metadata:
   name: tdarr
   labels:
     k10.kasten.io/backup: "true"
-    storage-class: vsphere
+    k10.kasten.io/storage-class: vsphere
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/warn: baseline
     pod-security.kubernetes.io/audit: baseline
