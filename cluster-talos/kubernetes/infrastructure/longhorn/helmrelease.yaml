@@ -49,7 +49,7 @@ spec:
       # have no /var/mnt/longhorn mount — without this gate, Longhorn would
       # auto-register the path under root fs and waste root disk.
       createDefaultDiskLabeledNodes: true
-      replicaSoftAntiAffinity: true
+      replicaSoftAntiAffinity: false
       storageOverProvisioningPercentage: 100
       storageMinimalAvailablePercentage: 10
       allowRecurringJobWhileVolumeDetached: true
