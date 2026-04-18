@@ -50,6 +50,10 @@ spec:
               repository: ghcr.io/linuxserver/ombi
               tag: 4.53.4
               pullPolicy: IfNotPresent
+            securityContext:
+              capabilities:
+                add: ["SETGID"]
+                drop: ["ALL"]
             env:
               TZ: Europe/Brussels
     service:
