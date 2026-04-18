@@ -22,7 +22,7 @@ spec:
       namespace: kasten-io
     exportData:
       enabled: true
-      exporterStorageClassName: longhorn
+      exporterStorageClassName: longhorn-wffc
     retention:
       daily: 7
       weekly: 4
