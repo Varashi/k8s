@@ -51,8 +51,9 @@ spec:
               tag: 4.53.4
               pullPolicy: IfNotPresent
             securityContext:
+              allowPrivilegeEscalation: true
               capabilities:
-                add: ["SETGID"]
+                add: ["SETUID", "SETGID"]
                 drop: ["ALL"]
             env:
               TZ: Europe/Brussels
