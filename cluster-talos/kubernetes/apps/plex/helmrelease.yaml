@@ -104,19 +104,11 @@ spec:
       media:
         type: nfs
         server: skw-truenas-data.${SECRET_DOMAIN}
-        path: /mnt/DATA/media
-        advancedMounts:
-          plex:
-            app:
-              - path: /media
-      media-new:
-        type: nfs
-        server: skw-truenas-data.${SECRET_DOMAIN}
         path: /mnt/DATA/mediapool/media
         advancedMounts:
           plex:
             app:
-              - path: /media-new
+              - path: /media
       backup:
         type: nfs
         server: skw-truenas-data.${SECRET_DOMAIN}
