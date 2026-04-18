@@ -181,6 +181,17 @@ propagates to both mount points and appears twice in `/proc/mounts`. vSphere CSI
 VolumeAttachments orphan permanently on the vSAN StorageClass. GPU workers tolerate the
 extraMounts because they run Longhorn-only workloads (no vSphere CSI PVCs).
 
+**GPU worker taint = soft + per-app anti-affinity** — `templates/worker-gpu.yaml` taints
+gpu-workers `intel.feature.node.kubernetes.io/gpu=true:PreferNoSchedule` (soft, not the
+original NoSchedule). Reason: Kasten's block-mode-upload pods carry no tolerations, so a
+hard taint stranded every Longhorn-PVC backup. Soft taint lets them land. To prevent
+vSphere CSI workloads spilling onto gpu-workers under regular-worker pressure (which would
+trigger the rshared VA deadlock above), every vsan-backed app's HelmRelease pins
+`defaultPodOptions.affinity.nodeAffinity` with `intel.feature.node.kubernetes.io/gpu
+DoesNotExist` as a *required* rule. Update path: `talm apply` strips `nodeTaints` (see
+memory `feedback_talm_apply_strips_fields.md`); push via `talosctl apply-config -f
+nodes/bootstrap/gpu-worker-X.yaml --mode auto`.
+
 **Two-stage Talos config** — tofu injects a minimal bootstrap machine config
 (`talos/nodes/bootstrap/*.yaml`) via guestinfo: hostname + primary NIC static IP + install image,
 no cluster/PKI. VMs come up on their final IPs, then `talm template -i` + `talm apply -i`
