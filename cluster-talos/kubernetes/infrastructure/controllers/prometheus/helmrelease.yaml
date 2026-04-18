@@ -64,7 +64,11 @@ spec:
           cpu: 10m
           memory: 32Mi
         limits:
-          memory: 128Mi
+          memory: 512Mi
+      livenessProbe:
+        timeoutSeconds: 10
+      readinessProbe:
+        timeoutSeconds: 10
       tolerations:
         - key: node.cloudprovider.kubernetes.io/uninitialized
           operator: Exists
