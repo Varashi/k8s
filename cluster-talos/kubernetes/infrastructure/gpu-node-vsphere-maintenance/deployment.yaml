@@ -24,7 +24,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: controller
-          image: ghcr.io/varashi/gpu-node-vsphere-maintenance-controller:v0.2.2
+          image: ghcr.io/varashi/gpu-node-vsphere-maintenance-controller:v0.2.3
           envFrom:
             - secretRef:
                 name: vsphere-credentials
