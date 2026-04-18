@@ -1,7 +1,7 @@
 apiVersion: config.kio.kasten.io/v1alpha1
 kind: PolicyPreset
 metadata:
-  name: k8s-backup
+  name: k8s-gpu-backup
   namespace: kasten-io
 spec:
   backup:
@@ -22,7 +22,7 @@ spec:
       namespace: kasten-io
     exportData:
       enabled: true
-      exporterStorageClassName: vsan
+      exporterStorageClassName: longhorn
     retention:
       daily: 7
       weekly: 4

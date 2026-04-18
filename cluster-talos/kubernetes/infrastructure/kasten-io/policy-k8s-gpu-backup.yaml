@@ -1,0 +1,16 @@
+apiVersion: config.kio.kasten.io/v1alpha1
+kind: Policy
+metadata:
+  name: k8s-gpu-backup
+  namespace: kasten-io
+spec:
+  presetRef:
+    name: k8s-gpu-backup
+    namespace: kasten-io
+  selector:
+    matchLabels:
+      k10.kasten.io/backup: "true"
+      storage-class: longhorn
+  actions:
+    - action: backup
+    - action: export

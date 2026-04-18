@@ -10,6 +10,11 @@ spec:
   selector:
     matchLabels:
       k10.kasten.io/backup: "true"
+    matchExpressions:
+      - key: storage-class
+        operator: NotIn
+        values:
+          - longhorn
   actions:
     - action: backup
       backupParameters:
