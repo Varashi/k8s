@@ -35,6 +35,13 @@ spec:
         - key: node.cloudprovider.kubernetes.io/uninitialized
           operator: Exists
           effect: NoSchedule
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        supplementalGroups: [568]
+        seccompProfile:
+          type: RuntimeDefault
     controllers:
       qbittorrent:
         containers:
@@ -90,6 +97,11 @@ spec:
               - identifier: app
                 port: http
     persistence:
+      run:
+        type: emptyDir
+        medium: Memory
+        globalMounts:
+          - path: /run
       config:
         type: persistentVolumeClaim
         existingClaim: qbittorrent-config
