@@ -109,7 +109,7 @@ spec:
           - path: /config
       media:
         type: nfs
-        server: skw-truenas-data.${SECRET_DOMAIN}
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/DATA/mediapool
         globalMounts:
           - path: /mnt/skw-truenas-data

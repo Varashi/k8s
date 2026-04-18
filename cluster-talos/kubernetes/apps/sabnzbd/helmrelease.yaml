@@ -85,19 +85,19 @@ spec:
           - path: /config
       media:
         type: nfs
-        server: skw-truenas-data.${SECRET_DOMAIN}
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/DATA/mediapool
         globalMounts:
           - path: /mnt/skw-truenas-data
       download:
         type: nfs
-        server: skw-truenas-data.${SECRET_DOMAIN}
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/SSD/downloads_sabnzbd
         globalMounts:
           - path: /downloads
       backup:
         type: nfs
-        server: skw-truenas-data.${SECRET_DOMAIN}
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/DATA/backup/sabnzbd
         globalMounts:
           - path: /backup

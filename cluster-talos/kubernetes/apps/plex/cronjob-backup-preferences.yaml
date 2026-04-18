@@ -62,5 +62,5 @@ spec:
                 claimName: plex-config-pms
             - name: backup
               nfs:
-                server: skw-truenas-data.${SECRET_DOMAIN}
+                server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
                 path: /mnt/DATA/backup/plex

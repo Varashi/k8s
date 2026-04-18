@@ -148,7 +148,7 @@ spec:
       data:
         # TrueNAS NFS. Expendable per project stance; ZFS snapshots on TrueNAS side.
         type: nfs
-        server: skw-truenas-data.${SECRET_DOMAIN}
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/DATA/ocis
         globalMounts:
           - path: /var/lib/ocis

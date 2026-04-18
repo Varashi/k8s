@@ -170,7 +170,7 @@ spec:
               - path: /config
       transcode:
         type: nfs
-        server: skw-truenas-data.${SECRET_DOMAIN}
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/SSD/plextranscode
         advancedMounts:
           pms:
@@ -181,7 +181,7 @@ spec:
               - path: /transcode
       media:
         type: nfs
-        server: skw-truenas-data.${SECRET_DOMAIN}
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/DATA/mediapool/media
         advancedMounts:
           pms:

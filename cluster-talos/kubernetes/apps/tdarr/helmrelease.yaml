@@ -128,19 +128,19 @@ spec:
               - path: /app/server
       cache:
         type: nfs
-        server: skw-truenas-data.${SECRET_DOMAIN}
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/SSD/tdarrcache
         globalMounts:
           - path: /cache
       media:
         type: nfs
-        server: skw-truenas-data.${SECRET_DOMAIN}
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/DATA/mediapool/media
         globalMounts:
           - path: /media
       backup:
         type: nfs
-        server: skw-truenas-data.${SECRET_DOMAIN}
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/DATA/backup/tdarr
         advancedMounts:
           tdarr-main:

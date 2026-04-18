@@ -135,7 +135,7 @@ spec:
               - path: /data
       backups:
         type: nfs
-        server: skw-truenas-data.${SECRET_DOMAIN}
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/DATA/backup/tracearr
         advancedMounts:
           tracearr:

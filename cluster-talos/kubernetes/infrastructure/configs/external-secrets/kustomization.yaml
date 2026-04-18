@@ -5,3 +5,5 @@ resources:
   - cluster-secret-store.yaml
   - externalsecret-cloudflare-substvars.yaml
   - externalsecret-kasten-substvars.yaml
+  - externalsecret-externaldns-substvars.yaml
+  - externalsecret-apps-substvars.yaml
