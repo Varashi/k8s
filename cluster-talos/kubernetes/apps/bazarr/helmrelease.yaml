@@ -36,8 +36,12 @@ spec:
           operator: Exists
           effect: NoSchedule
       securityContext:
-        runAsUser: 0
-        runAsGroup: 0
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        supplementalGroups: [568]
+        seccompProfile:
+          type: RuntimeDefault
     controllers:
       bazarr:
         containers:
