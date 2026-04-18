@@ -13,13 +13,16 @@ machine:
   # NodeApplyController reconciles this. Must match kubelet register-with-taints
   # exactly, otherwise the controller issues a PATCH which NodeRestriction
   # forbids kubelets from doing (self-taint modification blocked).
+  # PreferNoSchedule (not NoSchedule) so Kasten block-mode-upload pods —
+  # which have no tolerations — can land here for Longhorn-backed PVCs.
+  # vSAN-backed apps stay off via per-app nodeAntiAffinity on `gpu` label.
   nodeTaints:
-    intel.feature.node.kubernetes.io/gpu: "true:NoSchedule"
+    intel.feature.node.kubernetes.io/gpu: "true:PreferNoSchedule"
   kubelet:
     extraArgs:
       rotate-server-certificates: "true"
       cloud-provider: external
-      register-with-taints: "intel.feature.node.kubernetes.io/gpu=true:NoSchedule"
+      register-with-taints: "intel.feature.node.kubernetes.io/gpu=true:PreferNoSchedule"
     nodeIP:
       validSubnets:
         {{- range .Values.machine.kubelet.nodeIPSubnets }}
