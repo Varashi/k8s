@@ -4,3 +4,4 @@ metadata:
   name: sabnzbd
   labels:
     k10.kasten.io/backup: "true"
+    storage-class: vsphere

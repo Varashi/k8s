@@ -5,3 +5,4 @@ metadata:
   labels:
     # included in Kasten policy (k10.kasten.io/backup=true selector)
     k10.kasten.io/backup: "true"
+    storage-class: vsphere

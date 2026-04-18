@@ -4,3 +4,4 @@ metadata:
   name: tracearr
   labels:
     k10.kasten.io/backup: "true"
+    storage-class: vsphere

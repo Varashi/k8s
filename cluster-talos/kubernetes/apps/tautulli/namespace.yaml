@@ -4,3 +4,4 @@ metadata:
   name: tautulli
   labels:
     k10.kasten.io/backup: "true"
+    storage-class: vsphere
