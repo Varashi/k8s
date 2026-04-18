@@ -7,7 +7,7 @@ metadata:
     k10.kasten.io/volume-snapshot-class: longhorn-snapshot
 provisioner: driver.longhorn.io
 allowVolumeExpansion: true
-reclaimPolicy: Retain
+reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
 parameters:
   numberOfReplicas: "2"
