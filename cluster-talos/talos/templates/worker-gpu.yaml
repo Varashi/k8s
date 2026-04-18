@@ -110,7 +110,8 @@ name: longhorn
 provisioning:
   diskSelector:
     match: '!system_disk && disk.transport == "vmw_pvscsi" && disk.size > 50u * GiB'
-  minSize: 90GiB
+  minSize: 150GiB
   maxSize: 300GiB  # headroom for future disk bumps; actual size capped by VMDK
+  grow: true       # expand existing partition to fill available disk
 filesystem:
   type: ext4

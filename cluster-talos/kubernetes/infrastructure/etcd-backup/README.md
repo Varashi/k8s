@@ -31,7 +31,8 @@ features:
     allowedKubernetesNamespaces: [etcd-backup]
 ```
 
-Apply via `talm apply -f nodes/patches/cp-{1,2,3}.yaml --mode auto`.
+Config lives in `talos/templates/controlplane.yaml`. Apply via `make apply-cps`
+(routes to `talosctl apply-config -f nodes/bootstrap/cp-{1,2,3}.yaml --mode auto`).
 Hot-reload, no reboot.
 
 ## BW SM secrets

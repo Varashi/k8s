@@ -14,8 +14,9 @@ talos/values.local.yaml
 
 # Full rendered machine configs (embed PKI) — produced by talm template --full
 # Talos rejects partial guestinfo configs (cluster block + CA required), so
-# nodes/bootstrap/*.yaml now holds full renders consumed by tofu guestinfo.
-# nodes/values/ and nodes/patches/ ARE committed.
+# nodes/bootstrap/*.yaml holds full renders consumed by tofu guestinfo.
+# Day-2 stubs (talos/nodes/<name>.yaml) are also generated from templates via
+# `make render`; only talos/nodes/values/ is committed.
 talos/nodes/cp-*.yaml
 talos/nodes/worker-*.yaml
 talos/nodes/bootstrap/*.yaml

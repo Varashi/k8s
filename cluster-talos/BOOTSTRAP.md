@@ -776,18 +776,19 @@ kubectl get nodes -w
 # 4. Hot-add storage NIC (NIC2).
 TF_VAR_worker_count=3 make apply
 
-# 5. Apply the day-2 patch to configure storage NIC.
+# 5. Re-render day-2 stubs + apply to configure storage NIC live.
 cd ../talos
-make apply NODE=nodes/patches/worker-3.yaml
+make render
+make apply NODE=nodes/worker-3.yaml
 ```
 
 Once worker-3 is stable, bump the default in `tofu/variables.tf` to `3` and commit
 so future `tofu apply` without the env var won't destroy it.
 
 For a new worker that isn't yet declared: first add an entry to `worker_nodes` in
-`tofu/variables.tf`, create `talos/nodes/values/worker-N.yaml` and
-`talos/nodes/patches/worker-N.yaml` (copy from an existing worker and adjust IPs),
-then follow the steps above.
+`tofu/variables.tf`, create `talos/nodes/values/worker-N.yaml` (copy from an
+existing worker and adjust IPs), then `make render` regenerates the day-2 stub
+(`talos/nodes/worker-N.yaml`) + bootstrap config automatically.
 
 **Heterogeneous worker classes** (GPU, storage) should get their own
 `vsphere_virtual_machine "worker_<class>"` resource block with its own map + count
