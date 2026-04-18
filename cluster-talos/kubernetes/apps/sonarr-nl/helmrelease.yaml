@@ -72,9 +72,3 @@ spec:
         path: /mnt/DATA/backup/sonarr-nl
         globalMounts:
           - path: /backup
-      ssd:
-        type: nfs
-        server: skw-truenas-data.${SECRET_DOMAIN}
-        path: /mnt/SSD
-        globalMounts:
-          - path: /mnt/skw-truenas-ssd

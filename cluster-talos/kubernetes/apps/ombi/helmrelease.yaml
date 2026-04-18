@@ -76,9 +76,3 @@ spec:
         existingClaim: ombi-config
         globalMounts:
           - path: /config
-      media:
-        type: nfs
-        server: skw-truenas-data.${SECRET_DOMAIN}
-        path: /mnt/DATA/mediapool
-        globalMounts:
-          - path: /mnt/skw-truenas-data
