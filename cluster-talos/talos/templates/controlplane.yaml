@@ -61,6 +61,9 @@ cluster:
       {{- range .Values.cluster.apiCertSANs }}
       - {{ . }}
       {{- end }}
+    extraArgs:
+      default-not-ready-toleration-seconds: "120"
+      default-unreachable-toleration-seconds: "120"
   network:
     cni:
       name: none
@@ -73,6 +76,7 @@ cluster:
   controllerManager:
     extraArgs:
       bind-address: 0.0.0.0
+      attach-detach-reconcile-sync-period: 15s
   scheduler:
     extraArgs:
       bind-address: 0.0.0.0
