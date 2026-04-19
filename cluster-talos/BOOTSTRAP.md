@@ -513,11 +513,7 @@ kubectl create secret generic cloudflare-api-token \
 kubectl create secret generic cluster-vars \
   --namespace flux-system \
   --from-literal=SECRET_DOMAIN=<base-domain> \
-  --from-literal=SECRET_ACME_EMAIL=<letsencrypt-contact-email> \
-  --from-literal=SECRET_EXTERNAL_DNS_KERBEROS_REALM=<AD-realm-uppercase> \
-  --from-literal=SECRET_EXTERNAL_DNS_KDC_1=<dc1-ip> \
-  --from-literal=SECRET_EXTERNAL_DNS_KDC_2=<dc2-ip> \
-  --from-literal=SECRET_NFS_HOST=<nfs-server-shortname>
+  --from-literal=SECRET_ACME_EMAIL=<letsencrypt-contact-email>
 ```
 
 vSphere CCM + CSI credentials are fetched from Bitwarden SM by ExternalSecret — no
