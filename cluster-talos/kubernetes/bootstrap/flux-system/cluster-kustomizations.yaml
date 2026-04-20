@@ -5,38 +5,6 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure-flux-operator
-  namespace: flux-system
-spec:
-  interval: 1h
-  path: ./cluster-talos/kubernetes/infrastructure/controllers/flux-operator
-  prune: true
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  wait: true
-  timeout: 5m
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: infrastructure-flux-instance
-  namespace: flux-system
-spec:
-  interval: 1h
-  dependsOn:
-    - name: infrastructure-flux-operator
-  path: ./cluster-talos/kubernetes/infrastructure/controllers/flux-instance
-  prune: true
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  wait: true
-  timeout: 10m
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
   name: flux-repositories
   namespace: flux-system
 spec:
