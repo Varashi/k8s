@@ -23,7 +23,8 @@ Declarative K10 install + profiles + policies. All credentials via ESO ← Bitwa
 - `SECRET_EXTERNAL_DNS_KERBEROS_PASSWORD` — reused as LDAPS bindPW
 - `SECRET_KASTEN_MIGRATION_TOKEN` — export receiveString (migrated from RKE2 Kasten)
 - `SECRET_KASTEN_DR_PASSPHRASE` — DR encryption passphrase
-- `SECRET_KASTEN_TALOS_CLUSTER_ID` = `4747fdfe-cd2b-4eea-acac-52e03d32de7d` (= kube-system ns UID) — required at DR restore
+- `SECRET_KASTEN_TALOS_CLUSTER_ID` = kube-system ns UID — accepted by `k10tools restore --cluster-id` (CLI-based DR restore)
+- `SECRET_KASTEN_TALOS_K10_MIGRATION_UUID` = K10-internal cluster UUID embedded in B2 paths `k10/<uuid>/migration/...`. **This is the one the K10 dashboard's "DR restore" form asks for** (labelled "Cluster ID" but actually the K10 migration UUID, not the k8s cluster UID). Generated at first K10 install, stored in the catalog; comes back automatically once the catalog is restored.
 
 Substvars (via `kasten-substvars` ES):
 - `SECRET_LDAP_BASE_DN`, `SECRET_LDAP_BIND_DN`, `SECRET_KASTEN_ADMIN_USER`, `SECRET_AD_CA_PEM_B64`, `SECRET_KASTEN_MIGRATION_TOKEN`
@@ -126,19 +127,23 @@ Frequency `@daily` + retention `daily: 3`. Hourly frequency + daily retention is
 
 ## DR restore (target cluster)
 
+Two IDs at play — don't confuse them:
+- **`SECRET_KASTEN_TALOS_CLUSTER_ID`** (= kube-system ns UID) — passed to `k10tools restore --cluster-id`.
+- **`SECRET_KASTEN_TALOS_K10_MIGRATION_UUID`** (= K10-internal cluster UUID) — what the **dashboard DR restore form** expects (field is labelled "Cluster ID" but the B2 paths are keyed by this UUID). Always kept in sync with B2 paths `k10/<uuid>/migration/...`.
+
 1. Install K10 chart with equivalent values (same `dashboardURL`, same B2 profile definition).
 2. Materialize `k10-dr-secret` (key = `key`) containing `SECRET_KASTEN_DR_PASSPHRASE`.
-3. Materialize B2 credentials secret + `backblaze-b2` profile.
-4. Run import:
-
+3. Materialize B2 credentials secret + `backblaze` profile.
+4. Restore via dashboard (preferred — validated 2026-04-20 after cascade-delete recovery):
+   - DR Restore form → supply `SECRET_KASTEN_TALOS_K10_MIGRATION_UUID` + `SECRET_KASTEN_DR_PASSPHRASE` + `backblaze` profile.
+5. …or CLI fallback:
    ```
    k10tools restore --from-backup \
-     --cluster-id 4747fdfe-cd2b-4eea-acac-52e03d32de7d \
-     --profile backblaze-b2 \
+     --cluster-id $SECRET_KASTEN_TALOS_CLUSTER_ID \
+     --profile backblaze \
      --passphrase-file /path/to/passphrase
    ```
-
-5. Catalog imports → RestorePoints, Policies, Profiles reappear; app PVCs restorable from B2 exports.
+6. Catalog imports → RestorePoints, Policies, Profiles reappear; app PVCs restorable from B2 exports.
 
 ## Operational gotchas
 
