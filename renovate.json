@@ -61,6 +61,13 @@
       "matchUpdateTypes": ["major"],
       "matchDepNames": ["external-secrets", "netbox", "prometheus"],
       "groupName": null
+    },
+    {
+      "description": "LSIO images use 4-part tags with git-hash and -lsNNN suffix; default docker versioning can't parse",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/linuxserver/**"],
+      "versioning": "loose",
+      "allowedVersions": "/^\\d+\\.\\d+\\.\\d+(\\.\\d+)?(-[a-z0-9]+)*-ls\\d+$/"
     }
   ]
 }
