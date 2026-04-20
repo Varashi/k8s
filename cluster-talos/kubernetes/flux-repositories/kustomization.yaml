@@ -21,3 +21,4 @@ resources:
   - postfix-relay.yaml
   - descheduler.yaml
   - stakater.yaml
+  - fluent.yaml
