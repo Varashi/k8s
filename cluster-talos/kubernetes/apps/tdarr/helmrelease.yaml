@@ -129,7 +129,7 @@ spec:
       cache:
         type: nfs
         server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
-        path: /mnt/SSD/tdarrcache
+        path: /mnt/SSD/mediapool/tdarrcache
         globalMounts:
           - path: /cache
       media:

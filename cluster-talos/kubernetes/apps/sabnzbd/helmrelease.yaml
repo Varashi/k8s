@@ -92,7 +92,7 @@ spec:
       download:
         type: nfs
         server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
-        path: /mnt/SSD/downloads_sabnzbd
+        path: /mnt/SSD/mediapool/downloads_sabnzbd
         globalMounts:
           - path: /downloads
       backup:

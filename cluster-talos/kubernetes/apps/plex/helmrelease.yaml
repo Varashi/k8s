@@ -98,7 +98,7 @@ spec:
       transcode:
         type: nfs
         server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
-        path: /mnt/SSD/plextranscode-prod
+        path: /mnt/SSD/mediapool/plextranscode
         advancedMounts:
           plex:
             app:
