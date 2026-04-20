@@ -126,7 +126,22 @@ spec:
         operator: Exists
         effect: NoSchedule
     worker:
-      affinity: *noGpu
+      # Pin to same node as main netbox pod — shared RWO PVCs (media/reports/
+      # scripts) on vsan can't attach across nodes, causing Multi-Attach errors.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: DoesNotExist
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: netbox
+                  app.kubernetes.io/component: netbox
+              topologyKey: kubernetes.io/hostname
       tolerations: *uninitTol
     housekeeping:
       # Pin to same node as main netbox pod — shared RWO PVCs (media/reports/
