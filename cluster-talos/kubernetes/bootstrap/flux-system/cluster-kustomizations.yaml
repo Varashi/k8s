@@ -269,7 +269,11 @@ spec:
     - name: infrastructure-controllers
     - name: infrastructure-configs
   path: ./cluster-talos/kubernetes/infrastructure/longhorn
-  prune: true
+  # prune=false: Longhorn holds stateful replica data — accidental prune
+  # (path typo, kustomize build error) MUST NOT cascade-delete the CRs,
+  # as that triggers orphan controller and wipes replicas on disk.
+  # Removing a Longhorn manifest from git = remove it via kubectl manually.
+  prune: false
   sourceRef:
     kind: GitRepository
     name: flux-system
