@@ -20,3 +20,4 @@ resources:
   - prometheus-community.yaml
   - postfix-relay.yaml
   - descheduler.yaml
+  - stakater.yaml
