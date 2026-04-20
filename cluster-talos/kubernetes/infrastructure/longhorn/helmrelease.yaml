@@ -56,7 +56,7 @@ spec:
     persistence:
       # vsan stays cluster default; Longhorn is opt-in via StorageClass.
       defaultClass: false
-      defaultClassReplicaCount: 2
+      defaultClassReplicaCount: 3
       reclaimPolicy: Retain
       defaultDataLocality: best-effort
       defaultFsType: ext4
