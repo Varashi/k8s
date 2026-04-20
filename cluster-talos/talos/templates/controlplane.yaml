@@ -52,6 +52,9 @@ machine:
         - os:etcd:backup
       allowedKubernetesNamespaces:
         - etcd-backup
+  udev:
+    rules:
+      - SUBSYSTEM=="net", ACTION=="add", DRIVERS=="vmxnet3", RUN+="/sbin/ethtool -G %k rx 4096 rx-mini 2048 rx-jumbo 4096 tx 4096"
 cluster:
   controlPlane:
     endpoint: {{ .Values.cluster.endpoint }}
