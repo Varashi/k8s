@@ -52,9 +52,6 @@ machine:
         - os:etcd:backup
       allowedKubernetesNamespaces:
         - etcd-backup
-  udev:
-    rules:
-      - SUBSYSTEM=="net", ACTION=="add", DRIVERS=="vmxnet3", RUN+="/sbin/ethtool -G %k rx 4096 rx-mini 2048 rx-jumbo 4096 tx 4096"
 cluster:
   controlPlane:
     endpoint: {{ .Values.cluster.endpoint }}
@@ -87,3 +84,23 @@ cluster:
 apiVersion: v1alpha1
 kind: HostnameConfig
 hostname: {{ if .Values.hostname }}{{ .Values.hostname }}{{ else }}{{ include "talm.discovered.hostname" . }}{{ end }}
+---
+# vmxnet3 RX ring max'd to prevent drops at high NNTP stream counts (150+).
+# Ship a doc per plausible NIC name; Talos only applies to interfaces present.
+apiVersion: v1alpha1
+kind: EthernetConfig
+name: eth0
+rings:
+  rx: 4096
+  rx-mini: 2048
+  rx-jumbo: 4096
+  tx: 4096
+---
+apiVersion: v1alpha1
+kind: EthernetConfig
+name: ens192
+rings:
+  rx: 4096
+  rx-mini: 2048
+  rx-jumbo: 4096
+  tx: 4096

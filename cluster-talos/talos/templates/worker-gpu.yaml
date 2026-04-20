@@ -91,9 +91,6 @@ machine:
     hostDNS:
       enabled: true
       forwardKubeDNSToHost: false
-  udev:
-    rules:
-      - SUBSYSTEM=="net", ACTION=="add", DRIVERS=="vmxnet3", RUN+="/sbin/ethtool -G %k rx 4096 rx-mini 2048 rx-jumbo 4096 tx 4096"
   kernel:
     modules:
       - name: iscsi_tcp
@@ -121,3 +118,41 @@ provisioning:
   grow: true       # expand existing partition to fill available disk
 filesystem:
   type: ext4
+---
+# vmxnet3 RX ring max'd to prevent drops at high NNTP stream counts (150+).
+# Ship a doc per plausible NIC name; Talos only applies to interfaces present.
+apiVersion: v1alpha1
+kind: EthernetConfig
+name: ens192
+rings:
+  rx: 4096
+  rx-mini: 2048
+  rx-jumbo: 4096
+  tx: 4096
+---
+apiVersion: v1alpha1
+kind: EthernetConfig
+name: ens224
+rings:
+  rx: 4096
+  rx-mini: 2048
+  rx-jumbo: 4096
+  tx: 4096
+---
+apiVersion: v1alpha1
+kind: EthernetConfig
+name: eth0
+rings:
+  rx: 4096
+  rx-mini: 2048
+  rx-jumbo: 4096
+  tx: 4096
+---
+apiVersion: v1alpha1
+kind: EthernetConfig
+name: eth1
+rings:
+  rx: 4096
+  rx-mini: 2048
+  rx-jumbo: 4096
+  tx: 4096
