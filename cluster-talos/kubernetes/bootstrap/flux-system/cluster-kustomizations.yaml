@@ -1,6 +1,5 @@
 # All cluster-level Flux Kustomizations — applied as part of the flux-system bootstrap
 # so they are self-managed from the moment flux bootstrap completes.
-# Sources of truth: flux/cluster/ (kept for reference); canonical definitions are here.
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
