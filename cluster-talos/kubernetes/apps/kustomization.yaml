@@ -10,6 +10,7 @@ resources:
   - netbox
   - neutarr
   - nzbget
+  - nzbget-test
   - ocis
   - ombi
   - plex
