@@ -3,14 +3,9 @@ kind: Kustomization
 resources:
   - arr
   - downloaders
-  - clusterplex
+  - media
   - guacamole
   - netbox
   - ocis
-  - ombi
-  - plex
   - postfix-relay
   - rustdesk
-  - tautulli
-  - tdarr
-  - tracearr
