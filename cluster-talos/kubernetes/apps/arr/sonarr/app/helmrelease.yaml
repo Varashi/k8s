@@ -55,13 +55,6 @@ spec:
     service:
       app:
         controller: sonarr
-        annotations:
-          gethomepage.dev/enabled: "true"
-          gethomepage.dev/name: Sonarr
-          gethomepage.dev/description: TV shows
-          gethomepage.dev/group: Arr
-          gethomepage.dev/icon: sonarr.png
-          gethomepage.dev/href: https://sonarr.${SECRET_DOMAIN}
         ports:
           http:
             port: 8989
@@ -72,6 +65,12 @@ spec:
             conditions: ["[STATUS] < 500"]
             interval: 60s
             group: arr
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Sonarr
+          gethomepage.dev/description: TV shows
+          gethomepage.dev/group: Arr
+          gethomepage.dev/icon: sonarr.png
+          gethomepage.dev/href: https://sonarr.${SECRET_DOMAIN}
         hostnames:
           - sonarr.${SECRET_DOMAIN}
         parentRefs:

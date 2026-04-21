@@ -104,6 +104,12 @@ spec:
             port: 6379
       app:
         controller: tracearr
+        ports:
+          http:
+            port: 3000
+
+    route:
+      app:
         annotations:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/name: Tracearr
@@ -111,12 +117,6 @@ spec:
           gethomepage.dev/group: Media
           gethomepage.dev/icon: mdi-map-marker-path
           gethomepage.dev/href: https://tracearr.${SECRET_DOMAIN}
-        ports:
-          http:
-            port: 3000
-
-    route:
-      app:
         hostnames:
           - tracearr.${SECRET_DOMAIN}
         parentRefs:

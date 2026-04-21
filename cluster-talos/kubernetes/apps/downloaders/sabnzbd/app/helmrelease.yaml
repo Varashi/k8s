@@ -55,13 +55,6 @@ spec:
     service:
       app:
         controller: sabnzbd
-        annotations:
-          gethomepage.dev/enabled: "true"
-          gethomepage.dev/name: SABnzbd
-          gethomepage.dev/description: Usenet downloader
-          gethomepage.dev/group: Downloaders
-          gethomepage.dev/icon: sabnzbd.png
-          gethomepage.dev/href: https://sabnzbd.${SECRET_DOMAIN}
         ports:
           http:
             port: 8080
@@ -72,6 +65,12 @@ spec:
             conditions: ["[STATUS] < 500"]
             interval: 60s
             group: arr
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: SABnzbd
+          gethomepage.dev/description: Usenet downloader
+          gethomepage.dev/group: Downloaders
+          gethomepage.dev/icon: sabnzbd.png
+          gethomepage.dev/href: https://sabnzbd.${SECRET_DOMAIN}
         hostnames:
           - sabnzbd.${SECRET_DOMAIN}
         parentRefs:

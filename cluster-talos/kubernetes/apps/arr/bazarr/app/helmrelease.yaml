@@ -55,13 +55,6 @@ spec:
     service:
       app:
         controller: bazarr
-        annotations:
-          gethomepage.dev/enabled: "true"
-          gethomepage.dev/name: Bazarr
-          gethomepage.dev/description: Subtitles
-          gethomepage.dev/group: Arr
-          gethomepage.dev/icon: bazarr.png
-          gethomepage.dev/href: https://bazarr.${SECRET_DOMAIN}
         ports:
           http:
             port: 6767
@@ -72,6 +65,12 @@ spec:
             conditions: ["[STATUS] < 500"]
             interval: 60s
             group: arr
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Bazarr
+          gethomepage.dev/description: Subtitles
+          gethomepage.dev/group: Arr
+          gethomepage.dev/icon: bazarr.png
+          gethomepage.dev/href: https://bazarr.${SECRET_DOMAIN}
         hostnames:
           - bazarr.${SECRET_DOMAIN}
         parentRefs:

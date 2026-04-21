@@ -51,13 +51,6 @@ spec:
     service:
       app:
         controller: prowlarr
-        annotations:
-          gethomepage.dev/enabled: "true"
-          gethomepage.dev/name: Prowlarr
-          gethomepage.dev/description: Indexer manager
-          gethomepage.dev/group: Arr
-          gethomepage.dev/icon: prowlarr.png
-          gethomepage.dev/href: https://prowlarr.${SECRET_DOMAIN}
         ports:
           http:
             port: 9696
@@ -68,6 +61,12 @@ spec:
             conditions: ["[STATUS] < 500"]
             interval: 60s
             group: arr
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Prowlarr
+          gethomepage.dev/description: Indexer manager
+          gethomepage.dev/group: Arr
+          gethomepage.dev/icon: prowlarr.png
+          gethomepage.dev/href: https://prowlarr.${SECRET_DOMAIN}
         hostnames:
           - prowlarr.${SECRET_DOMAIN}
         parentRefs:

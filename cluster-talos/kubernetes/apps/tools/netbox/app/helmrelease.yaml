@@ -112,6 +112,12 @@ spec:
     service:
       type: ClusterIP
       port: 80
+
+    ingress:
+      enabled: false
+
+    httpRoute:
+      enabled: true
       annotations:
         gethomepage.dev/enabled: "true"
         gethomepage.dev/name: Netbox
@@ -119,12 +125,6 @@ spec:
         gethomepage.dev/group: Tools
         gethomepage.dev/icon: netbox.png
         gethomepage.dev/href: https://ipam.${SECRET_DOMAIN}
-
-    ingress:
-      enabled: false
-
-    httpRoute:
-      enabled: true
       parentRefs:
         - name: main
           namespace: cilium
