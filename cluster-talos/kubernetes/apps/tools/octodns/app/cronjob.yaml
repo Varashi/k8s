@@ -18,8 +18,9 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: octodns
-              image: ghcr.io/varashi/octodns:latest
-              imagePullPolicy: Always
+              # renovate: datasource=docker depName=ghcr.io/varashi/octodns versioning=docker
+              image: ghcr.io/varashi/octodns:latest@sha256:f15a85f08f3f6df099c551c0e79e359865b8876273fa5124b671723ffa89efe3
+              imagePullPolicy: IfNotPresent
               args:
                 - octodns-sync-filtered
                 - --config-file
