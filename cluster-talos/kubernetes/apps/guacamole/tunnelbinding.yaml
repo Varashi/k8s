@@ -4,10 +4,10 @@ metadata:
   name: guacamole
   namespace: guacamole
 subjects:
-  - name: guacamole-svc
+  - name: guacamole-app
     spec:
       fqdn: guac.${SECRET_DOMAIN}
-      target: http://guacamole-svc.guacamole.svc.cluster.local:8080
+      target: http://guacamole-app.guacamole.svc.cluster.local:8080
       protocol: http
 tunnelRef:
   kind: ClusterTunnel
