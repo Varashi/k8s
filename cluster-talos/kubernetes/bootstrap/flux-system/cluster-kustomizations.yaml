@@ -43,7 +43,10 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  wait: true
+  # wait=false: parent just applies child Kustomization CRs; children with
+  # cross-tier deps (etcd-backup → infrastructure-configs) would otherwise
+  # deadlock the controllers→configs chain that runs after this parent.
+  wait: false
   timeout: 10m
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
