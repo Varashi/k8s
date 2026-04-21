@@ -69,6 +69,13 @@ spec:
     service:
       app:
         controller: tautulli
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Tautulli
+          gethomepage.dev/description: Plex analytics
+          gethomepage.dev/group: Media
+          gethomepage.dev/icon: tautulli.png
+          gethomepage.dev/href: https://tautulli.${SECRET_DOMAIN}
         ports:
           http:
             port: 8181
