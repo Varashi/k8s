@@ -10,3 +10,5 @@ resources:
   - configs/ks.yaml
   - external-dns/external-dns/ks.yaml
   - external-dns/external-dns-cloudflare/ks.yaml
+  - cloudflare-operator-system/cloudflare-operator/ks.yaml
+  - cloudflare-operator-system/cloudflare-tunnel/ks.yaml

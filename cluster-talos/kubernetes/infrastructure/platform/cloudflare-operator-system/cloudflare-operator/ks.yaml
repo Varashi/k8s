@@ -1,0 +1,35 @@
+---
+# cloudflare-operator is a GitRepository OCI-style chart — rendered from
+# the upstream repo's ./config/default kustomize dir (vendored via the
+# cloudflare-operator GitRepository source in flux-repositories/).
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cloudflare-operator
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: cert-manager
+  path: ./config/default
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
+  sourceRef:
+    kind: GitRepository
+    name: cloudflare-operator
+  wait: true
+  timeout: 5m
+  patches:
+    - target:
+        kind: Deployment
+        name: cloudflare-operator-controller-manager
+      patch: |
+        - op: add
+          path: /spec/template/spec/tolerations
+          value:
+            - key: node.cloudprovider.kubernetes.io/uninitialized
+              operator: Exists
+              effect: NoSchedule
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
