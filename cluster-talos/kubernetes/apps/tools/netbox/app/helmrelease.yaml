@@ -37,6 +37,12 @@ spec:
     plugins:
       - netbox_dns
 
+    # AD DNS hosts underscore in hostnames (e.g. slzb-06-zigbee_bluetooth-*).
+    # Plugin rejects per RFC1035 by default; tolerate so octodns mirror accepts.
+    pluginsConfig:
+      netbox_dns:
+        tolerate_underscores_in_labels: true
+
     # Disable bundled Postgres — use external CNPG cluster
     postgresql:
       enabled: false
