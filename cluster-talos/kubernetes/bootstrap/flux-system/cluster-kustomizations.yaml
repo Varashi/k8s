@@ -72,46 +72,6 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure-external-dns
-  namespace: flux-system
-spec:
-  interval: 1h
-  dependsOn:
-    - name: configs
-  path: ./cluster-talos/kubernetes/infrastructure/external-dns
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  postBuild:
-    substituteFrom:
-      - kind: Secret
-        name: cluster-vars
-      - kind: Secret
-        name: externaldns-substvars
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: infrastructure-external-dns-cloudflare
-  namespace: flux-system
-spec:
-  interval: 1h
-  dependsOn:
-    - name: configs
-  path: ./cluster-talos/kubernetes/infrastructure/external-dns-cloudflare
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  postBuild:
-    substituteFrom:
-      - kind: Secret
-        name: cluster-vars
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
   name: infrastructure-renovate
   namespace: flux-system
 spec:

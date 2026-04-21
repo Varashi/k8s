@@ -8,3 +8,5 @@ resources:
   - cnpg-system/ks.yaml
   - monitoring/ks.yaml
   - configs/ks.yaml
+  - external-dns/external-dns/ks.yaml
+  - external-dns/external-dns-cloudflare/ks.yaml
