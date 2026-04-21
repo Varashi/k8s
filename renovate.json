@@ -35,6 +35,16 @@
       "datasourceTemplate": "helm",
       "registryUrlTemplate": "https://helm.cilium.io",
       "depNameTemplate": "cilium"
+    },
+    {
+      "customType": "regex",
+      "description": "Pinned ARG versions in custom image Dockerfiles",
+      "managerFilePatterns": [
+        "/^cluster-talos/kubernetes/apps/.+/image/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>[a-z-]+)\\s+depName=(?<depName>[^\\s]+)(?:\\s+versioning=(?<versioning>[a-z-]+))?\\s*\\nARG\\s+[A-Z0-9_]+=(?<currentValue>[^\\s\"]+)"
+      ]
     }
   ],
   "packageRules": [

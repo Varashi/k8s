@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: octodns-config
+  namespace: octodns
+data:
+  config.yaml: |
+    providers:
+      # Source: AD DNS (authoritative) via AXFR zone transfer.
+      # skw-dc.boeye.net must allow transfers from the cluster pod CIDR.
+      ad:
+        class: octodns_bind.AxfrSource
+        host: skw-dc.boeye.net
+        port: 53
+
+      # Target: NetBox DNS plugin — read-only mirror.
+      netbox:
+        class: octodns_netbox_dns.NetBoxDNSProvider
+        url: https://ipam.boeye.net/api
+        token: env/NETBOX_API_TOKEN
+        view: null
+        replace_duplicates: true
+        make_absolute: true
+        disable_ptr: true
+
+    zones:
+      boeye.net.:
+        sources: [ad]
+        targets: [netbox]

@@ -1,0 +1,24 @@
+# renovate: datasource=docker depName=docker.io/library/python
+ARG PYTHON_VERSION=3.13-slim
+FROM docker.io/library/python:${PYTHON_VERSION}
+
+# renovate: datasource=pypi depName=octodns
+ARG OCTODNS_VERSION=1.16.0
+# renovate: datasource=pypi depName=octodns-bind
+ARG OCTODNS_BIND_VERSION=1.1.0
+# renovate: datasource=pypi depName=octodns-netbox-dns
+ARG OCTODNS_NETBOX_DNS_VERSION=0.3.16
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends tini ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && pip install --no-cache-dir \
+      "octodns==${OCTODNS_VERSION}" \
+      "octodns-bind==${OCTODNS_BIND_VERSION}" \
+      "octodns-netbox-dns==${OCTODNS_NETBOX_DNS_VERSION}" \
+ && useradd -u 1000 -m -s /bin/bash octodns
+
+USER 1000:1000
+WORKDIR /home/octodns
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["octodns-sync", "--config-file", "/etc/octodns/config.yaml"]

@@ -1,0 +1,50 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: octodns-sync
+  namespace: octodns
+spec:
+  schedule: "*/15 * * * *"
+  timeZone: Europe/Brussels
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: octodns
+              image: ghcr.io/varashi/octodns:latest
+              imagePullPolicy: IfNotPresent
+              args:
+                - octodns-sync
+                - --config-file
+                - /etc/octodns/config.yaml
+                - --doit
+              envFrom:
+                - secretRef:
+                    name: octodns-netbox
+              volumeMounts:
+                - name: config
+                  mountPath: /etc/octodns
+                  readOnly: true
+              securityContext:
+                runAsUser: 1000
+                runAsGroup: 1000
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+                seccompProfile:
+                  type: RuntimeDefault
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 256Mi }
+          volumes:
+            - name: config
+              configMap:
+                name: octodns-config
