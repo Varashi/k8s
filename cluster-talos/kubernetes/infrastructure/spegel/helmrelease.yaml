@@ -1,0 +1,37 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: spegel
+  namespace: spegel
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: spegel
+  interval: 1h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      strategy: rollback
+      retries: 3
+  values:
+    # Talos places CRI registry hosts.toml files here; Spegel writes its own.
+    spegel:
+      containerdRegistryConfigPath: /etc/cri/conf.d/hosts
+    service:
+      registry:
+        hostPort: 30020
+    # Run on every node (CP NoSchedule + GPU worker PreferNoSchedule).
+    tolerations:
+      - operator: Exists
+    resources:
+      requests:
+        cpu: 50m
+        memory: 50Mi
+      limits:
+        memory: 200Mi
+    serviceMonitor:
+      enabled: false
