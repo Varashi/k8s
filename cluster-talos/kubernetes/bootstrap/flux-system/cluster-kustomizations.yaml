@@ -34,17 +34,17 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure-crds
+  name: infrastructure-kube-system
   namespace: flux-system
 spec:
   interval: 1h
-  path: ./cluster-talos/kubernetes/infrastructure/controllers/gateway-api
+  path: ./cluster-talos/kubernetes/infrastructure/kube-system
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
   wait: true
-  timeout: 5m
+  timeout: 10m
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -54,7 +54,7 @@ metadata:
 spec:
   interval: 1h
   dependsOn:
-    - name: infrastructure-crds
+    - name: infrastructure-kube-system
   path: ./cluster-talos/kubernetes/infrastructure/controllers
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
@@ -243,40 +243,6 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure-intel-gpu
-  namespace: flux-system
-spec:
-  interval: 1h
-  dependsOn:
-    - name: infrastructure-controllers
-  path: ./cluster-talos/kubernetes/infrastructure/intel-gpu
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  wait: true
-  timeout: 10m
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: infrastructure-intel-gpu-config
-  namespace: flux-system
-spec:
-  interval: 1h
-  dependsOn:
-    - name: infrastructure-intel-gpu
-  path: ./cluster-talos/kubernetes/infrastructure/intel-gpu-config
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  wait: true
-  timeout: 5m
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
   name: infrastructure-longhorn
   namespace: flux-system
 spec:
@@ -303,23 +269,6 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure-etcd-backup
-  namespace: flux-system
-spec:
-  interval: 1h
-  dependsOn:
-    - name: infrastructure-configs
-  path: ./cluster-talos/kubernetes/infrastructure/etcd-backup
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  wait: true
-  timeout: 5m
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
   name: infrastructure-tanzu-logging
   namespace: flux-system
 spec:
@@ -342,23 +291,6 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure-reloader
-  namespace: flux-system
-spec:
-  interval: 1h
-  dependsOn:
-    - name: infrastructure-controllers
-  path: ./cluster-talos/kubernetes/infrastructure/reloader
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  wait: true
-  timeout: 5m
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
   name: infrastructure-spegel
   namespace: flux-system
 spec:
@@ -370,28 +302,6 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  wait: true
-  timeout: 5m
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: infrastructure-gpu-node-vsphere-maintenance
-  namespace: flux-system
-spec:
-  interval: 1h
-  dependsOn:
-    - name: infrastructure-controllers
-    - name: infrastructure-configs
-  path: ./cluster-talos/kubernetes/infrastructure/gpu-node-vsphere-maintenance
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  postBuild:
-    substituteFrom:
-      - kind: Secret
-        name: cluster-vars
   wait: true
   timeout: 5m
 ---

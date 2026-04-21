@@ -1,0 +1,15 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: reloader
+  namespace: flux-system
+spec:
+  interval: 1h
+  path: ./cluster-talos/kubernetes/infrastructure/kube-system/reloader/app
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+  timeout: 5m

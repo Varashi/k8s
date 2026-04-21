@@ -1,0 +1,21 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: gpu-node-vsphere-maintenance
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: infrastructure-configs
+  path: ./cluster-talos/kubernetes/infrastructure/kube-system/gpu-node-vsphere-maintenance/app
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
+  wait: true
+  timeout: 5m
