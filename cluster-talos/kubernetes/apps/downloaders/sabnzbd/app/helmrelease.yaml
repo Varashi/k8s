@@ -69,6 +69,7 @@ spec:
           gethomepage.dev/name: SABnzbd
           gethomepage.dev/description: Usenet downloader
           gethomepage.dev/group: Downloaders
+          gethomepage.dev/weight: "30"
           gethomepage.dev/icon: sabnzbd.png
           gethomepage.dev/href: https://sabnzbd.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: sabnzbd

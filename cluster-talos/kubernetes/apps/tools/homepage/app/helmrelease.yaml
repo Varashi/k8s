@@ -113,17 +113,17 @@ spec:
             headerStyle: clean
             layout:
               Media:
-                style: row
-                columns: 4
+                style: column
+                columns: 1
               Arr:
-                style: row
-                columns: 4
+                style: column
+                columns: 1
               Downloaders:
-                style: row
-                columns: 4
+                style: column
+                columns: 1
               Tools:
-                style: row
-                columns: 4
+                style: column
+                columns: 1
             kubernetes:
               mode: cluster
               gateway: true

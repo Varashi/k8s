@@ -115,6 +115,7 @@ spec:
           gethomepage.dev/name: Tracearr
           gethomepage.dev/description: Plex Analytics
           gethomepage.dev/group: Media
+          gethomepage.dev/weight: "20"
           gethomepage.dev/icon: mdi-map-marker-path
           gethomepage.dev/href: https://tracearr.${SECRET_DOMAIN}
         hostnames:

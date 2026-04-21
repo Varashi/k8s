@@ -61,6 +61,7 @@ spec:
           gethomepage.dev/name: Ombi
           gethomepage.dev/description: Plex requests
           gethomepage.dev/group: Media
+          gethomepage.dev/weight: "40"
           gethomepage.dev/icon: ombi.png
           gethomepage.dev/href: https://plexrequests.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: ombi

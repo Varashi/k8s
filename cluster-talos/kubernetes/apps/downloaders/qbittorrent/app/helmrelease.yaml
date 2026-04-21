@@ -91,6 +91,7 @@ spec:
           gethomepage.dev/name: qBittorrent
           gethomepage.dev/description: Torrent downloader
           gethomepage.dev/group: Downloaders
+          gethomepage.dev/weight: "20"
           gethomepage.dev/icon: qbittorrent.png
           gethomepage.dev/href: https://qbittorrent.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: qbittorrent

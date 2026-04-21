@@ -69,6 +69,7 @@ spec:
           gethomepage.dev/name: Bazarr
           gethomepage.dev/description: Subtitles
           gethomepage.dev/group: Arr
+          gethomepage.dev/weight: "70"
           gethomepage.dev/icon: bazarr.png
           gethomepage.dev/href: https://bazarr.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: bazarr

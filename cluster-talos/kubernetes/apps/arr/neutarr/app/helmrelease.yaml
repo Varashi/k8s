@@ -65,6 +65,7 @@ spec:
           gethomepage.dev/name: Neutarr
           gethomepage.dev/description: Missing/upgrade hunter
           gethomepage.dev/group: Arr
+          gethomepage.dev/weight: "50"
           gethomepage.dev/icon: mdi-neutron
           gethomepage.dev/href: https://neutarr.${SECRET_DOMAIN}
         hostnames:

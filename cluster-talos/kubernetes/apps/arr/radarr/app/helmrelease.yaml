@@ -69,6 +69,7 @@ spec:
           gethomepage.dev/name: Radarr
           gethomepage.dev/description: Movies
           gethomepage.dev/group: Arr
+          gethomepage.dev/weight: "30"
           gethomepage.dev/icon: radarr.png
           gethomepage.dev/href: https://radarr.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: radarr

@@ -69,6 +69,7 @@ spec:
           gethomepage.dev/name: Sonarr NL
           gethomepage.dev/description: TV shows (NL)
           gethomepage.dev/group: Arr
+          gethomepage.dev/weight: "20"
           gethomepage.dev/icon: sonarr.png
           gethomepage.dev/href: https://nlsonarr.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: sonarr

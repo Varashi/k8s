@@ -62,6 +62,7 @@ spec:
           gethomepage.dev/name: Autobrr
           gethomepage.dev/description: IRC announce bot
           gethomepage.dev/group: Arr
+          gethomepage.dev/weight: "60"
           gethomepage.dev/icon: autobrr.png
           gethomepage.dev/href: https://autobrr.${SECRET_DOMAIN}
         hostnames:

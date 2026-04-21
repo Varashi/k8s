@@ -65,6 +65,7 @@ spec:
           gethomepage.dev/name: Prowlarr
           gethomepage.dev/description: Indexer manager
           gethomepage.dev/group: Arr
+          gethomepage.dev/weight: "40"
           gethomepage.dev/icon: prowlarr.png
           gethomepage.dev/href: https://prowlarr.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: prowlarr

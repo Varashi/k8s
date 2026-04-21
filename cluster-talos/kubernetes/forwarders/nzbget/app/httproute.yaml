@@ -8,6 +8,7 @@ metadata:
     gethomepage.dev/name: NZBGet
     gethomepage.dev/description: Usenet downloader (TrueNAS)
     gethomepage.dev/group: Downloaders
+    gethomepage.dev/weight: "10"
     gethomepage.dev/icon: nzbget.png
     gethomepage.dev/href: https://nzbget.${SECRET_DOMAIN}
     gethomepage.dev/widget.type: nzbget

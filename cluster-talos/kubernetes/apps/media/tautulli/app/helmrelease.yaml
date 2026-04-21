@@ -79,6 +79,7 @@ spec:
           gethomepage.dev/name: Tautulli
           gethomepage.dev/description: Plex analytics
           gethomepage.dev/group: Media
+          gethomepage.dev/weight: "30"
           gethomepage.dev/icon: tautulli.png
           gethomepage.dev/href: https://tautulli.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: tautulli

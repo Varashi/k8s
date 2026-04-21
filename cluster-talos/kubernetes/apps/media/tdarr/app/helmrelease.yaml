@@ -108,6 +108,7 @@ spec:
           gethomepage.dev/name: Tdarr
           gethomepage.dev/description: Transcode orchestrator
           gethomepage.dev/group: Media
+          gethomepage.dev/weight: "50"
           gethomepage.dev/icon: tdarr.png
           gethomepage.dev/href: https://tdarr.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: tdarr
