@@ -11,7 +11,7 @@ See **[BOOTSTRAP.md](BOOTSTRAP.md)** for the full lifecycle guide (provision, bo
 | VM provisioning | OpenTofu + vSphere provider | Creates VMs on vSphere from Talos OVA; injects minimal bootstrap config via guestinfo |
 | CNI + BGP + Ingress | Cilium 1.19.x | Pod networking, BGP LB IP advertisement, Gateway API |
 | GitOps | FluxCD | Reconciles Kubernetes manifests from git |
-| CI | GitHub Actions: `flux-diff` + `renovate-validate` | PR-gated rendered-diff comment + Renovate config lint |
+| CI | GitHub Actions: `flux-diff` + `renovate-validate` + `lint` (yamlfmt) | PR-gated rendered-diff comment + Renovate config lint + YAML format check |
 | App secrets | ESO + Bitwarden Secrets Manager EU | Pulls secrets from Bitwarden into Kubernetes |
 | Internal PKI | cert-manager (self-signed CA) | TLS certs for internal cluster services |
 | Public TLS | cert-manager + Let's Encrypt (Cloudflare DNS-01) | TLS certs for internet-facing services |
