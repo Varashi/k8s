@@ -24,6 +24,7 @@ See **[BOOTSTRAP.md](BOOTSTRAP.md)** for the full lifecycle guide (provision, bo
 | Image mirror | Spegel DaemonSet | P2P pull-through cache across node containerds (wildcard mirror via `/etc/cri/conf.d/hosts/_default/hosts.toml`) |
 | GPU workloads | Intel GPU device plugin (+ NFD) | `gpu.intel.com/i915` on gpu-worker-*; ClusterPlex HW transcode |
 | Uptime / status page | Gatus (CNPG-backed) | Public dashboard at `status.boeye.net` — monitors ~30 internal + external endpoints |
+| Cluster upgrades | Tuppr (home-operations) | Talos + k8s rolling upgrades via CRs in `system-upgrade` ns; Renovate-driven version bumps |
 
 ## Cluster Spec
 
@@ -113,7 +114,8 @@ cluster-talos/
     │       ├── tanzu-system-logging/    # Fluent-Bit DaemonSet → VCF Operations for Logs (syslog rfc5424)
     │       ├── kasten-io/               # Kasten K10 (LDAPS to AD)
     │       ├── spegel/                  # P2P containerd image cache
-    │       └── renovate/                # Dependency update bot
+    │       ├── renovate/                # Dependency update bot
+    │       └── tuppr/                   # Talos + k8s rolling-upgrade controller
     ├── apps/                 # Workloads, nested by category; each app ships its own Flux KS
     │   ├── arr/             # sonarr, radarr, bazarr, prowlarr, autobrr, recyclarr, neutarr, sonarr-nl
     │   ├── downloaders/     # qbittorrent, sabnzbd
