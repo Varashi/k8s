@@ -294,7 +294,12 @@ spec:
           kubernetes.yaml: |
             mode: cluster
             gateway: true
-          custom.css: ""
+          custom.css: |
+            /* force last 2 top-level service groups (Network-SKW / Network-STA) full width */
+            #services > .services-group:nth-last-child(-n+2) {
+              flex-basis: 100% !important;
+              max-width: 100% !important;
+            }
           custom.js: ""
 
     persistence:
