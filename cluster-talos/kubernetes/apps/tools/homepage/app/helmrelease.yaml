@@ -128,7 +128,17 @@ spec:
               mode: cluster
               gateway: true
           services.yaml: |
-            []
+            - Downloaders:
+                - NZBGet:
+                    icon: nzbget.png
+                    href: https://nzbget.${SECRET_DOMAIN}
+                    description: Usenet downloader (TrueNAS)
+                    weight: 10
+                    widget:
+                      type: nzbget
+                      url: http://nzbget.nzbget.svc:6789
+                      username: varashi
+                      password: "{{HOMEPAGE_VAR_NZBGET}}"
           bookmarks.yaml: |
             - Infra:
                 - vCenter:
