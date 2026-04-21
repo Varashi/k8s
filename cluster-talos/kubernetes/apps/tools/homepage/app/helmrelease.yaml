@@ -29,6 +29,9 @@ spec:
               tag: v1.12.3
             env:
               HOMEPAGE_ALLOWED_HOSTS: home.${SECRET_DOMAIN}
+            envFrom:
+              - secretRef:
+                  name: homepage-widgets
             probes:
               liveness:
                 enabled: true

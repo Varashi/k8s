@@ -71,6 +71,9 @@ spec:
           gethomepage.dev/group: Arr
           gethomepage.dev/icon: sonarr.png
           gethomepage.dev/href: https://sonarr.${SECRET_DOMAIN}
+          gethomepage.dev/widget.type: sonarr
+          gethomepage.dev/widget.url: http://sonarr.sonarr.svc:8989
+          gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_SONARR}}"
         hostnames:
           - sonarr.${SECRET_DOMAIN}
         parentRefs:

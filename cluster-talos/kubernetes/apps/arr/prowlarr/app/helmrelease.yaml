@@ -67,6 +67,9 @@ spec:
           gethomepage.dev/group: Arr
           gethomepage.dev/icon: prowlarr.png
           gethomepage.dev/href: https://prowlarr.${SECRET_DOMAIN}
+          gethomepage.dev/widget.type: prowlarr
+          gethomepage.dev/widget.url: http://prowlarr.prowlarr.svc:9696
+          gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_PROWLARR}}"
         hostnames:
           - prowlarr.${SECRET_DOMAIN}
         parentRefs:

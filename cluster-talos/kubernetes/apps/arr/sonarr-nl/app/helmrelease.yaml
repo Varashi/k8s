@@ -71,6 +71,9 @@ spec:
           gethomepage.dev/group: Arr
           gethomepage.dev/icon: sonarr.png
           gethomepage.dev/href: https://nlsonarr.${SECRET_DOMAIN}
+          gethomepage.dev/widget.type: sonarr
+          gethomepage.dev/widget.url: http://sonarr-nl.sonarr-nl.svc:8989
+          gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_SONARR_NL}}"
         hostnames:
           - nlsonarr.${SECRET_DOMAIN}
         parentRefs:

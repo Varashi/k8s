@@ -93,6 +93,10 @@ spec:
           gethomepage.dev/group: Downloaders
           gethomepage.dev/icon: qbittorrent.png
           gethomepage.dev/href: https://qbittorrent.${SECRET_DOMAIN}
+          gethomepage.dev/widget.type: qbittorrent
+          gethomepage.dev/widget.url: http://qbittorrent-app.qbittorrent.svc:8080
+          gethomepage.dev/widget.username: homepage
+          gethomepage.dev/widget.password: homepage
         hostnames:
           - qbittorrent.${SECRET_DOMAIN}
         parentRefs:
