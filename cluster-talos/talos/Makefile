@@ -172,7 +172,9 @@ bootstrap-cilium:
 		--set ipv4NativeRoutingCIDR=10.244.0.0/16 \
 		--set bgpControlPlane.enabled=true \
 		--set gatewayAPI.enabled=true \
-		--set ipam.mode=kubernetes \
+		--set ipam.mode=cluster-pool \
+		--set ipam.operator.clusterPoolIPv4PodCIDRList='{10.244.0.0/16}' \
+		--set ipam.operator.clusterPoolIPv4MaskSize=24 \
 		--set loadBalancer.algorithm=maglev \
 		--set loadBalancer.mode=dsr \
 		--set bpf.masquerade=true \
