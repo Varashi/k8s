@@ -18,7 +18,10 @@ RUN apt-get update \
       "octodns-netbox-dns==${OCTODNS_NETBOX_DNS_VERSION}" \
  && useradd -u 1000 -m -s /bin/bash octodns
 
+COPY octodns-sync-filtered /usr/local/bin/octodns-sync-filtered
+RUN chmod +x /usr/local/bin/octodns-sync-filtered
+
 USER 1000:1000
 WORKDIR /home/octodns
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["octodns-sync", "--config-file", "/etc/octodns/config.yaml"]
+CMD ["octodns-sync-filtered", "--config-file", "/etc/octodns/config.yaml"]

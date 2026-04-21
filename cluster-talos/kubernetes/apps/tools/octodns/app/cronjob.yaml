@@ -21,7 +21,7 @@ spec:
               image: ghcr.io/varashi/octodns:latest
               imagePullPolicy: IfNotPresent
               args:
-                - octodns-sync
+                - octodns-sync-filtered
                 - --config-file
                 - /etc/octodns/config.yaml
                 - --doit

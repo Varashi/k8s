@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""
+Wrapper around octodns-sync that monkey-patches octodns_bind.AxfrPopulate
+to skip out-of-bailiwick records (e.g. AD DNS cached glue for delegated
+subdomains like wan.boeye.net → *.ns.cloudflare.com). Without this,
+AxfrSource fails during populate with "double-dot" ValidationError before
+any processor can filter.
+"""
+import sys
+import dns.rdatatype
+import octodns_bind
+from octodns.source.base import BaseSource
+from octodns_bind import AxfrPopulate, Rr
+import dns.zone, dns.query
+
+
+def _filtered_zone_records(self, zone, target):
+    auth_params = self._auth_params()
+    try:
+        z = dns.zone.from_xfr(
+            dns.query.xfr(
+                self.host,
+                zone.name,
+                port=self.port,
+                timeout=self.timeout,
+                lifetime=self.timeout,
+                relativize=False,
+                **auth_params,
+            ),
+            relativize=False,
+        )
+    except Exception as err:
+        from octodns_bind import AxfrSourceZoneTransferFailed
+        raise AxfrSourceZoneTransferFailed(err) from None
+
+    origin = z.origin
+    records = []
+    skipped = 0
+    for name, ttl, rdata in z.iterate_rdatas():
+        if not name.is_subdomain(origin):
+            skipped += 1
+            continue
+        rdtype = dns.rdatatype.to_text(rdata.rdtype)
+        if rdtype in self.SUPPORTS:
+            records.append(Rr(name.to_text(), rdtype, ttl, rdata.to_text()))
+    if skipped:
+        self.log.info('zone_records: filtered %d out-of-bailiwick record(s)', skipped)
+    return records
+
+
+AxfrPopulate.zone_records = _filtered_zone_records
+
+from octodns.cmds.sync import main
+sys.exit(main())
