@@ -41,6 +41,17 @@ Reusable tooling extracted from this homelab lives in its own repository:
   `HTTPRoute` [+ `TunnelBinding`]) for off-cluster apps like Home
   Assistant and NZBGet.
 
+## CI
+
+PR-gated GitHub Actions workflows in `.github/workflows/`:
+
+- **flux-diff** — runs `allenporter/flux-local/action/diff` on any PR touching
+  `cluster-talos/kubernetes/**`; posts unified HelmRelease and Kustomization
+  diffs as idempotent PR comments (one per resource type, edited in place on
+  follow-up commits).
+- **renovate-validate** — runs `renovate-config-validator --strict` on any PR
+  touching `renovate.json`.
+
 ## License
 
 Individual tools under subdirectories declare their own licenses (e.g.
