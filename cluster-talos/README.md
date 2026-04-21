@@ -112,34 +112,44 @@ cluster-talos/
     │       ├── kasten-io/               # Kasten K10 (LDAPS to AD)
     │       ├── spegel/                  # P2P containerd image cache
     │       └── renovate/                # Dependency update bot
-    └── apps/                 # Workloads
+    ├── apps/                 # Workloads, nested by category; each app ships its own Flux KS
+    │   ├── arr/             # sonarr, radarr, bazarr, prowlarr, autobrr, recyclarr, neutarr, sonarr-nl
+    │   ├── downloaders/     # qbittorrent, sabnzbd
+    │   ├── media/           # plex, clusterplex, tdarr, tautulli, tracearr, ombi
+    │   └── tools/           # netbox, ocis, rustdesk, guacamole, postfix-relay
+    │       └── <app>/
+    │           ├── ks.yaml  # Flux Kustomization (prune=false, per-app postBuild + dependsOn)
+    │           └── app/     # HelmRelease + PVC + ExternalSecret + namespace
+    └── forwarders/           # Routing-only shims: external Service + HTTPRoute (+ TunnelBinding)
         ├── home-assistant/
-        ├── clusterplex/      # Plex + distributed transcoders (Intel GPU)
-        ├── netbox/           # IPAM (CNPG-backed)
-        └── ocis/             # ownCloud Infinite Scale
+        └── nzbget/
 ```
 
 ---
 
 ## Flux Dependency Chain
 
-Only five top-level Kustomizations in `bootstrap/flux-system/cluster-kustomizations.yaml`:
+Six top-level Kustomizations in `bootstrap/flux-system/cluster-kustomizations.yaml`:
 
 ```
 infrastructure-flux-system  (Flux Operator + FluxInstance; self-manages flux-system controllers)
 flux-repositories           (HelmRepository / OCI / GitRepository sources — no dependencies)
 infrastructure-core         (aggregator → ~13 child Kustomizations under infrastructure/core/)
     └── infrastructure-platform (aggregator → ~15 children under infrastructure/platform/)
-            └── apps         (dependsOn: configs, cloudflare-operator; postBuild cluster-vars + apps-substvars)
+            ├── apps          (aggregator → 21 per-app children under apps/<category>/<app>/)
+            └── forwarders    (aggregator → per-app children under forwarders/<app>/)
 ```
 
-Aggregator parents (`infrastructure-core`, `infrastructure-platform`) are `wait: false` on
-purpose — children carry their own `dependsOn` edges across tiers (e.g.
-`core/etcd-backup` → `platform/configs`, `platform/configs` → `core/cert-manager`), and
-`wait: true` on a parent would deadlock the controllers→configs chain.
+Aggregator parents (`infrastructure-core`, `infrastructure-platform`, `apps`, `forwarders`)
+are all `wait: false` on purpose — children carry their own `dependsOn` edges across tiers
+(e.g. `core/etcd-backup` → `platform/configs`, `platform/configs` → `core/cert-manager`,
+`apps/media/tracearr` → `platform/cnpg`), and `wait: true` on a parent would deadlock the
+cross-tier chain.
 
-Child Kustomizations carry their own `postBuild.substituteFrom` where needed — `cluster-vars`
-does not inherit from parent to child.
+Child Kustomizations carry their own `postBuild.substituteFrom` where needed
+(`cluster-vars` for `${SECRET_DOMAIN}`; `apps-substvars` for `${SECRET_NFS_HOST}`) — parent
+substitutions do not inherit to children. Per-app Flux KSs set `prune: false` as a
+HelmRelease safety guardrail; aggregator parents use `prune: true`.
 
 All Kustomizations are self-managed by Flux from the moment `flux bootstrap` completes.
 No manual `kubectl apply` steps are needed after bootstrap.

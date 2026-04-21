@@ -95,12 +95,14 @@ cluster-talos/
 │       ├── talosconfig       # talosctl client config
 │       └── kubeconfig        # Kubernetes admin config
 └── kubernetes/               # FluxCD GitOps manifests
-    ├── bootstrap/            # One-time flux bootstrap output
-    ├── flux/                 # HelmRepositories + top-level Kustomizations
+    ├── bootstrap/            # One-time flux bootstrap output + cluster-Kustomizations
+    ├── flux-repositories/    # HelmRepository / OCI / GitRepository sources
     ├── infrastructure/
-    │   ├── controllers/      # Gateway API CRDs, Cilium, cert-manager, ESO HelmReleases
-    │   └── configs/          # BGP, ClusterIssuer, Bitwarden store
-    └── apps/                 # Workloads (populated during migration)
+    │   ├── flux-system/      # Flux Operator + FluxInstance (self-managed)
+    │   ├── core/             # CNI, CRDs, storage drivers, PKI, ESO
+    │   └── platform/         # Cluster services (configs, CNPG, Kasten, external-dns, …)
+    ├── apps/                 # Workloads, nested by category (arr, downloaders, media, tools)
+    └── forwarders/           # Routing-only shims: external Service + HTTPRoute (+ TunnelBinding)
 ```
 
 ---
@@ -474,13 +476,18 @@ infrastructure-core         (aggregator → Gateway API CRDs, Cilium, cert-manag
                                  cnpg, monitoring, configs, external-dns[-cloudflare],
                                  cloudflare-operator[+tunnel], longhorn, tanzu-logging,
                                  kasten-io, spegel, renovate)
-            └── apps         (user workloads; dependsOn: configs, cloudflare-operator)
+            ├── apps          (aggregator → per-app Flux KSs under apps/<category>/<app>/)
+            └── forwarders    (aggregator → per-app Flux KSs under forwarders/<app>/)
 ```
 
-Aggregator parents are `wait: false` — children carry their own cross-tier `dependsOn`
-edges (e.g. `core/etcd-backup` → `platform/configs`, `platform/configs` →
-`core/cert-manager` + `core/external-secrets`). `wait: true` on a parent would deadlock
-the controllers→configs chain.
+Aggregator parents (`infrastructure-core`, `infrastructure-platform`, `apps`, `forwarders`)
+are all `wait: false` — children carry their own cross-tier `dependsOn` edges (e.g.
+`core/etcd-backup` → `platform/configs`, `platform/configs` → `core/cert-manager` +
+`core/external-secrets`, `apps/media/tracearr` → `platform/cnpg`). `wait: true` on a
+parent would deadlock the cross-tier chain.
+
+Per-app Flux KSs keep `prune: false` as a HelmRelease safety guardrail; parents are
+`prune: true` (pure aggregators).
 
 Gateway API CRDs are committed to `infrastructure/core/gateway-api/` and installed as
 part of `infrastructure-core`. Their child Kustomization has `wait: true` so the CRDs
@@ -518,7 +525,7 @@ kubectl create secret generic cloudflare-api-token \
 
 # Cluster variables — used by Flux postBuild substituteFrom for variable substitution
 # across child Kustomizations in platform/ (configs, external-dns, monitoring, longhorn,
-# renovate, kasten, cloudflare-tunnel, tanzu-logging) and apps/.
+# renovate, kasten, cloudflare-tunnel, tanzu-logging), apps/, and forwarders/.
 # Add more keys here as new manifests require ${VARIABLE} substitution.
 kubectl create secret generic cluster-vars \
   --namespace flux-system \
