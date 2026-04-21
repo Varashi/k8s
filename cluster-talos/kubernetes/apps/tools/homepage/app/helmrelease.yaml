@@ -109,10 +109,13 @@ spec:
             color: slate
             headerStyle: clean
             layout:
-              Infrastructure:
+              Media:
                 style: row
                 columns: 4
-              Media:
+              Arr:
+                style: row
+                columns: 4
+              Downloaders:
                 style: row
                 columns: 4
               Tools:
