@@ -17,7 +17,7 @@ data:
       # Target: NetBox DNS plugin — read-only mirror.
       netbox:
         class: octodns_netbox_dns.NetBoxDNSProvider
-        url: https://ipam.boeye.net/api
+        url: https://ipam.boeye.net
         token: env/NETBOX_API_TOKEN
         view: null
         replace_duplicates: true

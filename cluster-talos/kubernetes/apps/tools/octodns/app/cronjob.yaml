@@ -25,6 +25,10 @@ spec:
                 - --config-file
                 - /etc/octodns/config.yaml
                 - --doit
+                # --force bypasses raise_if_unsafe guards (RootNsChange, bulk
+                # deletes). Safe for a one-way AD→NetBox mirror where AD is
+                # authoritative and NetBox is rebuilt each run.
+                - --force
               envFrom:
                 - secretRef:
                     name: octodns-netbox
