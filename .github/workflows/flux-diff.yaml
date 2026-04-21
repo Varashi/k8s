@@ -37,10 +37,10 @@ jobs:
         uses: allenporter/flux-local/action/diff@8.2.0
         id: diff
         with:
-          path: cluster-talos/kubernetes
+          path: cluster-talos/kubernetes/bootstrap/flux-system
           resource: ${{ matrix.resource }}
           live-branch: main
-          sources: flux-system=cluster-talos/kubernetes
+          sources: flux-system=.
 
       - name: PR comment
         if: ${{ steps.diff.outputs.diff != '' }}
