@@ -17,3 +17,4 @@ resources:
   - kasten-io/ks.yaml
   - spegel/ks.yaml
   - renovate/ks.yaml
+  - tuppr/ks.yaml

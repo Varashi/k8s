@@ -1,0 +1,16 @@
+---
+apiVersion: tuppr.home-operations.com/v1alpha1
+kind: TalosUpgrade
+metadata:
+  name: talos
+  namespace: system-upgrade
+spec:
+  talos:
+    # Default schematic: CPU-only (vmtoolsd-guest-agent). GPU workers override
+    # via node annotation `tuppr.home-operations.com/schematic=d561b384...`
+    # (set out-of-band; see README).
+    image: factory.talos.dev/installer/903b2da78f99adef03cbbd4df6714563823f63218508800751560d3bc3557e40
+    # renovate: datasource=docker depName=ghcr.io/siderolabs/installer
+    version: v1.12.6
+  policy:
+    rebootMode: default

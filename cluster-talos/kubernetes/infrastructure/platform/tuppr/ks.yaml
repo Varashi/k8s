@@ -1,0 +1,32 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: tuppr
+  namespace: flux-system
+spec:
+  interval: 1h
+  path: ./cluster-talos/kubernetes/infrastructure/platform/tuppr/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+  timeout: 5m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: tuppr-upgrades
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: tuppr
+  path: ./cluster-talos/kubernetes/infrastructure/platform/tuppr/upgrades
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: false
+  timeout: 5m
