@@ -9,7 +9,7 @@ metadata:
 spec:
   interval: 1h
   path: ./cluster-talos/kubernetes/infrastructure/controllers/flux-operator
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -44,7 +44,7 @@ metadata:
 spec:
   interval: 1h
   path: ./cluster-talos/kubernetes/flux-repositories
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -57,7 +57,7 @@ metadata:
 spec:
   interval: 1h
   path: ./cluster-talos/kubernetes/infrastructure/controllers/gateway-api
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -74,7 +74,7 @@ spec:
   dependsOn:
     - name: infrastructure-crds
   path: ./cluster-talos/kubernetes/infrastructure/controllers
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -95,7 +95,7 @@ spec:
   dependsOn:
     - name: infrastructure-controllers
   path: ./cluster-talos/kubernetes/infrastructure/certs
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -113,7 +113,7 @@ spec:
     - name: infrastructure-controllers
     - name: infrastructure-certs
   path: ./cluster-talos/kubernetes/infrastructure/configs
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -132,7 +132,7 @@ spec:
   dependsOn:
     - name: infrastructure-configs
   path: ./cluster-talos/kubernetes/infrastructure/external-dns
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -153,7 +153,7 @@ spec:
   dependsOn:
     - name: infrastructure-configs
   path: ./cluster-talos/kubernetes/infrastructure/external-dns-cloudflare
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -172,7 +172,7 @@ spec:
   dependsOn:
     - name: infrastructure-configs
   path: ./cluster-talos/kubernetes/infrastructure/renovate
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -192,7 +192,7 @@ spec:
     - name: infrastructure-controllers
     - name: infrastructure-configs
   path: ./cluster-talos/kubernetes/infrastructure/kasten-io
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -211,7 +211,7 @@ metadata:
 spec:
   interval: 1h
   path: ./config/default
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: cloudflare-operator
@@ -243,7 +243,7 @@ metadata:
 spec:
   interval: 1h
   path: ./cluster-talos/kubernetes/infrastructure/cloudflare-operator
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -268,7 +268,7 @@ spec:
   dependsOn:
     - name: infrastructure-controllers
   path: ./cluster-talos/kubernetes/infrastructure/intel-gpu
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -285,7 +285,7 @@ spec:
   dependsOn:
     - name: infrastructure-intel-gpu
   path: ./cluster-talos/kubernetes/infrastructure/intel-gpu-config
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -328,7 +328,7 @@ spec:
   dependsOn:
     - name: infrastructure-configs
   path: ./cluster-talos/kubernetes/infrastructure/etcd-backup
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -346,7 +346,7 @@ spec:
     - name: infrastructure-controllers
     - name: infrastructure-configs
   path: ./cluster-talos/kubernetes/infrastructure/tanzu-logging
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -367,7 +367,7 @@ spec:
   dependsOn:
     - name: infrastructure-controllers
   path: ./cluster-talos/kubernetes/infrastructure/reloader
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -384,7 +384,7 @@ spec:
   dependsOn:
     - name: infrastructure-controllers
   path: ./cluster-talos/kubernetes/infrastructure/spegel
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -402,7 +402,7 @@ spec:
     - name: infrastructure-controllers
     - name: infrastructure-configs
   path: ./cluster-talos/kubernetes/infrastructure/gpu-node-vsphere-maintenance
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -424,7 +424,7 @@ spec:
     - name: infrastructure-configs
     - name: infrastructure-cloudflare-operator
   path: ./cluster-talos/kubernetes/apps
-  prune: true
+  prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
