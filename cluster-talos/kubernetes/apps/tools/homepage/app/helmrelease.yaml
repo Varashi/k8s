@@ -126,7 +126,7 @@ spec:
                 columns: 1
               Network-SKW:
                 style: row
-                columns: 7
+                columns: 4
                 icon: mdi-lan
               Network-STA:
                 style: row
