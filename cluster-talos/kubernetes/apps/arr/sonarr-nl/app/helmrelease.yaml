@@ -55,6 +55,13 @@ spec:
     service:
       app:
         controller: sonarr-nl
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Sonarr NL
+          gethomepage.dev/description: TV shows (NL)
+          gethomepage.dev/group: Arr
+          gethomepage.dev/icon: sonarr.png
+          gethomepage.dev/href: https://nlsonarr.${SECRET_DOMAIN}
         ports:
           http:
             port: 8989

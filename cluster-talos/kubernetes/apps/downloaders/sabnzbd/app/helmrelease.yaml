@@ -55,6 +55,13 @@ spec:
     service:
       app:
         controller: sabnzbd
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: SABnzbd
+          gethomepage.dev/description: Usenet downloader
+          gethomepage.dev/group: Downloaders
+          gethomepage.dev/icon: sabnzbd.png
+          gethomepage.dev/href: https://sabnzbd.${SECRET_DOMAIN}
         ports:
           http:
             port: 8080
