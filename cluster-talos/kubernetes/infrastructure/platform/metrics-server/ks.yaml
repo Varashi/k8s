@@ -6,7 +6,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1h
-  path: ./cluster-talos/kubernetes/infrastructure/core/metrics-server/app
+  path: ./cluster-talos/kubernetes/infrastructure/platform/metrics-server/app
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
