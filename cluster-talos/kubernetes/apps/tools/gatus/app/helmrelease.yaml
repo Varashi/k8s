@@ -48,6 +48,7 @@ spec:
               tag: v5.35.0
             env:
               GATUS_CONFIG_PATH: /config
+              GATUS_DELAY_START_SECONDS: 5
               GATUS_DATABASE_URL:
                 secretKeyRef:
                   name: gatus-pg-app
