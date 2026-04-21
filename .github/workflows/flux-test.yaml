@@ -37,5 +37,5 @@ jobs:
         uses: allenporter/flux-local/action/test@8.2.0
         with:
           path: cluster-talos/kubernetes/bootstrap/flux-system
-          sources: flux-system=.,postfix-relay=/tmp/sources/postfix-relay
+          sources: flux-system=.,flux-system/postfix-relay=/tmp/sources/postfix-relay
           enable-helm: true
