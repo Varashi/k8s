@@ -14,3 +14,6 @@ resources:
   - cloudflare-operator-system/cloudflare-tunnel/ks.yaml
   - longhorn-system/ks.yaml
   - tanzu-system-logging/ks.yaml
+  - kasten-io/ks.yaml
+  - spegel/ks.yaml
+  - renovate/ks.yaml

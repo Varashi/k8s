@@ -72,65 +72,6 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure-renovate
-  namespace: flux-system
-spec:
-  interval: 1h
-  dependsOn:
-    - name: configs
-  path: ./cluster-talos/kubernetes/infrastructure/renovate
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  postBuild:
-    substituteFrom:
-      - kind: Secret
-        name: cluster-vars
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: infrastructure-kasten-io
-  namespace: flux-system
-spec:
-  interval: 1h
-  dependsOn:
-    - name: external-secrets
-    - name: monitoring
-    - name: configs
-  path: ./cluster-talos/kubernetes/infrastructure/kasten-io
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  postBuild:
-    substituteFrom:
-      - kind: Secret
-        name: cluster-vars
-      - kind: Secret
-        name: kasten-substvars
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: infrastructure-spegel
-  namespace: flux-system
-spec:
-  interval: 1h
-  dependsOn:
-    - name: infrastructure-core
-  path: ./cluster-talos/kubernetes/infrastructure/spegel
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  wait: true
-  timeout: 5m
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
   name: apps
   namespace: flux-system
 spec:
