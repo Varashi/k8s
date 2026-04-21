@@ -19,7 +19,7 @@ spec:
           containers:
             - name: octodns
               image: ghcr.io/varashi/octodns:latest
-              imagePullPolicy: IfNotPresent
+              imagePullPolicy: Always
               args:
                 - octodns-sync-filtered
                 - --config-file
