@@ -1,25 +1,16 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-# Workloads will be added here during migration from k8s/RKE2
 resources:
-  - autobrr
-  - bazarr
+  - arr
+  - downloaders
   - clusterplex
   - guacamole
   - netbox
-  - neutarr
   - ocis
   - ombi
   - plex
   - postfix-relay
-  - prowlarr
-  - qbittorrent
-  - radarr
-  - recyclarr
   - rustdesk
-  - sabnzbd
-  - sonarr
-  - sonarr-nl
   - tautulli
   - tdarr
   - tracearr
