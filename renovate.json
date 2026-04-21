@@ -51,7 +51,7 @@
     },
     {
       "description": "vSphere CSI pins its own sidecar versions; bump as bundle with the driver",
-      "matchFileNames": ["cluster-talos/kubernetes/infrastructure/controllers/vsphere-csi/**"],
+      "matchFileNames": ["cluster-talos/kubernetes/infrastructure/core/vsphere-csi/**"],
       "matchPackageNames": ["registry.k8s.io/sig-storage/**"],
       "enabled": false
     },

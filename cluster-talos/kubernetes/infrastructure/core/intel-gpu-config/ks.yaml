@@ -9,7 +9,7 @@ spec:
   dependsOn:
     - name: intel-gpu
   path: ./cluster-talos/kubernetes/infrastructure/core/intel-gpu-config/app
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
+  prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system

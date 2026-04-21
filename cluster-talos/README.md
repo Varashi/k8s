@@ -18,6 +18,9 @@ See **[BOOTSTRAP.md](BOOTSTRAP.md)** for the full lifecycle guide (provision, bo
 | Storage (RWO) | vSphere CSI + Longhorn (GPU workers) | `vsan` SC on all workers, `longhorn` SC on gpu-worker-* for Kasten |
 | Backup | Kasten K10 + `talos-backup` CronJob | App-level restore; daily age-encrypted etcd snapshot to B2 |
 | Observability | Prometheus (lean) + metrics-server | Freelens Helm provider; VCF Ops 9 external collector via HTTPRoute + basic auth |
+| Log forwarding | Fluent-Bit DaemonSet | Ships `/var/log/containers/*.log` as syslog rfc5424 → VCF Operations for Logs (Tanzu Kubernetes content pack on the ingest side) |
+| Config reload | Stakater Reloader | Restarts Deployments/DaemonSets when annotated ConfigMaps/Secrets change |
+| Image mirror | Spegel DaemonSet | P2P pull-through cache across node containerds (wildcard mirror via `/etc/cri/conf.d/hosts/_default/hosts.toml`) |
 | GPU workloads | Intel GPU device plugin (+ NFD) | `gpu.intel.com/i915` on gpu-worker-*; ClusterPlex HW transcode |
 
 ## Cluster Spec
@@ -69,43 +72,46 @@ cluster-talos/
 │   └── clusterconfig/        # Generated (gitignored): talosconfig + kubeconfig
 └── kubernetes/               # FluxCD GitOps manifests
     ├── bootstrap/
-    │   └── flux-system/      # Flux install + all cluster Kustomization CRs
+    │   └── flux-system/      # Flux install + 5 top-level Kustomization CRs
     │       ├── gotk-components.yaml     # (gitignored) Flux controllers
     │       ├── gotk-sync.yaml           # (gitignored) Root GitRepository + Kustomization
     │       └── cluster-kustomizations.yaml  # All Kustomizations — self-managed after bootstrap
-    ├── flux/
-    │   ├── repositories/     # HelmRepository / OCI sources for all charts
-    │   └── cluster/          # Kustomization definitions (reference copy; canonical in bootstrap/)
+    ├── flux-repositories/    # HelmRepository / OCIRepository / GitRepository sources
     ├── infrastructure/
-    │   ├── controllers/      # Operators / core services — reconciled first
-    │   │   ├── gateway-api/             # Gateway API CRDs (installed before configs)
+    │   ├── flux-system/      # Flux Operator + FluxInstance (self-managed)
+    │   ├── core/             # Tier reconciled first — CNI, CRDs, storage drivers, PKI, ESO
+    │   │   ├── gateway-api/             # Gateway API CRDs
     │   │   ├── cilium/                  # CNI + Gateway (HelmRelease post-bootstrap)
     │   │   ├── cert-manager/
-    │   │   ├── external-secrets/
+    │   │   │   ├── cert-manager/        # Operator
+    │   │   │   └── certs/               # Internal CA + bitwarden-sdk-server TLS cert
+    │   │   ├── external-secrets/        # ESO operator
     │   │   ├── kubelet-csr-approver/
-    │   │   ├── metrics-server/          # kubectl top + HPA
     │   │   ├── snapshot-controller/     # CSI volume snapshots (Kasten)
     │   │   ├── vsphere-cpi/             # vSphere cloud-controller
     │   │   ├── vsphere-csi/             # vSAN PVCs
-    │   │   ├── cnpg/                    # CloudNativePG operator (NetBox etc.)
-    │   │   └── prometheus/              # Lean Prom + KSM + node-exporter + HTTPRoute (basic-auth via ESO)
-    │   ├── certs/            # Internal PKI — reconciled after controllers
-    │   ├── configs/          # Config objects — reconciled after certs
-    │   │   ├── cilium/       # BGP config, LB IP pool, GatewayClass, shared Gateway (main)
-    │   │   ├── cert-manager/ # letsencrypt-prod ClusterIssuer
-    │   │   ├── external-secrets/ # bitwarden-sdk-server HelmRelease + ClusterSecretStore
-    │   │   ├── vsphere-csi/  # StorageClass
-    │   │   └── vcfops-collector/ # Read-only SA + CRB + token for external VCF Ops 9 adapter
-    │   ├── etcd-backup/                 # talos-backup CronJob → B2 (age-encrypted)
-    │   ├── external-dns/                # RFC2136 / GSS-TSIG → AD DNS (internal)
-    │   ├── external-dns-cloudflare/     # Cloudflare public records
-    │   ├── cloudflare-operator/         # ClusterTunnel (external ingress via CF Tunnel)
-    │   ├── intel-gpu/                   # NFD + intel-device-plugins-operator
-    │   ├── intel-gpu-config/            # GpuDevicePlugin CR (sharedDevNum=32)
-    │   ├── gpu-node-vsphere-maintenance/ # Controller: drain + power-off GPU workers for ESXi maint
-    │   ├── longhorn/                    # RWO storage on GPU workers (Kasten backup source)
-    │   ├── kasten-io/                   # Kasten K10 (LDAPS to AD)
-    │   └── renovate/                    # Dependency update bot
+    │   │   ├── intel-gpu/               # NFD + intel-device-plugins-operator
+    │   │   ├── intel-gpu-config/        # GpuDevicePlugin CR (sharedDevNum=32)
+    │   │   ├── gpu-node-vsphere-maintenance/ # Controller: drain + power-off GPU workers for ESXi maint
+    │   │   └── etcd-backup/             # talos-backup CronJob → B2 (age-encrypted)
+    │   └── platform/         # Tier reconciled after core — higher-level platform components
+    │       ├── metrics-server/          # kubectl top + HPA
+    │       ├── reloader/                # Stakater Reloader
+    │       ├── descheduler/             # RemoveDuplicates, LowNodeUtilization, etc.
+    │       ├── cnpg-system/             # CloudNativePG operator
+    │       ├── monitoring/              # Lean Prom + KSM + node-exporter + HTTPRoute (basic-auth via ESO)
+    │       ├── configs/                 # BGP, LB pool, GatewayClass, ClusterIssuers, ClusterSecretStore, substvar Secrets
+    │       ├── external-dns/
+    │       │   ├── external-dns/        # RFC2136 / GSS-TSIG → AD DNS (internal)
+    │       │   └── external-dns-cloudflare/ # Cloudflare public records
+    │       ├── cloudflare-operator-system/
+    │       │   ├── cloudflare-operator/ # ClusterTunnel CRD + operator
+    │       │   └── cloudflare-tunnel/   # ClusterTunnel instance + default TunnelBinding
+    │       ├── longhorn-system/         # RWO storage on GPU workers (Kasten backup source)
+    │       ├── tanzu-system-logging/    # Fluent-Bit DaemonSet → VCF Operations for Logs (syslog rfc5424)
+    │       ├── kasten-io/               # Kasten K10 (LDAPS to AD)
+    │       ├── spegel/                  # P2P containerd image cache
+    │       └── renovate/                # Dependency update bot
     └── apps/                 # Workloads
         ├── home-assistant/
         ├── clusterplex/      # Plex + distributed transcoders (Intel GPU)
@@ -117,23 +123,32 @@ cluster-talos/
 
 ## Flux Dependency Chain
 
+Only five top-level Kustomizations in `bootstrap/flux-system/cluster-kustomizations.yaml`:
+
 ```
-flux-repositories           (HelmRepository sources — no dependencies)
-infrastructure-controllers  (cilium, cert-manager, ESO, kubelet-csr-approver)
-    └── infrastructure-certs   (internal cluster CA + bitwarden-sdk-server TLS cert)
-            └── infrastructure-configs  (BGP, ClusterIssuer, bitwarden-sdk-server, ClusterSecretStore)
-                    └── apps
+infrastructure-flux-system  (Flux Operator + FluxInstance; self-manages flux-system controllers)
+flux-repositories           (HelmRepository / OCI / GitRepository sources — no dependencies)
+infrastructure-core         (aggregator → ~13 child Kustomizations under infrastructure/core/)
+    └── infrastructure-platform (aggregator → ~15 children under infrastructure/platform/)
+            └── apps         (dependsOn: configs, cloudflare-operator; postBuild cluster-vars + apps-substvars)
 ```
 
-All Kustomizations are defined in `bootstrap/flux-system/cluster-kustomizations.yaml` and are
-self-managed by Flux from the moment `flux bootstrap` completes. No manual `kubectl apply`
-steps are needed after bootstrap.
+Aggregator parents (`infrastructure-core`, `infrastructure-platform`) are `wait: false` on
+purpose — children carry their own `dependsOn` edges across tiers (e.g.
+`core/etcd-backup` → `platform/configs`, `platform/configs` → `core/cert-manager`), and
+`wait: true` on a parent would deadlock the controllers→configs chain.
+
+Child Kustomizations carry their own `postBuild.substituteFrom` where needed — `cluster-vars`
+does not inherit from parent to child.
+
+All Kustomizations are self-managed by Flux from the moment `flux bootstrap` completes.
+No manual `kubectl apply` steps are needed after bootstrap.
 
 ---
 
 ## Bootstrap Secrets (manual, one-time)
 
-Two secrets must be created manually after `infrastructure-controllers` reconciles (when
+Two secrets must be created manually after `infrastructure-core` reconciles (when
 the namespaces first exist). Everything else is pulled from Bitwarden automatically via ESO.
 
 ```bash
@@ -163,9 +178,9 @@ cross-node connectivity in native routing mode.
 config leaves CoreDNS using `/etc/resolv.conf`, which Talos populates from
 `machine.network.nameservers`. External DNS works without any CoreDNS patching.
 
-**Gateway API CRDs** — Committed to `infrastructure/controllers/gateway-api/` and installed
-by `infrastructure-controllers` Kustomization (with `wait: true`), ensuring they exist
-before `infrastructure-configs` reconciles.
+**Gateway API CRDs** — Committed to `infrastructure/core/gateway-api/` and installed by
+its own child Kustomization with `wait: true`, ensuring the CRDs exist before anything
+that references them (Cilium Gateway resources in `platform/configs`, etc.) reconciles.
 
 **Cilium pre-Flux** — Cilium must be installed before Flux because Flux pods need pod
 networking. Installed via `make bootstrap-cilium` (helm upgrade --install with pinned flags).
@@ -200,8 +215,9 @@ day-2, so day-2 applies don't drift from the bootstrap state. See BOOTSTRAP.md S
 
 **bitwarden-sdk-server TLS** — ESO's Bitwarden provider requires TLS for SDK server
 communication. Certs are issued by the internal cluster CA (cert-manager). The
-`infrastructure-certs` Kustomization creates the CA and cert before `infrastructure-configs`
-deploys the SDK server HelmRelease.
+`cert-manager/certs` child Kustomization (in `core/`) creates the CA and cert before the
+`configs` Kustomization (in `platform/`) deploys the SDK server HelmRelease; its
+`dependsOn` lists both `cert-manager` and `external-secrets`.
 
 **Control plane metrics exposure** — `controllerManager.extraArgs.bind-address=0.0.0.0` +
 `scheduler.extraArgs.bind-address=0.0.0.0` in `talos/templates/controlplane.yaml` let

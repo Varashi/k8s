@@ -373,7 +373,7 @@ kubectl get csr --no-headers | awk '/Pending/ {print $1}' | xargs kubectl certif
 ```
 
 Run this once after bootstrap. From this point on, `kubelet-csr-approver` (deployed
-by Flux as part of `infrastructure-controllers`) handles approval automatically.
+by Flux as part of `infrastructure-core`) handles approval automatically.
 
 ### Fallback: full guestinfo (if minimal config fails)
 
@@ -434,7 +434,7 @@ All `cilium-*`, `cilium-envoy-*`, `cilium-operator-*`, `hubble-relay-*`, `hubble
 should be `Running`.
 
 > **Version note:** The pinned `--version 1.19.2` in the Makefile must match
-> `spec.chart.spec.version` in `kubernetes/infrastructure/controllers/cilium/helmrelease.yaml`.
+> `spec.chart.spec.version` in `kubernetes/infrastructure/core/cilium/app/helmrelease.yaml`.
 > Bump both together.
 
 ---
@@ -465,19 +465,27 @@ Flux reconciles automatically in dependency order — all Kustomizations are def
 the moment `flux bootstrap` completes. No additional `kubectl apply` steps required.
 
 ```
-flux-repositories    (HelmRepositories — no dependencies)
-infrastructure-controllers  (Gateway API CRDs, Cilium, cert-manager, ESO,
-                             kubelet-csr-approver, metrics-server,
-                             vsphere-cpi, vsphere-csi)
-    └── infrastructure-certs  (internal cluster CA + bitwarden-sdk-server TLS cert)
-            └── infrastructure-configs  (BGP, ClusterIssuers, bitwarden-sdk-server,
-                                         ClusterSecretStore, vsan StorageClass)
-                    └── apps
+infrastructure-flux-system  (Flux Operator + FluxInstance; self-manages flux controllers)
+flux-repositories           (HelmRepository / OCI / GitRepository sources — no dependencies)
+infrastructure-core         (aggregator → Gateway API CRDs, Cilium, cert-manager, ESO,
+                             kubelet-csr-approver, snapshot-controller, vsphere-cpi,
+                             vsphere-csi, intel-gpu[-config], gpu-node-maint, etcd-backup)
+    └── infrastructure-platform (aggregator → metrics-server, reloader, descheduler,
+                                 cnpg, monitoring, configs, external-dns[-cloudflare],
+                                 cloudflare-operator[+tunnel], longhorn, tanzu-logging,
+                                 kasten-io, spegel, renovate)
+            └── apps         (user workloads; dependsOn: configs, cloudflare-operator)
 ```
 
-Gateway API CRDs are committed to `infrastructure/controllers/gateway-api/` and installed
-as part of `infrastructure-controllers`. This ensures they exist before `infrastructure-configs`
-tries to create the Cilium `GatewayClass`.
+Aggregator parents are `wait: false` — children carry their own cross-tier `dependsOn`
+edges (e.g. `core/etcd-backup` → `platform/configs`, `platform/configs` →
+`core/cert-manager` + `core/external-secrets`). `wait: true` on a parent would deadlock
+the controllers→configs chain.
+
+Gateway API CRDs are committed to `infrastructure/core/gateway-api/` and installed as
+part of `infrastructure-core`. Their child Kustomization has `wait: true` so the CRDs
+exist before anything referencing them (Cilium `GatewayClass` in `platform/configs`, etc.)
+reconciles.
 
 ---
 
@@ -488,13 +496,14 @@ cert-manager needs a Cloudflare API token to issue Let's Encrypt certificates vi
 DNS-01. These are the only secrets created manually — everything else flows through
 ESO once it is running.
 
-**Timing:** The `external-secrets` and `cert-manager` namespaces are created by
-`infrastructure-controllers`. Wait for it to finish before running these commands:
+**Timing:** The `external-secrets` and `cert-manager` namespaces are created by child
+Kustomizations under `infrastructure-core`. Wait for them to finish before running these
+commands:
 
 ```bash
-# Wait for infrastructure-controllers to complete (creates the namespaces)
+# Wait for external-secrets and cert-manager child Kustomizations to be Ready
 kubectl get kustomizations -n flux-system -w
-# Once infrastructure-controllers shows Ready=True, Ctrl-C and continue
+# Once external-secrets and cert-manager show Ready=True, Ctrl-C and continue
 
 # Bitwarden SM machine account token — used by ESO ClusterSecretStore
 # (organizationID and projectID are baked into cluster-secret-store.yaml, not here)
@@ -508,7 +517,8 @@ kubectl create secret generic cloudflare-api-token \
   --from-literal=api-token=<cloudflare-token>
 
 # Cluster variables — used by Flux postBuild substituteFrom for variable substitution
-# across infrastructure-configs, infrastructure-external-dns, infrastructure-renovate, and apps.
+# across child Kustomizations in platform/ (configs, external-dns, monitoring, longhorn,
+# renovate, kasten, cloudflare-tunnel, tanzu-logging) and apps/.
 # Add more keys here as new manifests require ${VARIABLE} substitution.
 kubectl create secret generic cluster-vars \
   --namespace flux-system \
@@ -533,8 +543,9 @@ kubectl get secret cloudflare-api-token -n cert-manager -o jsonpath='{.data.api-
 kubectl get secret cluster-vars -n flux-system -o jsonpath='{.data}' | python3 -c "import sys,json,base64; [print(k,base64.b64decode(v).decode()) for k,v in json.load(sys.stdin).items()]"
 ```
 
-`infrastructure-certs` and `infrastructure-configs` will then reconcile automatically.
-The `ClusterSecretStore` will become Ready once the bitwarden-credentials secret exists.
+The `cert-manager/certs` and `configs` child Kustomizations will then reconcile
+automatically. The `ClusterSecretStore` will become Ready once the bitwarden-credentials
+secret exists.
 
 ---
 
@@ -544,7 +555,7 @@ The `ClusterSecretStore` will become Ready once the bitwarden-credentials secret
 kubectl get nodes                        # all 6 Ready
 kubectl get pods -A                      # all Running
 cilium status                            # BGP peers established (once nodes are up)
-flux get kustomizations                  # all True / Applied (flux-repositories, infrastructure-controllers, infrastructure-certs, infrastructure-configs, apps)
+flux get kustomizations                  # all True / Applied (5 top-level + all children under core/ and platform/)
 kubectl get clusterissuers               # selfsigned, cluster-ca, letsencrypt-prod — all Ready
 kubectl get clustersecretstores         # bitwarden-secretsmanager — Valid + Ready
 kubectl get svc -A | grep LoadBalancer   # LB services get IPs from 172.16.4.100–.200
@@ -637,11 +648,11 @@ rendered `nodes/*.yaml` or `nodes/bootstrap/*.yaml` has non-empty
 
 ### Gateway API CRDs
 
-Gateway API CRDs are committed to `infrastructure/controllers/gateway-api/` rather than
+Gateway API CRDs are committed to `infrastructure/core/gateway-api/` rather than
 fetched at bootstrap time. This gives Flux explicit control over when they are installed
-and ensures `infrastructure-configs` (which creates the Cilium `GatewayClass`) never
-runs before the CRD exists. The `infrastructure-controllers` Kustomization has `wait: true`,
-so all resources in it — including these CRDs — must be applied before dependent
+and ensures the `configs` Kustomization (which creates the Cilium `GatewayClass`) never
+runs before the CRD exists. The `gateway-api` child Kustomization has `wait: true`, so
+all resources in it — including these CRDs — must be applied before dependent
 Kustomizations proceed.
 
 ### vSphere CCM + CSI — cloud-provider: external

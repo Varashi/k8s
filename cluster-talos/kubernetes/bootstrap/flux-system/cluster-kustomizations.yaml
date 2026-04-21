@@ -10,7 +10,6 @@ spec:
   interval: 1h
   path: ./cluster-talos/kubernetes/infrastructure/flux-system
   # prune=false: FluxInstance manages the flux-system controllers in-place.
-  # Also: repo layout refactor in progress — flip back to true on final structure.
   prune: false
   sourceRef:
     kind: GitRepository
@@ -26,7 +25,7 @@ metadata:
 spec:
   interval: 1h
   path: ./cluster-talos/kubernetes/flux-repositories
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
+  prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -39,13 +38,13 @@ metadata:
 spec:
   interval: 1h
   path: ./cluster-talos/kubernetes/infrastructure/core
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
+  prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
   # wait=false: parent just applies child Kustomization CRs; children with
-  # cross-tier deps (etcd-backup → infrastructure-configs) would otherwise
-  # deadlock the controllers→configs chain that runs after this parent.
+  # cross-tier deps (etcd-backup → configs in platform) would otherwise
+  # deadlock via the cross-tier chain.
   wait: false
   timeout: 10m
 ---
@@ -59,7 +58,7 @@ spec:
   dependsOn:
     - name: infrastructure-core
   path: ./cluster-talos/kubernetes/infrastructure/platform
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
+  prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
@@ -80,7 +79,7 @@ spec:
     - name: configs
     - name: cloudflare-operator
   path: ./cluster-talos/kubernetes/apps
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
+  prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system

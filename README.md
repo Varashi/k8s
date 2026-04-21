@@ -23,14 +23,19 @@ Reusable tooling extracted from this homelab lives in its own repository:
 ## Layout conventions
 
 - `kubernetes/bootstrap/` — Flux bootstrap and the `cluster-kustomizations.yaml`
-  index of every Flux Kustomization in the cluster.
-- `kubernetes/infrastructure/` — cluster-wide controllers, CRDs, operators,
-  and ops tooling (cert-manager, ESO, Cilium values, CSI/CPI, Kasten, etc.).
+  index of the five top-level Flux Kustomizations in the cluster.
+- `kubernetes/flux-repositories/` — `HelmRepository` / `OCIRepository` /
+  `GitRepository` sources consumed by `HelmRelease`s and child Kustomizations.
+- `kubernetes/infrastructure/` — cluster-wide controllers, operators, and
+  ops tooling, split into two tiers:
+  - `infrastructure/core/` — CNI, CRDs, storage drivers, cert-manager, ESO,
+    etcd backup (everything the `platform` tier depends on).
+  - `infrastructure/platform/` — higher-level platform components
+    (monitoring, configs, external-dns, Cloudflare, Longhorn, Kasten,
+    Spegel, Renovate, log forwarding).
 - `kubernetes/apps/` — user-facing workloads, each in its own namespace
   with namespace, `HelmRelease` or manifests, `HTTPRoute`, and
   `TunnelBinding` where applicable.
-- `kubernetes/flux/` — reference copies of Flux Kustomizations; the
-  bootstrap file remains the source of truth.
 
 ## License
 

@@ -9,7 +9,7 @@ spec:
   dependsOn:
     - name: flux-operator
   path: ./cluster-talos/kubernetes/infrastructure/flux-system/flux-instance/app
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
+  prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
