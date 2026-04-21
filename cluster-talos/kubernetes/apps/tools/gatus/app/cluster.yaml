@@ -1,0 +1,22 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: gatus-pg
+  namespace: gatus
+spec:
+  instances: 1
+  storage:
+    size: 5Gi
+    storageClass: vsan
+  bootstrap:
+    initdb:
+      database: gatus
+      owner: gatus
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: intel.feature.node.kubernetes.io/gpu
+                operator: DoesNotExist

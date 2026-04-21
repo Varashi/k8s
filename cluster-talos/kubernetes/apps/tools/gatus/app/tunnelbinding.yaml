@@ -1,0 +1,14 @@
+apiVersion: networking.cfargotunnel.com/v1alpha1
+kind: TunnelBinding
+metadata:
+  name: gatus
+  namespace: gatus
+subjects:
+  - name: gatus-app
+    spec:
+      fqdn: status.${SECRET_DOMAIN}
+      target: http://gatus-app.gatus.svc.cluster.local:8080
+      protocol: http
+tunnelRef:
+  kind: ClusterTunnel
+  name: k8s-talos

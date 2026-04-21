@@ -1,0 +1,22 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: gatus
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: cloudflare-operator
+    - name: cnpg
+  path: ./cluster-talos/kubernetes/apps/tools/gatus/app
+  prune: false
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+  timeout: 10m
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
