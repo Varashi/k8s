@@ -47,6 +47,13 @@ spec:
     service:
       plex:
         controller: plex
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Plex
+          gethomepage.dev/description: Media server
+          gethomepage.dev/group: Media
+          gethomepage.dev/icon: plex.png
+          gethomepage.dev/href: https://plex.${SECRET_DOMAIN}
         ports:
           http:
             port: 32400

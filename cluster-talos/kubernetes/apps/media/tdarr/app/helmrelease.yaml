@@ -94,6 +94,13 @@ spec:
     service:
       app:
         controller: tdarr-main
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Tdarr
+          gethomepage.dev/description: Transcode orchestrator
+          gethomepage.dev/group: Media
+          gethomepage.dev/icon: tdarr.png
+          gethomepage.dev/href: https://tdarr.${SECRET_DOMAIN}
         ports:
           http:
             port: 8265
