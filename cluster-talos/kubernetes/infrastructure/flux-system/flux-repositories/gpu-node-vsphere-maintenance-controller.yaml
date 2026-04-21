@@ -1,0 +1,9 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: gpu-node-vsphere-maintenance-controller
+  namespace: flux-system
+spec:
+  type: oci
+  url: oci://ghcr.io/varashi/charts
+  interval: 1h

@@ -22,3 +22,4 @@ resources:
   - descheduler.yaml
   - stakater.yaml
   - fluent.yaml
+  - gpu-node-vsphere-maintenance-controller.yaml
