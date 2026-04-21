@@ -37,6 +37,9 @@ spec:
                   httpGet:
                     path: /api/healthcheck
                     port: 3000
+                    httpHeaders:
+                      - name: Host
+                        value: home.${SECRET_DOMAIN}
                   initialDelaySeconds: 10
               readiness:
                 enabled: true
@@ -45,6 +48,9 @@ spec:
                   httpGet:
                     path: /api/healthcheck
                     port: 3000
+                    httpHeaders:
+                      - name: Host
+                        value: home.${SECRET_DOMAIN}
                   initialDelaySeconds: 5
               startup:
                 enabled: true
@@ -53,6 +59,9 @@ spec:
                   httpGet:
                     path: /api/healthcheck
                     port: 3000
+                    httpHeaders:
+                      - name: Host
+                        value: home.${SECRET_DOMAIN}
                   periodSeconds: 2
                   failureThreshold: 30
             resources:
