@@ -126,7 +126,7 @@ spec:
                 columns: 1
               Network-SKW:
                 style: row
-                columns: 4
+                columns: 3
                 icon: mdi-lan
               Network-STA:
                 style: row
@@ -198,15 +198,6 @@ spec:
                       mappings:
                         - field: Answer.0.data
                           label: IP
-                - Tailscale:
-                    icon: tailscale.png
-                    href: https://login.tailscale.com/admin/machines
-                    description: OPNsense tailnet node
-                    weight: 70
-                    widget:
-                      type: tailscale
-                      deviceid: nuAHmUbg2n11CNTRL
-                      key: "{{`{{HOMEPAGE_VAR_TS_KEY}}`}}"
             - Network-STA:
                 - STA pfSense:
                     icon: pfsense.png
