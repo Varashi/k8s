@@ -24,6 +24,19 @@ spec:
     cleanupOnFail: true
     timeout: 30m
   values:
+    # Custom image baked via .github/workflows/build-images.yaml — adds
+    # netbox-plugin-dns. Image tag pinned via renovate regex on the
+    # Dockerfile ARG, not here — keep :latest.
+    image:
+      registry: ghcr.io
+      repository: varashi/netbox-plus
+      tag: latest
+      pullPolicy: Always
+
+    # Enable NetBox DNS plugin — module is baked into the custom image.
+    plugins:
+      - netbox_dns
+
     # Disable bundled Postgres — use external CNPG cluster
     postgresql:
       enabled: false
