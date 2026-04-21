@@ -187,6 +187,14 @@ See BOOTSTRAP.md Step 6 for full context and timing.
 Must match the pod network, not the node subnet — masquerading pod-to-pod traffic breaks
 cross-node connectivity in native routing mode.
 
+**Cilium IPAM `cluster-pool`** — Cilium operator is the sole allocator of per-node `/24`s
+out of `10.244.0.0/16` (`ipam.mode: cluster-pool` + `clusterPoolIPv4PodCIDRList`). Prevents
+stale `CiliumNode.spec.ipam.podCIDRs` collisions after a Talos node re-bootstrap — the
+previous `kubernetes` mode never overwrote pre-existing entries on a re-registered Node.
+`kube-controller-manager --cluster-cidr=10.244.0.0/16` is still set (Talos default) but
+Cilium ignores `Node.spec.podCIDR` entirely in this mode. On a real re-bootstrap, delete
+the stale `CiliumNode` CR after the node rejoins so the operator issues a fresh `/24`.
+
 **CoreDNS upstream DNS** — With Cilium native routing, the Talos hostDNS address
 (`169.254.20.10`) is unreachable from pods. `forwardKubeDNSToHost: false` in the machine
 config leaves CoreDNS using `/etc/resolv.conf`, which Talos populates from
