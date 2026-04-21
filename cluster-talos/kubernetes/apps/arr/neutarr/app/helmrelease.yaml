@@ -63,7 +63,7 @@ spec:
             group: arr
           gethomepage.dev/enabled: "true"
           gethomepage.dev/name: Neutarr
-          gethomepage.dev/description: Neutron arr helper
+          gethomepage.dev/description: Missing/upgrade hunter
           gethomepage.dev/group: Arr
           gethomepage.dev/icon: mdi-neutron
           gethomepage.dev/href: https://neutarr.${SECRET_DOMAIN}
