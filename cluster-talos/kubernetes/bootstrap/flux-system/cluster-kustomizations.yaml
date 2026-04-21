@@ -34,11 +34,11 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure-kube-system
+  name: infrastructure-core
   namespace: flux-system
 spec:
   interval: 1h
-  path: ./cluster-talos/kubernetes/infrastructure/kube-system
+  path: ./cluster-talos/kubernetes/infrastructure/core
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
@@ -57,7 +57,7 @@ metadata:
 spec:
   interval: 1h
   dependsOn:
-    - name: infrastructure-kube-system
+    - name: infrastructure-core
   path: ./cluster-talos/kubernetes/infrastructure/controllers
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:

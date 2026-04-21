@@ -8,7 +8,7 @@ spec:
   interval: 1h
   dependsOn:
     - name: infrastructure-configs
-  path: ./cluster-talos/kubernetes/infrastructure/kube-system/etcd-backup/app
+  path: ./cluster-talos/kubernetes/infrastructure/core/etcd-backup/app
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository

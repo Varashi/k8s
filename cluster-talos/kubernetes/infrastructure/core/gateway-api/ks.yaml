@@ -2,18 +2,14 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: vsphere-cpi
+  name: gateway-api
   namespace: flux-system
 spec:
   interval: 1h
-  path: ./cluster-talos/kubernetes/infrastructure/kube-system/vsphere-cpi/app
+  path: ./cluster-talos/kubernetes/infrastructure/core/gateway-api/app
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
-  postBuild:
-    substituteFrom:
-      - kind: Secret
-        name: cluster-vars
   wait: true
   timeout: 5m

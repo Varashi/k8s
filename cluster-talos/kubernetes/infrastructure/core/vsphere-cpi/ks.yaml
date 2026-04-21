@@ -2,16 +2,18 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: intel-gpu-config
+  name: vsphere-cpi
   namespace: flux-system
 spec:
   interval: 1h
-  dependsOn:
-    - name: intel-gpu
-  path: ./cluster-talos/kubernetes/infrastructure/kube-system/intel-gpu-config/app
+  path: ./cluster-talos/kubernetes/infrastructure/core/vsphere-cpi/app
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
     name: flux-system
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
   wait: true
   timeout: 5m
