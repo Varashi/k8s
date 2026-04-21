@@ -110,6 +110,9 @@ spec:
           gethomepage.dev/group: Media
           gethomepage.dev/icon: tdarr.png
           gethomepage.dev/href: https://tdarr.${SECRET_DOMAIN}
+          gethomepage.dev/widget.type: tdarr
+          gethomepage.dev/widget.url: http://tdarr.tdarr.svc:8265
+          gethomepage.dev/widget.key: "{{`{{HOMEPAGE_VAR_TDARR}}`}}"
         hostnames:
           - "tdarr.${SECRET_DOMAIN}"
         parentRefs:

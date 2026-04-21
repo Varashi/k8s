@@ -79,6 +79,9 @@ spec:
           gethomepage.dev/group: Media
           gethomepage.dev/icon: plex.png
           gethomepage.dev/href: https://plex.${SECRET_DOMAIN}
+          gethomepage.dev/widget.type: plex
+          gethomepage.dev/widget.url: http://plex.plex.svc:32400
+          gethomepage.dev/widget.key: "{{`{{HOMEPAGE_VAR_PLEX}}`}}"
         hostnames:
           - "plex.${SECRET_DOMAIN}"
         parentRefs:
