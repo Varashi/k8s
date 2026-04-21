@@ -145,13 +145,6 @@ spec:
 
     route:
       app:
-        annotations:
-          gethomepage.dev/enabled: "true"
-          gethomepage.dev/name: ClusterPlex
-          gethomepage.dev/description: Distributed Plex transcoding
-          gethomepage.dev/group: Media
-          gethomepage.dev/icon: plex.png
-          gethomepage.dev/href: https://clusterplex.${SECRET_DOMAIN}
         hostnames:
           - "clusterplex.${SECRET_DOMAIN}"
         parentRefs:
