@@ -7,3 +7,4 @@ resources:
   - descheduler/ks.yaml
   - cnpg-system/ks.yaml
   - monitoring/ks.yaml
+  - configs/ks.yaml

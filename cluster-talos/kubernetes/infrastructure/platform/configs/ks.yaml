@@ -2,13 +2,14 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: gpu-node-vsphere-maintenance
+  name: configs
   namespace: flux-system
 spec:
   interval: 1h
   dependsOn:
-    - name: configs
-  path: ./cluster-talos/kubernetes/infrastructure/core/gpu-node-vsphere-maintenance/app
+    - name: cert-manager
+    - name: external-secrets
+  path: ./cluster-talos/kubernetes/infrastructure/platform/configs/app
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
     kind: GitRepository
@@ -17,5 +18,3 @@ spec:
     substituteFrom:
       - kind: Secret
         name: cluster-vars
-  wait: true
-  timeout: 5m

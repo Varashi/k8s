@@ -72,32 +72,12 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure-configs
-  namespace: flux-system
-spec:
-  interval: 1h
-  dependsOn:
-    - name: cert-manager
-    - name: external-secrets
-  path: ./cluster-talos/kubernetes/infrastructure/configs
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  postBuild:
-    substituteFrom:
-      - kind: Secret
-        name: cluster-vars
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
   name: infrastructure-external-dns
   namespace: flux-system
 spec:
   interval: 1h
   dependsOn:
-    - name: infrastructure-configs
+    - name: configs
   path: ./cluster-talos/kubernetes/infrastructure/external-dns
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
@@ -118,7 +98,7 @@ metadata:
 spec:
   interval: 1h
   dependsOn:
-    - name: infrastructure-configs
+    - name: configs
   path: ./cluster-talos/kubernetes/infrastructure/external-dns-cloudflare
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
@@ -137,7 +117,7 @@ metadata:
 spec:
   interval: 1h
   dependsOn:
-    - name: infrastructure-configs
+    - name: configs
   path: ./cluster-talos/kubernetes/infrastructure/renovate
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
@@ -158,7 +138,7 @@ spec:
   dependsOn:
     - name: external-secrets
     - name: monitoring
-    - name: infrastructure-configs
+    - name: configs
   path: ./cluster-talos/kubernetes/infrastructure/kasten-io
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
@@ -217,7 +197,7 @@ spec:
     name: flux-system
   dependsOn:
     - name: infrastructure-cloudflare-operator
-    - name: infrastructure-configs
+    - name: configs
   wait: true
   postBuild:
     substituteFrom:
@@ -234,7 +214,7 @@ metadata:
 spec:
   interval: 1h
   dependsOn:
-    - name: infrastructure-configs
+    - name: configs
   path: ./cluster-talos/kubernetes/infrastructure/longhorn
   # prune=false: Longhorn holds stateful replica data — accidental prune
   # (path typo, kustomize build error) MUST NOT cascade-delete the CRs,
@@ -259,7 +239,7 @@ metadata:
 spec:
   interval: 1h
   dependsOn:
-    - name: infrastructure-configs
+    - name: configs
   path: ./cluster-talos/kubernetes/infrastructure/tanzu-logging
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:
@@ -297,7 +277,7 @@ metadata:
 spec:
   interval: 1h
   dependsOn:
-    - name: infrastructure-configs
+    - name: configs
     - name: infrastructure-cloudflare-operator
   path: ./cluster-talos/kubernetes/apps
   prune: false  # temp during repo layout refactor; flip back to true on final structure
