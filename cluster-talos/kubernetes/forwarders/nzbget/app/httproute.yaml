@@ -5,6 +5,7 @@ metadata:
   namespace: nzbget
   annotations:
     gethomepage.dev/enabled: "true"
+    gethomepage.dev/pod-selector: ""
     gethomepage.dev/name: NZBGet
     gethomepage.dev/description: Usenet downloader (TrueNAS)
     gethomepage.dev/group: Downloaders
