@@ -126,17 +126,28 @@ spec:
                 columns: 1
               Network-SKW:
                 style: row
-                columns: 3
+                columns: 4
                 icon: mdi-lan
               Network-STA:
                 style: row
-                columns: 3
+                columns: 2
                 icon: mdi-vpn
             kubernetes:
               mode: cluster
               gateway: true
           services.yaml: |
             - Network-SKW:
+                - WAN IP SKW:
+                    icon: mdi-ip-outline-#38bdf8
+                    description: Public IP @ SKW
+                    weight: 5
+                    widget:
+                      type: customapi
+                      url: https://dns.google/resolve?name=skw.wan.${SECRET_DOMAIN}&type=A
+                      refreshInterval: 60000
+                      mappings:
+                        - field: Answer.0.data
+                          label: IP
                 - OPNsense:
                     icon: opnsense.png
                     href: https://skw-edgerouter.${SECRET_DOMAIN}
@@ -187,39 +198,11 @@ spec:
                       url: http://skw-switch1g2.${SECRET_DOMAIN}
                       username: admin
                       password: "{{`{{HOMEPAGE_VAR_MIKROTIK}}`}}"
-                - WAN IP SKW:
-                    icon: mdi-ip-outline-#38bdf8
-                    description: Public IP @ SKW
-                    weight: 60
-                    widget:
-                      type: customapi
-                      url: https://dns.google/resolve?name=skw.wan.${SECRET_DOMAIN}&type=A
-                      refreshInterval: 60000
-                      mappings:
-                        - field: Answer.0.data
-                          label: IP
-            - Network-STA:
-                - STA pfSense:
-                    icon: pfsense.png
-                    href: https://sta-router.${SECRET_DOMAIN}
-                    description: STA firewall (SG-3100, no API)
-                    weight: 10
-                - WAN IP STA:
-                    icon: mdi-ip-outline-#38bdf8
-                    description: Public IP @ STA
-                    weight: 20
-                    widget:
-                      type: customapi
-                      url: https://dns.google/resolve?name=sta.wan.${SECRET_DOMAIN}&type=A
-                      refreshInterval: 60000
-                      mappings:
-                        - field: Answer.0.data
-                          label: IP
                 - WG SKW-STA:
                     icon: wireguard.png
                     href: https://skw-edgerouter.${SECRET_DOMAIN}/ui/wireguard/general
                     description: Site-to-site tunnel
-                    weight: 30
+                    weight: 60
                     widget:
                       type: customapi
                       url: https://skw-edgerouter.${SECRET_DOMAIN}/api/wireguard/service/show
@@ -238,6 +221,23 @@ spec:
                         - field: rows.1.transfer-tx
                           label: TX
                           format: bytes
+            - Network-STA:
+                - WAN IP STA:
+                    icon: mdi-ip-outline-#38bdf8
+                    description: Public IP @ STA
+                    weight: 5
+                    widget:
+                      type: customapi
+                      url: https://dns.google/resolve?name=sta.wan.${SECRET_DOMAIN}&type=A
+                      refreshInterval: 60000
+                      mappings:
+                        - field: Answer.0.data
+                          label: IP
+                - STA pfSense:
+                    icon: pfsense.png
+                    href: https://sta-router.${SECRET_DOMAIN}
+                    description: STA firewall (SG-3100, no API)
+                    weight: 10
             - Downloaders:
                 - NZBGet:
                     icon: nzbget.png
