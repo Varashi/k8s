@@ -1,0 +1,61 @@
+---
+name: flux-diff
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "cluster-talos/kubernetes/**"
+      - ".github/workflows/flux-diff.yaml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  diff:
+    name: flux-local diff
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        resource: ["helmrelease", "kustomization"]
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: pr
+
+      - name: Checkout base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+
+      - name: Diff ${{ matrix.resource }}
+        uses: allenporter/flux-local/action/diff@5.11.0
+        id: diff
+        with:
+          sources: flux-system=cluster-talos/kubernetes
+          path: pr/cluster-talos/kubernetes
+          path-orig: base/cluster-talos/kubernetes
+          resource: ${{ matrix.resource }}
+          api-versions: "networking.k8s.io/v1/Ingress"
+
+      - name: PR comment
+        if: ${{ steps.diff.outputs.diff != '' }}
+        uses: mshick/add-pr-comment@v2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message-id: flux-diff/${{ matrix.resource }}
+          message-failure: flux-local diff failed
+          message: |
+            `${{ matrix.resource }}` diff:
+            ```diff
+            ${{ steps.diff.outputs.diff }}
+            ```
