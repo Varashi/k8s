@@ -112,14 +112,6 @@ spec:
             color: slate
             headerStyle: clean
             layout:
-              Network-SKW:
-                style: row
-                columns: 7
-                icon: mdi-lan
-              Network-STA:
-                style: row
-                columns: 3
-                icon: mdi-vpn
               Media:
                 style: column
                 columns: 1
@@ -132,6 +124,14 @@ spec:
               Tools:
                 style: column
                 columns: 1
+              Network-SKW:
+                style: row
+                columns: 7
+                icon: mdi-lan
+              Network-STA:
+                style: row
+                columns: 3
+                icon: mdi-vpn
             kubernetes:
               mode: cluster
               gateway: true
