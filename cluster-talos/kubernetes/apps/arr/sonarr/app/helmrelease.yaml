@@ -55,6 +55,13 @@ spec:
     service:
       app:
         controller: sonarr
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Sonarr
+          gethomepage.dev/description: TV shows
+          gethomepage.dev/group: Arr
+          gethomepage.dev/icon: sonarr.png
+          gethomepage.dev/href: https://sonarr.${SECRET_DOMAIN}
         ports:
           http:
             port: 8989

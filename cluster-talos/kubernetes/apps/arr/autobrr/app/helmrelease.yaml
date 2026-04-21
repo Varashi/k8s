@@ -48,6 +48,13 @@ spec:
     service:
       app:
         controller: autobrr
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Autobrr
+          gethomepage.dev/description: IRC announce bot
+          gethomepage.dev/group: Arr
+          gethomepage.dev/icon: autobrr.png
+          gethomepage.dev/href: https://autobrr.${SECRET_DOMAIN}
         ports:
           http:
             port: 7474
