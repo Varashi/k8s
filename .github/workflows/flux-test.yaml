@@ -1,0 +1,34 @@
+---
+name: flux-test
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "cluster-talos/kubernetes/**"
+      - ".github/workflows/flux-test.yaml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: flux-local test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install flux
+        uses: fluxcd/flux2/action@main
+
+      - name: Test
+        uses: allenporter/flux-local/action/test@8.2.0
+        with:
+          path: cluster-talos/kubernetes/bootstrap/flux-system
+          sources: flux-system=.
+          enable-helm: true
