@@ -23,6 +23,7 @@ See **[BOOTSTRAP.md](BOOTSTRAP.md)** for the full lifecycle guide (provision, bo
 | Config reload | Stakater Reloader | Restarts Deployments/DaemonSets when annotated ConfigMaps/Secrets change |
 | Image mirror | Spegel DaemonSet | P2P pull-through cache across node containerds (wildcard mirror via `/etc/cri/conf.d/hosts/_default/hosts.toml`) |
 | GPU workloads | Intel GPU device plugin (+ NFD) | `gpu.intel.com/i915` on gpu-worker-*; ClusterPlex HW transcode |
+| Uptime / status page | Gatus (CNPG-backed) | Public dashboard at `status.boeye.net` — monitors ~30 internal + external endpoints |
 
 ## Cluster Spec
 
@@ -117,7 +118,7 @@ cluster-talos/
     │   ├── arr/             # sonarr, radarr, bazarr, prowlarr, autobrr, recyclarr, neutarr, sonarr-nl
     │   ├── downloaders/     # qbittorrent, sabnzbd
     │   ├── media/           # plex, clusterplex, tdarr, tautulli, tracearr, ombi
-    │   └── tools/           # netbox, ocis, rustdesk, guacamole, postfix-relay
+    │   └── tools/           # netbox, ocis, rustdesk, guacamole, postfix-relay, gatus
     │       └── <app>/
     │           ├── ks.yaml  # Flux Kustomization (prune=false, per-app postBuild + dependsOn)
     │           └── app/     # HelmRelease + PVC + ExternalSecret + namespace
@@ -137,7 +138,7 @@ infrastructure-flux-system  (Flux Operator + FluxInstance; self-manages flux-sys
 flux-repositories           (HelmRepository / OCI / GitRepository sources — no dependencies)
 infrastructure-core         (aggregator → ~13 child Kustomizations under infrastructure/core/)
     └── infrastructure-platform (aggregator → ~15 children under infrastructure/platform/)
-            ├── apps          (aggregator → 21 per-app children under apps/<category>/<app>/)
+            ├── apps          (aggregator → 22 per-app children under apps/<category>/<app>/)
             └── forwarders    (aggregator → per-app children under forwarders/<app>/)
 ```
 
