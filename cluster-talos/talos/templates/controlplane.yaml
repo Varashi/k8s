@@ -50,8 +50,10 @@ machine:
       enabled: true
       allowedRoles:
         - os:etcd:backup
+        - os:admin
       allowedKubernetesNamespaces:
         - etcd-backup
+        - system-upgrade
 cluster:
   controlPlane:
     endpoint: {{ .Values.cluster.endpoint }}
