@@ -15,3 +15,6 @@ resources:
   - reloader/ks.yaml
   - etcd-backup/ks.yaml
   - gpu-node-vsphere-maintenance/ks.yaml
+  - cert-manager/cert-manager/ks.yaml
+  - cert-manager/certs/ks.yaml
+  - external-secrets/ks.yaml
