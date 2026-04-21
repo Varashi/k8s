@@ -112,6 +112,14 @@ spec:
             color: slate
             headerStyle: clean
             layout:
+              Network-SKW:
+                style: row
+                columns: 6
+                icon: mdi-lan
+              Network-STA:
+                style: row
+                columns: 4
+                icon: mdi-vpn
               Media:
                 style: column
                 columns: 1
@@ -128,6 +136,117 @@ spec:
               mode: cluster
               gateway: true
           services.yaml: |
+            - Network-SKW:
+                - OPNsense:
+                    icon: opnsense.png
+                    href: https://skw-edgerouter.${SECRET_DOMAIN}
+                    description: SKW firewall
+                    weight: 10
+                    widget:
+                      type: opnsense
+                      url: https://skw-edgerouter.${SECRET_DOMAIN}
+                      username: "{{`{{HOMEPAGE_VAR_OPNSENSE_KEY}}`}}"
+                      password: "{{`{{HOMEPAGE_VAR_OPNSENSE_SECRET}}`}}"
+                - skw-switch10g1:
+                    icon: mikrotik.png
+                    href: http://skw-switch10g1.${SECRET_DOMAIN}
+                    description: 10G core (RSTP root)
+                    weight: 20
+                    widget:
+                      type: mikrotik
+                      url: http://skw-switch10g1.${SECRET_DOMAIN}
+                      username: admin
+                      password: "{{`{{HOMEPAGE_VAR_MIKROTIK}}`}}"
+                - skw-switch10g2:
+                    icon: mikrotik.png
+                    href: http://skw-switch10g2.${SECRET_DOMAIN}
+                    description: 10G core (secondary)
+                    weight: 30
+                    widget:
+                      type: mikrotik
+                      url: http://skw-switch10g2.${SECRET_DOMAIN}
+                      username: admin
+                      password: "{{`{{HOMEPAGE_VAR_MIKROTIK}}`}}"
+                - skw-switch1g1:
+                    icon: mikrotik.png
+                    href: http://skw-switch1g1.${SECRET_DOMAIN}
+                    description: 1G PoE (ground floor)
+                    weight: 40
+                    widget:
+                      type: mikrotik
+                      url: http://skw-switch1g1.${SECRET_DOMAIN}
+                      username: admin
+                      password: "{{`{{HOMEPAGE_VAR_MIKROTIK}}`}}"
+                - skw-switch1g2:
+                    icon: mikrotik.png
+                    href: http://skw-switch1g2.${SECRET_DOMAIN}
+                    description: 1G PoE (first floor)
+                    weight: 50
+                    widget:
+                      type: mikrotik
+                      url: http://skw-switch1g2.${SECRET_DOMAIN}
+                      username: admin
+                      password: "{{`{{HOMEPAGE_VAR_MIKROTIK}}`}}"
+                - WAN IP SKW:
+                    icon: mdi-ip-outline-#38bdf8
+                    description: Public IP @ SKW
+                    weight: 60
+                    widget:
+                      type: customapi
+                      url: https://dns.google/resolve?name=skw.wan.${SECRET_DOMAIN}&type=A
+                      refreshInterval: 60000
+                      mappings:
+                        - field: Answer.0.data
+                          label: IP
+            - Network-STA:
+                - STA pfSense:
+                    icon: pfsense.png
+                    href: https://sta-router.${SECRET_DOMAIN}
+                    description: STA firewall (SG-3100, no API)
+                    weight: 10
+                - WAN IP STA:
+                    icon: mdi-ip-outline-#38bdf8
+                    description: Public IP @ STA
+                    weight: 20
+                    widget:
+                      type: customapi
+                      url: https://dns.google/resolve?name=sta.wan.${SECRET_DOMAIN}&type=A
+                      refreshInterval: 60000
+                      mappings:
+                        - field: Answer.0.data
+                          label: IP
+                - WG SKW-STA:
+                    icon: wireguard.png
+                    href: https://skw-edgerouter.${SECRET_DOMAIN}/ui/wireguard/general
+                    description: Site-to-site tunnel
+                    weight: 30
+                    widget:
+                      type: customapi
+                      url: https://skw-edgerouter.${SECRET_DOMAIN}/api/wireguard/service/show
+                      username: "{{`{{HOMEPAGE_VAR_OPNSENSE_KEY}}`}}"
+                      password: "{{`{{HOMEPAGE_VAR_OPNSENSE_SECRET}}`}}"
+                      refreshInterval: 30000
+                      mappings:
+                        - field: rows.1.peer-status
+                          label: State
+                        - field: rows.1.latest-handshake-age
+                          label: Last HS
+                          format: duration
+                        - field: rows.1.transfer-rx
+                          label: RX
+                          format: bytes
+                        - field: rows.1.transfer-tx
+                          label: TX
+                          format: bytes
+                - Tailscale:
+                    icon: tailscale.png
+                    href: https://login.tailscale.com/admin/machines
+                    description: OPNsense tailnet node
+                    weight: 40
+                    widget:
+                      type: tailscale
+                      deviceid: nuAHmUbg2n11CNTRL
+                      key: "{{`{{HOMEPAGE_VAR_TS_KEY}}`}}"
             - Downloaders:
                 - NZBGet:
                     icon: nzbget.png
