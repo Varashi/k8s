@@ -1,0 +1,305 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: gatus
+  namespace: gatus
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 4.6.2
+      interval: 30m
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  values:
+    controllers:
+      gatus:
+        replicas: 1
+        strategy: Recreate
+        containers:
+          app:
+            image:
+              repository: ghcr.io/twin/gatus
+              tag: v5.35.0
+            env:
+              GATUS_CONFIG_PATH: /config
+              GATUS_DATABASE_URL:
+                secretKeyRef:
+                  name: gatus-pg-app
+                  key: uri
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: 8080
+                  initialDelaySeconds: 10
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: 8080
+                  initialDelaySeconds: 5
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: 8080
+                  periodSeconds: 2
+                  failureThreshold: 30
+
+    service:
+      app:
+        controller: gatus
+        ports:
+          http:
+            port: 8080
+
+    route:
+      app:
+        hostnames:
+          - status.${SECRET_DOMAIN}
+        parentRefs:
+          - name: main
+            namespace: cilium
+            sectionName: https
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: app
+                port: http
+
+    configMaps:
+      config:
+        data:
+          config.yaml: |
+            storage:
+              type: postgres
+              path: $${GATUS_DATABASE_URL}
+              caching: true
+            ui:
+              title: status.${SECRET_DOMAIN}
+              header: Boeye homelab
+            endpoints:
+              # media
+              - name: plex
+                group: media
+                url: https://plex.${SECRET_DOMAIN}/identity
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+                  - "[RESPONSE_TIME] < 2000"
+              - name: plex-web
+                group: media
+                url: https://plex-web.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: clusterplex
+                group: media
+                url: https://clusterplex.${SECRET_DOMAIN}/identity
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: tautulli
+                group: media
+                url: https://tautulli.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: tdarr
+                group: media
+                url: https://tdarr.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: tracearr
+                group: media
+                url: https://tracearr.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: plexrequests
+                group: media
+                url: https://plexrequests.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+
+              # *arr stack
+              - name: sonarr
+                group: arr
+                url: https://sonarr.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: nlsonarr
+                group: arr
+                url: https://nlsonarr.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: radarr
+                group: arr
+                url: https://radarr.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: bazarr
+                group: arr
+                url: https://bazarr.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: prowlarr
+                group: arr
+                url: https://prowlarr.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: autobrr
+                group: arr
+                url: https://autobrr.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: neutarr
+                group: arr
+                url: https://neutarr.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: sabnzbd
+                group: arr
+                url: https://sabnzbd.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: qbittorrent
+                group: arr
+                url: https://qbittorrent.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+
+              # tools
+              - name: netbox
+                group: tools
+                url: https://ipam.${SECRET_DOMAIN}/login/
+                interval: 60s
+                conditions:
+                  - "[STATUS] == 200"
+              - name: ocis
+                group: tools
+                url: https://files.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: guacamole
+                group: tools
+                url: https://guac.${SECRET_DOMAIN}/guacamole/
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: rustdesk-web
+                group: tools
+                url: https://rustdesk.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: rustdesk-relay
+                group: tools
+                url: tcp://support.${SECRET_DOMAIN}:21117
+                interval: 60s
+                conditions:
+                  - "[CONNECTED] == true"
+
+              # infra (self-signed internal TLS)
+              - name: home-assistant
+                group: infra
+                url: http://skw-homeassistant.${SECRET_DOMAIN}:8123
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
+              - name: vcsa
+                group: infra
+                url: https://skw-vcsa.${SECRET_DOMAIN}/ui/
+                interval: 120s
+                client:
+                  insecure: true
+                conditions:
+                  - "[STATUS] < 500"
+              - name: truenas
+                group: infra
+                url: https://skw-truenas-data.${SECRET_DOMAIN}
+                interval: 120s
+                client:
+                  insecure: true
+                conditions:
+                  - "[STATUS] < 500"
+              - name: opnsense
+                group: infra
+                url: https://skw-edgerouter.${SECRET_DOMAIN}
+                interval: 120s
+                client:
+                  insecure: true
+                conditions:
+                  - "[STATUS] < 500"
+
+              # external deps
+              - name: cloudflare
+                group: external
+                url: https://www.cloudflare.com
+                interval: 300s
+                conditions:
+                  - "[STATUS] == 200"
+              - name: github
+                group: external
+                url: https://github.com
+                interval: 300s
+                conditions:
+                  - "[STATUS] == 200"
+              - name: ghcr
+                group: external
+                url: https://ghcr.io
+                interval: 300s
+                conditions:
+                  - "[STATUS] < 500"
+
+    persistence:
+      config:
+        type: configMap
+        name: gatus-config
+        advancedMounts:
+          gatus:
+            app:
+              - path: /config/config.yaml
+                subPath: config.yaml
+                readOnly: true
+
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: DoesNotExist
