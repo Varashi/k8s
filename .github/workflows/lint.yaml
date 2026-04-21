@@ -1,0 +1,34 @@
+---
+name: lint
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "**/*.yaml"
+      - "**/*.yml"
+      - ".yamlfmt"
+      - ".mise.toml"
+      - "lefthook.yml"
+      - ".github/workflows/lint.yaml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  yamlfmt:
+    name: yamlfmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up mise
+        uses: jdx/mise-action@v2
+
+      - name: yamlfmt lint
+        run: yamlfmt -lint
