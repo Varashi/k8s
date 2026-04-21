@@ -12,3 +12,5 @@ resources:
   - external-dns/external-dns-cloudflare/ks.yaml
   - cloudflare-operator-system/cloudflare-operator/ks.yaml
   - cloudflare-operator-system/cloudflare-tunnel/ks.yaml
+  - longhorn-system/ks.yaml
+  - tanzu-system-logging/ks.yaml
