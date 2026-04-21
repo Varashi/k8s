@@ -103,13 +103,6 @@ spec:
     service:
       app:
         controller: ocis
-        annotations:
-          gethomepage.dev/enabled: "true"
-          gethomepage.dev/name: ownCloud Infinite Scale
-          gethomepage.dev/description: File sharing
-          gethomepage.dev/group: Tools
-          gethomepage.dev/icon: owncloud.png
-          gethomepage.dev/href: https://files.${SECRET_DOMAIN}
         ports:
           http:
             port: 9200
@@ -130,6 +123,12 @@ spec:
             conditions: ["[STATUS] < 500"]
             interval: 60s
             group: tools
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: ownCloud Infinite Scale
+          gethomepage.dev/description: File sharing
+          gethomepage.dev/group: Tools
+          gethomepage.dev/icon: owncloud.png
+          gethomepage.dev/href: https://files.${SECRET_DOMAIN}
         hostnames:
           - files.${SECRET_DOMAIN}
         parentRefs:

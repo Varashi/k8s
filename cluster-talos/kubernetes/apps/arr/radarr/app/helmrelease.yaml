@@ -55,13 +55,6 @@ spec:
     service:
       app:
         controller: radarr
-        annotations:
-          gethomepage.dev/enabled: "true"
-          gethomepage.dev/name: Radarr
-          gethomepage.dev/description: Movies
-          gethomepage.dev/group: Arr
-          gethomepage.dev/icon: radarr.png
-          gethomepage.dev/href: https://radarr.${SECRET_DOMAIN}
         ports:
           http:
             port: 7878
@@ -72,6 +65,12 @@ spec:
             conditions: ["[STATUS] < 500"]
             interval: 60s
             group: arr
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Radarr
+          gethomepage.dev/description: Movies
+          gethomepage.dev/group: Arr
+          gethomepage.dev/icon: radarr.png
+          gethomepage.dev/href: https://radarr.${SECRET_DOMAIN}
         hostnames:
           - radarr.${SECRET_DOMAIN}
         parentRefs:

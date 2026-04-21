@@ -51,13 +51,6 @@ spec:
     service:
       app:
         controller: neutarr
-        annotations:
-          gethomepage.dev/enabled: "true"
-          gethomepage.dev/name: Neutarr
-          gethomepage.dev/description: Neutron arr helper
-          gethomepage.dev/group: Arr
-          gethomepage.dev/icon: mdi-neutron
-          gethomepage.dev/href: https://neutarr.${SECRET_DOMAIN}
         ports:
           http:
             port: 9705
@@ -68,6 +61,12 @@ spec:
             conditions: ["[STATUS] < 500"]
             interval: 60s
             group: arr
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Neutarr
+          gethomepage.dev/description: Neutron arr helper
+          gethomepage.dev/group: Arr
+          gethomepage.dev/icon: mdi-neutron
+          gethomepage.dev/href: https://neutarr.${SECRET_DOMAIN}
         hostnames:
           - neutarr.${SECRET_DOMAIN}
         parentRefs:
