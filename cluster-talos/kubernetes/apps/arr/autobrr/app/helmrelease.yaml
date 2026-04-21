@@ -53,6 +53,11 @@ spec:
             port: 7474
     route:
       app:
+        annotations:
+          gatus.home-operations.com/endpoint: |
+            conditions: ["[STATUS] < 500"]
+            interval: 60s
+            group: arr
         hostnames:
           - autobrr.${SECRET_DOMAIN}
         parentRefs:

@@ -60,6 +60,11 @@ spec:
             port: 7878
     route:
       app:
+        annotations:
+          gatus.home-operations.com/endpoint: |
+            conditions: ["[STATUS] < 500"]
+            interval: 60s
+            group: arr
         hostnames:
           - radarr.${SECRET_DOMAIN}
         parentRefs:

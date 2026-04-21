@@ -162,81 +162,13 @@ spec:
                 conditions:
                   - "[STATUS] < 500"
 
-              # *arr stack
-              - name: sonarr
-                group: arr
-                url: https://sonarr.${SECRET_DOMAIN}
-                interval: 60s
-                conditions:
-                  - "[STATUS] < 500"
-              - name: nlsonarr
-                group: arr
-                url: https://nlsonarr.${SECRET_DOMAIN}
-                interval: 60s
-                conditions:
-                  - "[STATUS] < 500"
-              - name: radarr
-                group: arr
-                url: https://radarr.${SECRET_DOMAIN}
-                interval: 60s
-                conditions:
-                  - "[STATUS] < 500"
-              - name: bazarr
-                group: arr
-                url: https://bazarr.${SECRET_DOMAIN}
-                interval: 60s
-                conditions:
-                  - "[STATUS] < 500"
-              - name: prowlarr
-                group: arr
-                url: https://prowlarr.${SECRET_DOMAIN}
-                interval: 60s
-                conditions:
-                  - "[STATUS] < 500"
-              - name: autobrr
-                group: arr
-                url: https://autobrr.${SECRET_DOMAIN}
-                interval: 60s
-                conditions:
-                  - "[STATUS] < 500"
-              - name: neutarr
-                group: arr
-                url: https://neutarr.${SECRET_DOMAIN}
-                interval: 60s
-                conditions:
-                  - "[STATUS] < 500"
-              - name: sabnzbd
-                group: arr
-                url: https://sabnzbd.${SECRET_DOMAIN}
-                interval: 60s
-                conditions:
-                  - "[STATUS] < 500"
-              - name: qbittorrent
-                group: arr
-                url: https://qbittorrent.${SECRET_DOMAIN}
-                interval: 60s
-                conditions:
-                  - "[STATUS] < 500"
-
-              # tools
+              # tools (not auto-discoverable: chart-owned HTTPRoute / no HTTPRoute)
               - name: netbox
                 group: tools
                 url: https://ipam.${SECRET_DOMAIN}/login/
                 interval: 60s
                 conditions:
                   - "[STATUS] == 200"
-              - name: ocis
-                group: tools
-                url: https://files.${SECRET_DOMAIN}
-                interval: 60s
-                conditions:
-                  - "[STATUS] < 500"
-              - name: guacamole
-                group: tools
-                url: https://guac.${SECRET_DOMAIN}/guacamole/
-                interval: 60s
-                conditions:
-                  - "[STATUS] < 500"
               - name: rustdesk-web
                 group: tools
                 url: https://rustdesk.${SECRET_DOMAIN}
