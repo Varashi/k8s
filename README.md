@@ -53,6 +53,12 @@ PR-gated GitHub Actions workflows in `.github/workflows/`:
   touching `renovate.json`.
 - **lint** — runs `yamlfmt -lint` on any PR touching `**/*.{yaml,yml}` (or the
   tooling configs), using the pinned toolchain from `.mise.toml`.
+- **build-images** — matrix build for custom GHCR images under
+  `cluster-talos/kubernetes/apps/tools/*/image/` (currently `netbox-plus`
+  and `octodns`). Triggers on pushes to `main` that touch those paths;
+  pushes `:latest` + `sha-<short>` to
+  `ghcr.io/${{ github.repository_owner }}/<image>`. Consumers pin by
+  digest so Renovate can auto-bump (see each app's `README.md`).
 
 Local tooling (`.mise.toml`, `.yamlfmt`, `lefthook.yml`) mirrors CI; devs run
 `mise install && lefthook install` once per clone to enforce formatting
