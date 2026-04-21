@@ -37,7 +37,10 @@ spec:
 
     # IPAM
     ipam:
-      mode: kubernetes
+      mode: cluster-pool
+      operator:
+        clusterPoolIPv4PodCIDRList: ["10.244.0.0/16"]
+        clusterPoolIPv4MaskSize: 24
 
     # Load balancer
     loadBalancer:
