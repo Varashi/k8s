@@ -59,7 +59,12 @@
       "description": "Split risky major helm bumps into per-chart PRs",
       "matchManagers": ["flux"],
       "matchUpdateTypes": ["major"],
-      "matchDepNames": ["external-secrets", "netbox", "prometheus"],
+      "matchDepNames": [
+        "external-secrets",
+        "netbox",
+        "prometheus",
+        "ghcr.io/varashi/charts/gpu-node-vsphere-maintenance-controller"
+      ],
       "groupName": null
     },
     {
@@ -68,6 +73,34 @@
       "matchPackageNames": ["ghcr.io/linuxserver/**"],
       "versioning": "loose",
       "allowedVersions": "/^\\d+\\.\\d+\\.\\d+(\\.\\d+)?(-[a-z0-9]+)*-ls\\d+$/"
+    },
+    {
+      "description": "Auto-merge home-operations image digest rebuilds",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/home-operations/**"],
+      "matchUpdateTypes": ["digest"],
+      "automerge": true,
+      "automergeType": "pr",
+      "ignoreTests": false
+    },
+    {
+      "description": "Auto-merge GitHub Actions with 3-day cooldown",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true,
+      "automergeType": "branch",
+      "minimumReleaseAge": "3 days",
+      "ignoreTests": true
+    },
+    {
+      "description": "Auto-merge trusted GitHub Actions publishers without cooldown",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["actions/**", "fluxcd/**", "renovatebot/**"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true,
+      "automergeType": "branch",
+      "minimumReleaseAge": "1 minute",
+      "ignoreTests": true
     }
   ]
 }
