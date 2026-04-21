@@ -117,6 +117,7 @@ spec:
             ui:
               title: status.${SECRET_DOMAIN}
               header: Boeye homelab
+              default-sort-by: group
             endpoints:
               # media
               - name: plex
