@@ -138,7 +138,7 @@ spec:
                       type: nzbget
                       url: http://nzbget.nzbget.svc:6789
                       username: varashi
-                      password: "{{HOMEPAGE_VAR_NZBGET}}"
+                      password: "{{`{{HOMEPAGE_VAR_NZBGET}}`}}"
           bookmarks.yaml: |
             - Infra:
                 - vCenter:
