@@ -102,6 +102,12 @@ spec:
                 conditions:
                   - "[STATUS] < 500"
                   - "[RESPONSE_TIME] < 2000"
+              - name: plexrequests
+                group: media
+                url: https://plexrequests.${SECRET_DOMAIN}
+                interval: 60s
+                conditions:
+                  - "[STATUS] < 500"
               - name: plex-web
                 group: media
                 url: https://plex-web.${SECRET_DOMAIN}
@@ -129,12 +135,6 @@ spec:
               - name: tracearr
                 group: media
                 url: https://tracearr.${SECRET_DOMAIN}
-                interval: 60s
-                conditions:
-                  - "[STATUS] < 500"
-              - name: plexrequests
-                group: media
-                url: https://plexrequests.${SECRET_DOMAIN}
                 interval: 60s
                 conditions:
                   - "[STATUS] < 500"
