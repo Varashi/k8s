@@ -1,0 +1,19 @@
+formatter:
+  type: basic
+  indent: 2
+  retain_line_breaks_single: true
+  max_line_length: 0
+  scan_folded_as_literal: true
+  trim_trailing_whitespace: true
+  eof_newline: true
+  include_document_start: true
+include:
+  - "**/*.yaml"
+  - "**/*.yml"
+exclude:
+  - "cluster-talos/talos/nodes/bootstrap/**"
+  - "cluster-talos/talos/nodes/*.yaml"
+  - "cluster-talos/talos/secrets*.yaml"
+  - "cluster-talos/talos/clusterconfig/**"
+  - "**/charts/**"
+  - "**/vendor/**"
