@@ -70,7 +70,7 @@ spec:
             image: *image
             envFrom: *envFrom
             env:
-              <<: *env
+              !!merge <<: *env
               DEMO_USERS: "false"
               OCIS_LOG_COLOR: "true"
               OCIS_LOG_LEVEL: info
@@ -103,6 +103,13 @@ spec:
     service:
       app:
         controller: ocis
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: ownCloud Infinite Scale
+          gethomepage.dev/description: File sharing
+          gethomepage.dev/group: Tools
+          gethomepage.dev/icon: owncloud.png
+          gethomepage.dev/href: https://files.${SECRET_DOMAIN}
         ports:
           http:
             port: 9200

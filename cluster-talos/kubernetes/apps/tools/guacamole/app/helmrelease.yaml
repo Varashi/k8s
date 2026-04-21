@@ -56,6 +56,13 @@ spec:
     service:
       app:
         controller: guacamole
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Guacamole
+          gethomepage.dev/description: Remote desktop gateway
+          gethomepage.dev/group: Tools
+          gethomepage.dev/icon: guacamole.png
+          gethomepage.dev/href: https://guac.${SECRET_DOMAIN}
         ports:
           http:
             port: 8080
