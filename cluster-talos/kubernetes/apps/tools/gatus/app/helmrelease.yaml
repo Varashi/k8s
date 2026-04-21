@@ -83,6 +83,13 @@ spec:
     service:
       app:
         controller: gatus
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Gatus
+          gethomepage.dev/description: Status page
+          gethomepage.dev/group: Tools
+          gethomepage.dev/icon: gatus.png
+          gethomepage.dev/href: https://status.${SECRET_DOMAIN}
         ports:
           http:
             port: 8080

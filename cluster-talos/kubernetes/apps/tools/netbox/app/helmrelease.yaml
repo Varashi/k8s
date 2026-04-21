@@ -1,3 +1,4 @@
+---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -111,6 +112,13 @@ spec:
     service:
       type: ClusterIP
       port: 80
+      annotations:
+        gethomepage.dev/enabled: "true"
+        gethomepage.dev/name: Netbox
+        gethomepage.dev/description: IPAM/DCIM
+        gethomepage.dev/group: Tools
+        gethomepage.dev/icon: netbox.png
+        gethomepage.dev/href: https://ipam.${SECRET_DOMAIN}
 
     ingress:
       enabled: false
