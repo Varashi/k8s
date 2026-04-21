@@ -83,7 +83,7 @@ spec:
           gethomepage.dev/href: https://tautulli.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: tautulli
           gethomepage.dev/widget.url: http://tautulli.tautulli.svc:8181
-          gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_TAUTULLI}}"
+          gethomepage.dev/widget.key: "{{`{{HOMEPAGE_VAR_TAUTULLI}}`}}"
         hostnames:
           - tautulli.${SECRET_DOMAIN}
         parentRefs:

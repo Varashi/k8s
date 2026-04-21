@@ -65,7 +65,7 @@ spec:
           gethomepage.dev/href: https://plexrequests.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: ombi
           gethomepage.dev/widget.url: http://ombi.ombi.svc:3579
-          gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_OMBI}}"
+          gethomepage.dev/widget.key: "{{`{{HOMEPAGE_VAR_OMBI}}`}}"
         hostnames:
           - plexrequests.${SECRET_DOMAIN}
         parentRefs:

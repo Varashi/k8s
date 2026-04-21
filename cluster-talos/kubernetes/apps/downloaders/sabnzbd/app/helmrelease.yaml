@@ -73,7 +73,7 @@ spec:
           gethomepage.dev/href: https://sabnzbd.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: sabnzbd
           gethomepage.dev/widget.url: http://sabnzbd.sabnzbd.svc:8080
-          gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_SAB}}"
+          gethomepage.dev/widget.key: "{{`{{HOMEPAGE_VAR_SAB}}`}}"
         hostnames:
           - sabnzbd.${SECRET_DOMAIN}
         parentRefs:

@@ -73,7 +73,7 @@ spec:
           gethomepage.dev/href: https://radarr.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: radarr
           gethomepage.dev/widget.url: http://radarr.radarr.svc:7878
-          gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_RADARR}}"
+          gethomepage.dev/widget.key: "{{`{{HOMEPAGE_VAR_RADARR}}`}}"
         hostnames:
           - radarr.${SECRET_DOMAIN}
         parentRefs:

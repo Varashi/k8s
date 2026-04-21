@@ -73,7 +73,7 @@ spec:
           gethomepage.dev/href: https://bazarr.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: bazarr
           gethomepage.dev/widget.url: http://bazarr.bazarr.svc:6767
-          gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_BAZARR}}"
+          gethomepage.dev/widget.key: "{{`{{HOMEPAGE_VAR_BAZARR}}`}}"
         hostnames:
           - bazarr.${SECRET_DOMAIN}
         parentRefs:
