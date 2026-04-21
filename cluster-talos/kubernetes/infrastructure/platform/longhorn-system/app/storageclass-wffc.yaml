@@ -5,6 +5,9 @@ metadata:
   annotations:
     storageclass.kubernetes.io/is-default-class: "false"
     k10.kasten.io/volume-snapshot-class: longhorn-snapshot
+    # Required for K10 block-mode export; without it the export fails with
+    # "volume's storage class does not support block mode export".
+    k10.kasten.io/sc-supports-block-mode-exports: "true"
 provisioner: driver.longhorn.io
 allowVolumeExpansion: true
 reclaimPolicy: Delete

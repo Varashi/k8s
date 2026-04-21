@@ -75,6 +75,20 @@ spec:
       provisionerReplicaCount: 2
       resizerReplicaCount: 1
       snapshotterReplicaCount: 1
+  # Chart-rendered `longhorn` SC lacks K10 annotations; without them block-mode
+  # export fails ("volume's storage class does not support block mode export")
+  # and K10 cannot pick the right VolumeSnapshotClass.
+  postRenderers:
+    - kustomize:
+        patches:
+          - target: { kind: StorageClass, name: longhorn }
+            patch: |-
+              - op: add
+                path: /metadata/annotations/k10.kasten.io~1volume-snapshot-class
+                value: "longhorn-snapshot"
+              - op: add
+                path: /metadata/annotations/k10.kasten.io~1sc-supports-block-mode-exports
+                value: "true"
 ---
 apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshotClass
