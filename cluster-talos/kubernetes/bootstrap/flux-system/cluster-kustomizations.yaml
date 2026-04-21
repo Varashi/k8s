@@ -4,31 +4,13 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure-flux-operator
+  name: infrastructure-flux-system
   namespace: flux-system
 spec:
   interval: 1h
-  path: ./cluster-talos/kubernetes/infrastructure/controllers/flux-operator
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  wait: true
-  timeout: 5m
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: infrastructure-flux-instance
-  namespace: flux-system
-spec:
-  interval: 1h
-  dependsOn:
-    - name: infrastructure-flux-operator
-  path: ./cluster-talos/kubernetes/infrastructure/controllers/flux-instance
+  path: ./cluster-talos/kubernetes/infrastructure/flux-system
   # prune=false: FluxInstance manages the flux-system controllers in-place.
-  # Pruning this stanza would delete the FluxInstance, which triggers the
-  # operator to tear down every Flux controller on the cluster.
+  # Also: repo layout refactor in progress — flip back to true on final structure.
   prune: false
   sourceRef:
     kind: GitRepository
