@@ -79,7 +79,7 @@ spec:
     - name: configs
     - name: cloudflare-operator
   path: ./cluster-talos/kubernetes/apps
-  prune: true
+  prune: false  # temp during apps-tier refactor; pure aggregator after split
   sourceRef:
     kind: GitRepository
     name: flux-system
