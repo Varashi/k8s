@@ -1,3 +1,4 @@
+---
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -18,7 +19,6 @@ resources:
   - intel-device-plugins.yaml
   - longhorn.yaml
   - prometheus-community.yaml
-  - postfix-relay.yaml
   - descheduler.yaml
   - stakater.yaml
   - fluent.yaml
