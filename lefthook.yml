@@ -1,0 +1,9 @@
+pre-commit:
+  parallel: true
+  commands:
+    yamlfmt:
+      glob: "*.{yaml,yml}"
+      run: yamlfmt -lint {staged_files}
+    renovate-config-validator:
+      glob: "renovate.json"
+      run: npx --yes --package renovate -- renovate-config-validator --strict {staged_files}
