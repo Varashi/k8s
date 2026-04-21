@@ -12,8 +12,9 @@ Declarative K10 install + profiles + policies. All credentials via ESO ← Bitwa
 | `helmrelease.yaml` | K10 chart values (LDAPS email-claim path, GPU anti-affinity, uninit-taint toleration) |
 | `httproute.yaml` | `kasten.${SECRET_DOMAIN}` via Gateway `main`, `/→/k10/` 301 |
 | `clusterrolebinding.yaml` | Admin user → `cluster-admin` (K10's `k10-admin` role lacks RBAC verbs) |
-| `profile-b2.yaml` | Location profile `backblaze-b2` |
+| `profile-backblaze.yaml` | Location profile `backblaze` (B2 bucket `skw-talos-kasten`) |
 | `profile-vsphere.yaml` | Infra profile `skw-vcsa` |
+| `vbr-integration.yaml` | SA `kasten-sa` + CRB → `k10-admin` + long-lived token Secret for VBR registration |
 | `policy-dr.yaml` | `k10-disaster-recovery-policy` — daily×3, backup+export to B2 |
 
 ## BW SM secrets consumed
@@ -49,7 +50,7 @@ RKE2 `k8s-app-backup` policy historically had **no `profile` in `exportParameter
 
 ```
 kubectl --context k8s -n kasten-io patch policy k8s-app-backup --type=json \
-  -p='[{"op":"add","path":"/spec/actions/1/exportParameters/profile","value":{"name":"backblaze-b2","namespace":"kasten-io"}}]'
+  -p='[{"op":"add","path":"/spec/actions/1/exportParameters/profile","value":{"name":"backblaze","namespace":"kasten-io"}}]'
 ```
 
 ### Pre-flight
@@ -63,7 +64,7 @@ kubectl --context k8s -n kasten-io patch policy k8s-app-backup --type=json \
 
 ### Migration (ad-hoc, per app)
 
-1. Source: `BackupAction` on the app → `ExportAction` with `profile: backblaze-b2` (receiveString can be a stale one; K10 auto-generates a fresh `migrationToken` + `receiveString` bound to B2 and stores the token in a secret `export-<id>-migration-token` in `kasten-io`).
+1. Source: `BackupAction` on the app → `ExportAction` with `profile: backblaze` (receiveString can be a stale one; K10 auto-generates a fresh `migrationToken` + `receiveString` bound to B2 and stores the token in a secret `export-<id>-migration-token` in `kasten-io`).
 2. Copy the new token value to Talos:
 
    ```
