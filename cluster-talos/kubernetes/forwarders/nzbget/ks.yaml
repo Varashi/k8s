@@ -1,0 +1,19 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: nzbget
+  namespace: flux-system
+spec:
+  interval: 1h
+  path: ./cluster-talos/kubernetes/forwarders/nzbget/app
+  prune: false
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+  timeout: 5m
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
