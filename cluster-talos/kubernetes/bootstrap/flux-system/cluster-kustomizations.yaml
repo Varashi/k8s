@@ -24,7 +24,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1h
-  path: ./cluster-talos/kubernetes/flux-repositories
+  path: ./cluster-talos/kubernetes/infrastructure/flux-system/flux-repositories
   prune: true
   sourceRef:
     kind: GitRepository

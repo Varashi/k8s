@@ -76,9 +76,9 @@ cluster-talos/
     │       ├── gotk-components.yaml     # (gitignored) Flux controllers
     │       ├── gotk-sync.yaml           # (gitignored) Root GitRepository + Kustomization
     │       └── cluster-kustomizations.yaml  # All Kustomizations — self-managed after bootstrap
-    ├── flux-repositories/    # HelmRepository / OCIRepository / GitRepository sources
     ├── infrastructure/
     │   ├── flux-system/      # Flux Operator + FluxInstance (self-managed)
+    │   │   └── flux-repositories/   # HelmRepository / OCIRepository / GitRepository sources
     │   ├── core/             # Tier reconciled first — CNI, CRDs, storage drivers, PKI, ESO
     │   │   ├── gateway-api/             # Gateway API CRDs
     │   │   ├── cilium/                  # CNI + Gateway (HelmRelease post-bootstrap)

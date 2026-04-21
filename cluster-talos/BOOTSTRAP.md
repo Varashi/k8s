@@ -96,9 +96,8 @@ cluster-talos/
 │       └── kubeconfig        # Kubernetes admin config
 └── kubernetes/               # FluxCD GitOps manifests
     ├── bootstrap/            # One-time flux bootstrap output + cluster-Kustomizations
-    ├── flux-repositories/    # HelmRepository / OCI / GitRepository sources
     ├── infrastructure/
-    │   ├── flux-system/      # Flux Operator + FluxInstance (self-managed)
+    │   ├── flux-system/      # Flux Operator + FluxInstance + flux-repositories/ sources
     │   ├── core/             # CNI, CRDs, storage drivers, PKI, ESO
     │   └── platform/         # Cluster services (configs, CNPG, Kasten, external-dns, …)
     ├── apps/                 # Workloads, nested by category (arr, downloaders, media, tools)

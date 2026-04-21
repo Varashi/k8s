@@ -23,19 +23,23 @@ Reusable tooling extracted from this homelab lives in its own repository:
 ## Layout conventions
 
 - `kubernetes/bootstrap/` — Flux bootstrap and the `cluster-kustomizations.yaml`
-  index of the five top-level Flux Kustomizations in the cluster.
-- `kubernetes/flux-repositories/` — `HelmRepository` / `OCIRepository` /
-  `GitRepository` sources consumed by `HelmRelease`s and child Kustomizations.
+  index of the six top-level Flux Kustomizations in the cluster.
 - `kubernetes/infrastructure/` — cluster-wide controllers, operators, and
-  ops tooling, split into two tiers:
+  ops tooling:
+  - `infrastructure/flux-system/` — Flux Operator + FluxInstance + the
+    `flux-repositories/` `HelmRepository` / `OCIRepository` / `GitRepository`
+    sources consumed by `HelmRelease`s and child Kustomizations.
   - `infrastructure/core/` — CNI, CRDs, storage drivers, cert-manager, ESO,
     etcd backup (everything the `platform` tier depends on).
   - `infrastructure/platform/` — higher-level platform components
     (monitoring, configs, external-dns, Cloudflare, Longhorn, Kasten,
     Spegel, Renovate, log forwarding).
-- `kubernetes/apps/` — user-facing workloads, each in its own namespace
-  with namespace, `HelmRelease` or manifests, `HTTPRoute`, and
-  `TunnelBinding` where applicable.
+- `kubernetes/apps/` — user-facing workloads, nested by category
+  (`arr/`, `downloaders/`, `media/`, `tools/`); each app ships its own
+  Flux `Kustomization` + `HelmRelease` + `HTTPRoute`/`TunnelBinding`.
+- `kubernetes/forwarders/` — routing-only shims (external `Service` +
+  `HTTPRoute` [+ `TunnelBinding`]) for off-cluster apps like Home
+  Assistant and NZBGet.
 
 ## License
 
