@@ -51,6 +51,12 @@ PR-gated GitHub Actions workflows in `.github/workflows/`:
   follow-up commits).
 - **renovate-validate** — runs `renovate-config-validator --strict` on any PR
   touching `renovate.json`.
+- **lint** — runs `yamlfmt -lint` on any PR touching `**/*.{yaml,yml}` (or the
+  tooling configs), using the pinned toolchain from `.mise.toml`.
+
+Local tooling (`.mise.toml`, `.yamlfmt`, `lefthook.yml`) mirrors CI; devs run
+`mise install && lefthook install` once per clone to enforce formatting
+pre-commit.
 
 ## License
 
