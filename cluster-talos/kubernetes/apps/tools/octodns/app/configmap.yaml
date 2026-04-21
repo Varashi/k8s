@@ -24,7 +24,16 @@ data:
         make_absolute: true
         disable_ptr: true
 
+    # Drop out-of-bailiwick glue (e.g. cloudflare NS A-records cached by AD
+    # for the wan.boeye.net delegation) before validation.
+    processors:
+      drop_glue:
+        class: octodns.processor.filter.NameRejectlistFilter
+        rejectlist:
+          - /\.cloudflare\.com$/
+
     zones:
       boeye.net.:
         sources: [ad]
+        processors: [drop_glue]
         targets: [netbox]
