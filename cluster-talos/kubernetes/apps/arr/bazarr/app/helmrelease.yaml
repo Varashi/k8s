@@ -60,6 +60,11 @@ spec:
             port: 6767
     route:
       app:
+        annotations:
+          gatus.home-operations.com/endpoint: |
+            conditions: ["[STATUS] < 500"]
+            interval: 60s
+            group: arr
         hostnames:
           - bazarr.${SECRET_DOMAIN}
         parentRefs:

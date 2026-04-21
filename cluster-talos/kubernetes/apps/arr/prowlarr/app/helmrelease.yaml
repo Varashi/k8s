@@ -56,6 +56,11 @@ spec:
             port: 9696
     route:
       app:
+        annotations:
+          gatus.home-operations.com/endpoint: |
+            conditions: ["[STATUS] < 500"]
+            interval: 60s
+            group: arr
         hostnames:
           - prowlarr.${SECRET_DOMAIN}
         parentRefs:

@@ -67,6 +67,11 @@ spec:
 
     route:
       app:
+        annotations:
+          gatus.home-operations.com/endpoint: |
+            conditions: ["[STATUS] < 500"]
+            interval: 60s
+            group: tools
         hostnames:
           - "guac.${SECRET_DOMAIN}"
         parentRefs:

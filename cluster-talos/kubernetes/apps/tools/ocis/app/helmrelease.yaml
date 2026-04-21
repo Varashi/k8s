@@ -1,3 +1,4 @@
+---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -117,6 +118,11 @@ spec:
 
     route:
       app:
+        annotations:
+          gatus.home-operations.com/endpoint: |
+            conditions: ["[STATUS] < 500"]
+            interval: 60s
+            group: tools
         hostnames:
           - files.${SECRET_DOMAIN}
         parentRefs:

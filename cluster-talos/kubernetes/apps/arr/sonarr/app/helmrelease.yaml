@@ -60,6 +60,11 @@ spec:
             port: 8989
     route:
       app:
+        annotations:
+          gatus.home-operations.com/endpoint: |
+            conditions: ["[STATUS] < 500"]
+            interval: 60s
+            group: arr
         hostnames:
           - sonarr.${SECRET_DOMAIN}
         parentRefs:
