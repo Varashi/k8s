@@ -4,8 +4,4 @@ resources:
   - arr
   - downloaders
   - media
-  - guacamole
-  - netbox
-  - ocis
-  - postfix-relay
-  - rustdesk
+  - tools
