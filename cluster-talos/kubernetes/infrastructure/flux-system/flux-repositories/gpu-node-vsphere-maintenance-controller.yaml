@@ -1,9 +1,16 @@
+---
 apiVersion: source.toolkit.fluxcd.io/v1
-kind: HelmRepository
+kind: OCIRepository
 metadata:
   name: gpu-node-vsphere-maintenance-controller
   namespace: flux-system
 spec:
-  type: oci
-  url: oci://ghcr.io/varashi/charts
   interval: 1h
+  url: oci://ghcr.io/varashi/charts/gpu-node-vsphere-maintenance-controller
+  ref:
+    tag: 0.4.3
+  verify:
+    provider: cosign
+    matchOIDCIdentity:
+      - issuer: ^https://token\.actions\.githubusercontent\.com$
+        subject: ^https://github\.com/Varashi/gpu-node-vsphere-maintenance-controller/\.github/workflows/release\.yaml@refs/tags/.*$
