@@ -72,27 +72,6 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure-controllers
-  namespace: flux-system
-spec:
-  interval: 1h
-  dependsOn:
-    - name: infrastructure-core
-  path: ./cluster-talos/kubernetes/infrastructure/controllers
-  prune: false  # temp during repo layout refactor; flip back to true on final structure
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  wait: true
-  timeout: 10m
-  postBuild:
-    substituteFrom:
-      - kind: Secret
-        name: cluster-vars
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
   name: infrastructure-configs
   namespace: flux-system
 spec:
@@ -177,7 +156,8 @@ metadata:
 spec:
   interval: 1h
   dependsOn:
-    - name: infrastructure-controllers
+    - name: external-secrets
+    - name: monitoring
     - name: infrastructure-configs
   path: ./cluster-talos/kubernetes/infrastructure/kasten-io
   prune: false  # temp during repo layout refactor; flip back to true on final structure
@@ -204,7 +184,7 @@ spec:
     kind: GitRepository
     name: cloudflare-operator
   dependsOn:
-    - name: infrastructure-controllers
+    - name: cert-manager
   wait: true
   timeout: 5m
   patches:
@@ -254,7 +234,6 @@ metadata:
 spec:
   interval: 1h
   dependsOn:
-    - name: infrastructure-controllers
     - name: infrastructure-configs
   path: ./cluster-talos/kubernetes/infrastructure/longhorn
   # prune=false: Longhorn holds stateful replica data — accidental prune
@@ -280,7 +259,6 @@ metadata:
 spec:
   interval: 1h
   dependsOn:
-    - name: infrastructure-controllers
     - name: infrastructure-configs
   path: ./cluster-talos/kubernetes/infrastructure/tanzu-logging
   prune: false  # temp during repo layout refactor; flip back to true on final structure
@@ -302,7 +280,7 @@ metadata:
 spec:
   interval: 1h
   dependsOn:
-    - name: infrastructure-controllers
+    - name: infrastructure-core
   path: ./cluster-talos/kubernetes/infrastructure/spegel
   prune: false  # temp during repo layout refactor; flip back to true on final structure
   sourceRef:

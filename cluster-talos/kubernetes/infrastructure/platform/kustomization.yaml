@@ -5,3 +5,5 @@ resources:
   - metrics-server/ks.yaml
   - reloader/ks.yaml
   - descheduler/ks.yaml
+  - cnpg-system/ks.yaml
+  - monitoring/ks.yaml
