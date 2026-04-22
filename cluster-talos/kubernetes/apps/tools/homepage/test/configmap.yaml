@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-test
+data:
+  settings.yaml: |
+    title: Homepage TEST
+    theme: dark
+    color: slate
+    headerStyle: clean
+  services.yaml: |
+    []
+  bookmarks.yaml: |
+    []
+  widgets.yaml: |
+    - search:
+        provider: google
+        target: _blank
+    - datetime:
+        text_size: xl
+        format:
+          timeStyle: short
+          dateStyle: short
+  docker.yaml: |
+    {}
+  kubernetes.yaml: |
+    {}
+  custom.css: ""
+  custom.js: ""
