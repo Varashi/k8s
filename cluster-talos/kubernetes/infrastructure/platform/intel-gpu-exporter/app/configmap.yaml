@@ -1,0 +1,258 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: intel-gpu-exporter-script
+data:
+  exporter.py: |
+    import glob
+    import http.server
+    import os
+    import re
+    import threading
+    import time
+    import sys
+
+    PORT = int(os.getenv("PORT", "8080"))
+    SAMPLE_INTERVAL_SEC = float(os.getenv("SAMPLE_INTERVAL_SEC", "5"))
+
+    def _read(path):
+        try:
+            with open(path) as f:
+                return f.read().strip()
+        except OSError:
+            return None
+
+    def _int(path):
+        v = _read(path)
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return None
+
+    def _discover_cards():
+        cards = []
+        for d in sorted(glob.glob("/sys/class/drm/card[0-9]*")):
+            if "-" in os.path.basename(d):
+                continue
+            if not os.path.isdir(os.path.join(d, "device")):
+                continue
+            driver = os.path.basename(os.readlink(os.path.join(d, "device", "driver"))) if os.path.exists(os.path.join(d, "device", "driver")) else ""
+            if driver not in ("i915", "xe"):
+                continue
+            cards.append(d)
+        return cards
+
+    def _hwmon_path(card_dir):
+        for p in glob.glob(os.path.join(card_dir, "device/hwmon/hwmon*")):
+            name = _read(os.path.join(p, "name"))
+            if name in ("i915", "xe"):
+                return p
+        return None
+
+    def _pci_bdf(card_dir):
+        try:
+            return os.path.basename(os.readlink(os.path.join(card_dir, "device")))
+        except OSError:
+            return ""
+
+    _state_lock = threading.Lock()
+    _state = {}
+
+    def _sample_card(card_dir):
+        name = os.path.basename(card_dir)
+        bdf = _pci_bdf(card_dir)
+        now_ns = time.monotonic_ns()
+        rc6_ms = _int(os.path.join(card_dir, "gt/gt0/rc6_residency_ms"))
+        hw = _hwmon_path(card_dir)
+        energy_uj = _int(os.path.join(hw, "energy1_input")) if hw else None
+        return {
+            "name": name,
+            "bdf": bdf,
+            "now_ns": now_ns,
+            "rc6_ms": rc6_ms,
+            "energy_uj": energy_uj,
+        }
+
+    def _scan_fdinfo():
+        out = []
+        try:
+            pids = [p for p in os.listdir("/proc") if p.isdigit()]
+        except OSError:
+            return out
+        for pid in pids:
+            fdinfo_dir = f"/proc/{pid}/fdinfo"
+            try:
+                fds = os.listdir(fdinfo_dir)
+            except OSError:
+                continue
+            for fd in fds:
+                try:
+                    with open(os.path.join(fdinfo_dir, fd)) as f:
+                        txt = f.read()
+                except OSError:
+                    continue
+                if "drm-driver" not in txt:
+                    continue
+                m_drv = re.search(r"drm-driver:\s*(\S+)", txt)
+                if not m_drv or m_drv.group(1) not in ("i915", "xe"):
+                    continue
+                m_pdev = re.search(r"drm-pdev:\s*(\S+)", txt)
+                pdev = m_pdev.group(1) if m_pdev else ""
+                try:
+                    comm = open(f"/proc/{pid}/comm").read().strip()
+                except OSError:
+                    comm = ""
+                engines = {}
+                for m in re.finditer(r"drm-engine-(\S+):\s*(\d+)\s*ns", txt):
+                    engines[m.group(1)] = int(m.group(2))
+                mem = {}
+                unit_mult = {"B": 1, "KiB": 1024, "MiB": 1024**2, "GiB": 1024**3}
+                for m in re.finditer(
+                    r"drm-(total|resident|active|purgeable|shared)-(\S+):\s*(\d+)\s*(B|KiB|MiB|GiB)",
+                    txt,
+                ):
+                    state, region, val, unit = m.groups()
+                    mem[(state, region)] = int(val) * unit_mult[unit]
+                if engines or mem:
+                    out.append({
+                        "pid": pid,
+                        "comm": comm,
+                        "pdev": pdev,
+                        "engines": engines,
+                        "mem": mem,
+                        "now_ns": time.monotonic_ns(),
+                    })
+        return out
+
+    _fd_prev = {}
+
+    def _fdinfo_deltas():
+        global _fd_prev
+        current = _scan_fdinfo()
+        key = lambda c: (c["pid"], c["pdev"])
+        current_map = {key(c): c for c in current}
+        engine_rows = []
+        mem_rows = []
+        for k, cur in current_map.items():
+            prev = _fd_prev.get(k)
+            if prev:
+                dt_ns = cur["now_ns"] - prev["now_ns"]
+                if dt_ns > 0:
+                    for eng, ns in cur["engines"].items():
+                        prev_ns = prev["engines"].get(eng, ns)
+                        busy_ns = ns - prev_ns
+                        if busy_ns < 0:
+                            continue
+                        engine_rows.append({
+                            "pid": cur["pid"],
+                            "comm": cur["comm"],
+                            "pdev": cur["pdev"],
+                            "engine": eng,
+                            "busy_ratio": min(max(busy_ns / dt_ns, 0.0), 1.0),
+                        })
+            for (state, region), nbytes in cur["mem"].items():
+                mem_rows.append({
+                    "pid": cur["pid"],
+                    "comm": cur["comm"],
+                    "pdev": cur["pdev"],
+                    "region": region,
+                    "state": state,
+                    "bytes": nbytes,
+                })
+        _fd_prev = current_map
+        return engine_rows, mem_rows
+
+    def _escape_label(v):
+        return str(v).replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
+
+    def _build_metrics():
+        lines = []
+        lines.append("# HELP intel_gpu_busy_ratio GPU-wide busy ratio (1 - rc6 residency rate)")
+        lines.append("# TYPE intel_gpu_busy_ratio gauge")
+        lines.append("# HELP intel_gpu_power_watts GPU package power W (energy counter rate)")
+        lines.append("# TYPE intel_gpu_power_watts gauge")
+        lines.append("# HELP intel_gpu_client_engine_busy_ratio Per-fdinfo client engine busy ratio")
+        lines.append("# TYPE intel_gpu_client_engine_busy_ratio gauge")
+        lines.append("# HELP intel_gpu_client_memory_bytes Per-fdinfo client memory usage in bytes")
+        lines.append("# TYPE intel_gpu_client_memory_bytes gauge")
+
+        with _state_lock:
+            for card_dir in _discover_cards():
+                name = os.path.basename(card_dir)
+                bdf = _pci_bdf(card_dir)
+                cur = _sample_card(card_dir)
+                prev = _state.get(name)
+                labels = f'card="{_escape_label(name)}",pci="{_escape_label(bdf)}"'
+
+                if prev and cur["now_ns"] > prev["now_ns"]:
+                    dt_ns = cur["now_ns"] - prev["now_ns"]
+                    if prev["rc6_ms"] is not None and cur["rc6_ms"] is not None:
+                        d_rc6_ns = (cur["rc6_ms"] - prev["rc6_ms"]) * 1_000_000
+                        busy = 1.0 - min(max(d_rc6_ns / dt_ns, 0.0), 1.0)
+                        lines.append(f"intel_gpu_busy_ratio{{{labels}}} {busy:.6f}")
+                    if prev["energy_uj"] is not None and cur["energy_uj"] is not None:
+                        d_en_uj = cur["energy_uj"] - prev["energy_uj"]
+                        watts = (d_en_uj / 1e6) / (dt_ns / 1e9)
+                        lines.append(f"intel_gpu_power_watts{{{labels}}} {watts:.3f}")
+
+                _state[name] = cur
+
+        engine_rows, mem_rows = _fdinfo_deltas()
+
+        for c in engine_rows:
+            lbl = (
+                f'card="{_escape_label(c["pdev"])}"'
+                f',pid="{_escape_label(c["pid"])}"'
+                f',comm="{_escape_label(c["comm"])}"'
+                f',engine="{_escape_label(c["engine"])}"'
+            )
+            lines.append(f"intel_gpu_client_engine_busy_ratio{{{lbl}}} {c['busy_ratio']:.6f}")
+
+        for m in mem_rows:
+            lbl = (
+                f'card="{_escape_label(m["pdev"])}"'
+                f',pid="{_escape_label(m["pid"])}"'
+                f',comm="{_escape_label(m["comm"])}"'
+                f',region="{_escape_label(m["region"])}"'
+                f',state="{_escape_label(m["state"])}"'
+            )
+            lines.append(f"intel_gpu_client_memory_bytes{{{lbl}}} {m['bytes']}")
+
+        lines.append("")
+        return "\n".join(lines).encode()
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path not in ("/metrics", "/"):
+                self.send_response(404); self.end_headers(); return
+            body = _build_metrics()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; version=0.0.4")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a, **kw):
+            return
+
+    def _sampler_loop():
+        while True:
+            try:
+                with _state_lock:
+                    for card_dir in _discover_cards():
+                        name = os.path.basename(card_dir)
+                        _state[name] = _sample_card(card_dir)
+                _fdinfo_deltas()
+            except Exception as e:
+                print(f"sampler error: {e}", file=sys.stderr, flush=True)
+            time.sleep(SAMPLE_INTERVAL_SEC)
+
+    def main():
+        threading.Thread(target=_sampler_loop, daemon=True).start()
+        server = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+        print(f"intel-gpu-exporter listening on :{PORT}", flush=True)
+        server.serve_forever()
+
+    if __name__ == "__main__":
+        main()

@@ -28,11 +28,11 @@ spec:
           effect: PreferNoSchedule
       containers:
         - name: exporter
-          image: ghcr.io/onedr0p/intel-gpu-exporter:rolling@sha256:518d4b4be0a4bedd619e33567804d9b07c2e9dabeeec038d8e36129e31f1cc39
-          imagePullPolicy: IfNotPresent
+          image: python:3.13-alpine@sha256:420cd0bf0f3998275875e02ecd5808168cf0843cbb4d3c536432f729247b2acc
+          command: ["python", "-u", "/app/exporter.py"]
           env:
-            - name: REFRESH_PERIOD_MS
-              value: "10000"
+            - name: SAMPLE_INTERVAL_SEC
+              value: "5"
           ports:
             - name: http-metrics
               containerPort: 8080
@@ -42,20 +42,20 @@ spec:
           resources:
             requests:
               cpu: 10m
-              memory: 64Mi
+              memory: 32Mi
             limits:
-              memory: 256Mi
+              memory: 128Mi
           volumeMounts:
-            - name: dev-dri
-              mountPath: /dev/dri
+            - name: script
+              mountPath: /app
+              readOnly: true
             - name: sys
               mountPath: /sys
               readOnly: true
       volumes:
-        - name: dev-dri
-          hostPath:
-            path: /dev/dri
-            type: Directory
+        - name: script
+          configMap:
+            name: intel-gpu-exporter-script
         - name: sys
           hostPath:
             path: /sys
