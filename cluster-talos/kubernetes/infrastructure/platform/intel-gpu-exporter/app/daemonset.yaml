@@ -13,10 +13,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: intel-gpu-exporter
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
-        prometheus.io/path: /metrics
+      annotations: {}
     spec:
       hostPID: true
       nodeSelector:
