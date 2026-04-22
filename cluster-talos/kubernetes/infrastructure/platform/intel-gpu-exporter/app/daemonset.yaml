@@ -1,0 +1,62 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: intel-gpu-exporter
+  labels:
+    app.kubernetes.io/name: intel-gpu-exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: intel-gpu-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: intel-gpu-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /metrics
+    spec:
+      hostPID: true
+      nodeSelector:
+        intel.feature.node.kubernetes.io/gpu: "true"
+      tolerations:
+        - key: intel.feature.node.kubernetes.io/gpu
+          operator: Equal
+          value: "true"
+          effect: PreferNoSchedule
+      containers:
+        - name: exporter
+          image: ghcr.io/onedr0p/intel-gpu-exporter:rolling@sha256:518d4b4be0a4bedd619e33567804d9b07c2e9dabeeec038d8e36129e31f1cc39
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: REFRESH_PERIOD_MS
+              value: "10000"
+          ports:
+            - name: http-metrics
+              containerPort: 8080
+              protocol: TCP
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: dev-dri
+              mountPath: /dev/dri
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+      volumes:
+        - name: dev-dri
+          hostPath:
+            path: /dev/dri
+            type: Directory
+        - name: sys
+          hostPath:
+            path: /sys
+            type: Directory
