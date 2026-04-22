@@ -105,6 +105,8 @@ spec:
           effect: NoSchedule
 
     prometheus-node-exporter:
+      extraArgs:
+        - --collector.mountstats
       resources:
         requests:
           cpu: 10m
