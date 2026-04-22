@@ -134,6 +134,8 @@ data:
         current_map = {key(c): c for c in current}
         engine_rows = []
         mem_rows = []
+        pdev_engine_busy_ns = {}
+        pdev_engine_dt_ns = {}
         for k, cur in current_map.items():
             prev = _fd_prev.get(k)
             if prev:
@@ -151,6 +153,9 @@ data:
                             "engine": eng,
                             "busy_ratio": min(max(busy_ns / dt_ns, 0.0), 1.0),
                         })
+                        pair = (cur["pdev"], eng)
+                        pdev_engine_busy_ns[pair] = pdev_engine_busy_ns.get(pair, 0) + busy_ns
+                        pdev_engine_dt_ns[pair] = max(pdev_engine_dt_ns.get(pair, 0), dt_ns)
             for (state, region), nbytes in cur["mem"].items():
                 mem_rows.append({
                     "pid": cur["pid"],
@@ -161,14 +166,21 @@ data:
                     "bytes": nbytes,
                 })
         _fd_prev = current_map
-        return engine_rows, mem_rows
+        pdev_busy = {}
+        for (pdev, _eng), bns in pdev_engine_busy_ns.items():
+            dt = pdev_engine_dt_ns.get((pdev, _eng), 0)
+            if dt > 0:
+                r = min(max(bns / dt, 0.0), 1.0)
+                if r > pdev_busy.get(pdev, 0.0):
+                    pdev_busy[pdev] = r
+        return engine_rows, mem_rows, pdev_busy
 
     def _escape_label(v):
         return str(v).replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
 
     def _build_metrics():
         lines = []
-        lines.append("# HELP intel_gpu_busy_ratio GPU-wide busy ratio (1 - rc6 residency rate)")
+        lines.append("# HELP intel_gpu_busy_ratio GPU-wide busy ratio (max engine aggregate across fdinfo clients)")
         lines.append("# TYPE intel_gpu_busy_ratio gauge")
         lines.append("# HELP intel_gpu_power_watts GPU package power W (energy counter rate)")
         lines.append("# TYPE intel_gpu_power_watts gauge")
@@ -176,6 +188,8 @@ data:
         lines.append("# TYPE intel_gpu_client_engine_busy_ratio gauge")
         lines.append("# HELP intel_gpu_client_memory_bytes Per-fdinfo client memory usage in bytes")
         lines.append("# TYPE intel_gpu_client_memory_bytes gauge")
+
+        engine_rows, mem_rows, pdev_busy = _fdinfo_deltas()
 
         with _state_lock:
             for card_dir in _discover_cards():
@@ -185,20 +199,17 @@ data:
                 prev = _state.get(name)
                 labels = f'card="{_escape_label(name)}",pci="{_escape_label(bdf)}"'
 
+                busy = pdev_busy.get(bdf, 0.0)
+                lines.append(f"intel_gpu_busy_ratio{{{labels}}} {busy:.6f}")
+
                 if prev and cur["now_ns"] > prev["now_ns"]:
                     dt_ns = cur["now_ns"] - prev["now_ns"]
-                    if prev["rc6_ms"] is not None and cur["rc6_ms"] is not None:
-                        d_rc6_ns = (cur["rc6_ms"] - prev["rc6_ms"]) * 1_000_000
-                        busy = 1.0 - min(max(d_rc6_ns / dt_ns, 0.0), 1.0)
-                        lines.append(f"intel_gpu_busy_ratio{{{labels}}} {busy:.6f}")
                     if prev["energy_uj"] is not None and cur["energy_uj"] is not None:
                         d_en_uj = cur["energy_uj"] - prev["energy_uj"]
                         watts = (d_en_uj / 1e6) / (dt_ns / 1e9)
                         lines.append(f"intel_gpu_power_watts{{{labels}}} {watts:.3f}")
 
                 _state[name] = cur
-
-        engine_rows, mem_rows = _fdinfo_deltas()
 
         for c in engine_rows:
             lbl = (
