@@ -104,6 +104,9 @@ data:
                 except OSError:
                     comm = ""
                 engines = {}
+                capacities = {}
+                for m in re.finditer(r"drm-engine-capacity-(\S+):\s*(\d+)", txt):
+                    capacities[m.group(1)] = max(int(m.group(2)), 1)
                 for m in re.finditer(r"drm-engine-(\S+):\s*(\d+)\s*ns", txt):
                     engines[m.group(1)] = int(m.group(2))
                 mem = {}
@@ -120,6 +123,7 @@ data:
                         "comm": comm,
                         "pdev": pdev,
                         "engines": engines,
+                        "capacities": capacities,
                         "mem": mem,
                         "now_ns": time.monotonic_ns(),
                     })
@@ -146,16 +150,18 @@ data:
                         busy_ns = ns - prev_ns
                         if busy_ns < 0:
                             continue
+                        cap = cur["capacities"].get(eng, 1)
+                        denom = dt_ns * cap
                         engine_rows.append({
                             "pid": cur["pid"],
                             "comm": cur["comm"],
                             "pdev": cur["pdev"],
                             "engine": eng,
-                            "busy_ratio": min(max(busy_ns / dt_ns, 0.0), 1.0),
+                            "busy_ratio": min(max(busy_ns / denom, 0.0), 1.0),
                         })
                         pair = (cur["pdev"], eng)
                         pdev_engine_busy_ns[pair] = pdev_engine_busy_ns.get(pair, 0) + busy_ns
-                        pdev_engine_dt_ns[pair] = max(pdev_engine_dt_ns.get(pair, 0), dt_ns)
+                        pdev_engine_dt_ns[pair] = max(pdev_engine_dt_ns.get(pair, 0), denom)
             for (state, region), nbytes in cur["mem"].items():
                 mem_rows.append({
                     "pid": cur["pid"],
