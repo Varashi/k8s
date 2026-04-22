@@ -1,7 +1,7 @@
 [tools]
 flux2 = "2.8.6"
 talosctl = "1.12.6"
-kubectl = "1.35.4"
+kubectl = "1.36.0"
 helm = "4.1.4"
 kustomize = "5.8.1"
 yamlfmt = "0.21.0"
