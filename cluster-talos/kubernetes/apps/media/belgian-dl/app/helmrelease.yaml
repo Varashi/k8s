@@ -41,7 +41,7 @@ spec:
           app:
             image:
               repository: ghcr.io/varashi/be-stream-downloader
-              tag: main@sha256:c3949f3f922573b9bbdcb41f997380d9e25a9fcaa010e820abedd96e3beeaedf
+              tag: main@sha256:6580987353b8a0704ebbbbca756a29f0bbd953e7e3b8101b708e88003efccccd
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
