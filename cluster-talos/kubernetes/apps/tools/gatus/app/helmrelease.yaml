@@ -141,10 +141,10 @@ spec:
                   - "[STATUS] < 500"
               - name: plex-web
                 group: media
-                url: https://plex-web.${SECRET_DOMAIN}
+                url: http://plex-web.${SECRET_DOMAIN}:32400/identity
                 interval: 60s
                 conditions:
-                  - "[STATUS] < 500"
+                  - "[STATUS] == 200"
               - name: clusterplex
                 group: media
                 url: https://clusterplex.${SECRET_DOMAIN}/identity
