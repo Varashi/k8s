@@ -28,7 +28,7 @@ spec:
               repository: ghcr.io/gethomepage/homepage
               tag: v1.12.3
             env:
-              HOMEPAGE_ALLOWED_HOSTS: home.${SECRET_DOMAIN}
+              HOMEPAGE_ALLOWED_HOSTS: dashboard.${SECRET_DOMAIN}
             envFrom:
               - secretRef:
                   name: homepage-widgets
@@ -42,7 +42,7 @@ spec:
                     port: 3000
                     httpHeaders:
                       - name: Host
-                        value: home.${SECRET_DOMAIN}
+                        value: dashboard.${SECRET_DOMAIN}
                   initialDelaySeconds: 10
               readiness:
                 enabled: true
@@ -53,7 +53,7 @@ spec:
                     port: 3000
                     httpHeaders:
                       - name: Host
-                        value: home.${SECRET_DOMAIN}
+                        value: dashboard.${SECRET_DOMAIN}
                   initialDelaySeconds: 5
               startup:
                 enabled: true
@@ -64,7 +64,7 @@ spec:
                     port: 3000
                     httpHeaders:
                       - name: Host
-                        value: home.${SECRET_DOMAIN}
+                        value: dashboard.${SECRET_DOMAIN}
                   periodSeconds: 2
                   failureThreshold: 30
             resources:
@@ -89,7 +89,7 @@ spec:
     route:
       app:
         hostnames:
-          - home.${SECRET_DOMAIN}
+          - dashboard.${SECRET_DOMAIN}
         parentRefs:
           - name: main
             namespace: cilium
