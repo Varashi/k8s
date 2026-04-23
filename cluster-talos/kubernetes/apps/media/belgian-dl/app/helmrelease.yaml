@@ -49,6 +49,7 @@ spec:
               PGID: "1000"
               TITLE: Belgian Downloader
               KEYBOARD: nl-be-azerty
+              XKB_DEFAULT_LAYOUT: be
             resources:
               requests:
                 cpu: 300m
