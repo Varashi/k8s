@@ -4,6 +4,8 @@ kind: Kustomization
 namespace: homepage
 resources:
   - configmap.yaml
+  - sidecar-configmap.yaml
+  - externalsecret.yaml
   - deployment.yaml
   - service.yaml
   - httproute.yaml

@@ -17,6 +17,7 @@ spec:
       labels:
         app.kubernetes.io/name: homepage-test
     spec:
+      serviceAccountName: homepage
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -33,6 +34,33 @@ spec:
                   - key: intel.feature.node.kubernetes.io/gpu
                     operator: DoesNotExist
       containers:
+        - name: data-proxy
+          image: python:3.12-slim
+          command:
+            - sh
+            - -c
+            - "pip install --quiet --no-cache-dir --target /tmp/pylibs pyvmomi && PYTHONPATH=/tmp/pylibs python3 /app/proxy.py"
+          envFrom:
+            - secretRef:
+                name: homepage-widgets
+            - secretRef:
+                name: homepage-test-extras
+                optional: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 128Mi
+            limits:
+              memory: 384Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: proxy-script
+              mountPath: /app/proxy.py
+              subPath: proxy.py
+              readOnly: true
         - name: app
           image: ghcr.io/gethomepage/homepage:v1.12.3
           ports:
@@ -41,6 +69,9 @@ spec:
           env:
             - name: HOMEPAGE_ALLOWED_HOSTS
               value: testhome.boeye.net
+          envFrom:
+            - secretRef:
+                name: homepage-widgets
           resources:
             requests:
               cpu: 10m
@@ -113,3 +144,6 @@ spec:
         - name: settings
           configMap:
             name: homepage-test
+        - name: proxy-script
+          configMap:
+            name: homepage-test-proxy

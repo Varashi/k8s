@@ -1,0 +1,513 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-test-proxy
+data:
+  proxy.py: |
+    import http.server
+    import json
+    import os
+    import ssl
+    import sys
+    import threading
+    import time
+    import urllib.parse
+    import urllib.request
+
+    PORT = int(os.getenv("PORT", "8088"))
+    TRACEARR_URL = os.getenv("TRACEARR_URL", "http://tracearr-app.tracearr.svc:3000")
+    TOKEN = os.getenv("HOMEPAGE_VAR_TRACEARR", "")
+    WINDOW_SEC = float(os.getenv("SPEED_AVG_WINDOW_SEC", "60"))
+    TRUENAS_URL = os.getenv("TRUENAS_URL", "https://skw-truenas-data.boeye.net")
+    TRUENAS_TOKEN = os.getenv("TRUENAS_TOKEN", "")
+    TRUENAS_DATASET = os.getenv("TRUENAS_DATASET", "DATA/mediapool")
+    VSPHERE_HOST = os.getenv("VSPHERE_HOST", "skw-vcsa.boeye.net")
+    VSPHERE_USER = os.getenv("VSPHERE_USER", "")
+    VSPHERE_PASS = os.getenv("VSPHERE_PASS", "")
+    _insecure_ctx = ssl.create_default_context()
+    _insecure_ctx.check_hostname = False
+    _insecure_ctx.verify_mode = ssl.CERT_NONE
+    _disk_cache = {"ts": 0.0, "body": None}
+    _DISK_TTL = 60.0
+    _hosts_cache = {"ts": 0.0, "body": {}}
+    _HOSTS_TTL = 30.0
+    _hosts_lock = threading.Lock()
+    TDARR_URL = os.getenv("TDARR_URL", "http://tdarr.tdarr.svc:8265")
+    TDARR_KEY = os.getenv("HOMEPAGE_VAR_TDARR", "")
+    PROM_URL = os.getenv("PROM_URL", "http://prometheus-server.monitoring.svc")
+    KASTEN_PROM_URL = os.getenv("KASTEN_PROM_URL", "http://prometheus-server.kasten-io.svc/k10/prometheus")
+    LONGHORN_API_URL = os.getenv("LONGHORN_API_URL", "http://longhorn-backend.longhorn-system.svc:9500")
+    VSAN_DATASTORE = os.getenv("VSAN_DATASTORE", "SKW-VSAN")
+    _tdarr_cache = {"ts": 0.0, "body": {}}
+    _TDARR_TTL = 15.0
+    _tdarr_lock = threading.Lock()
+    _pools_cache = {"ts": 0.0, "body": None}
+    _POOLS_TTL = 60.0
+    _vsan_cache = {"ts": 0.0, "body": None}
+    _VSAN_TTL = 60.0
+    _longhorn_cache = {"ts": 0.0, "body": None}
+    _LONGHORN_TTL = 30.0
+    _kasten_cache = {"ts": 0.0, "body": None}
+    _KASTEN_TTL = 60.0
+
+    _lock = threading.Lock()
+    _history = {}  # stream_id -> list[(ts, speed)]
+
+    def _fetch_streams():
+        req = urllib.request.Request(
+            f"{TRACEARR_URL}/api/v1/public/streams",
+            headers={"Authorization": f"Bearer {TOKEN}"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return json.loads(resp.read())
+
+    def _transform(payload):
+        data = payload.get("data") or []
+        now = time.monotonic()
+        with _lock:
+            active = set()
+            for s in data:
+                sid = s.get("id")
+                if not sid:
+                    continue
+                active.add(sid)
+                ti = s.get("transcodeInfo") or {}
+                speed = ti.get("speed")
+                hist = _history.setdefault(sid, [])
+                if speed is not None:
+                    hist.append((now, float(speed)))
+                cutoff = now - WINDOW_SEC
+                while hist and hist[0][0] < cutoff:
+                    hist.pop(0)
+                if hist:
+                    ti["speed"] = sum(v for _, v in hist) / len(hist)
+                    s["transcodeInfo"] = ti
+            for sid in list(_history.keys()):
+                if sid not in active:
+                    _history.pop(sid, None)
+        data.sort(key=lambda s: s.get("progressMs") or 0)
+        payload["data"] = data
+        return payload
+
+    def _fetch_hosts():
+        now = time.monotonic()
+        with _hosts_lock:
+            if _hosts_cache["body"] and now - _hosts_cache["ts"] < _HOSTS_TTL:
+                return _hosts_cache["body"]
+        from pyVim.connect import SmartConnect, Disconnect
+        from pyVmomi import vim
+        si = SmartConnect(
+            host=VSPHERE_HOST,
+            user=VSPHERE_USER,
+            pwd=VSPHERE_PASS,
+            sslContext=_insecure_ctx,
+            disableSslCertValidation=True,
+        )
+        try:
+            content = si.RetrieveContent()
+            hview = content.viewManager.CreateContainerView(
+                content.rootFolder, [vim.HostSystem], True
+            )
+            out = {}
+            for h in hview.view:
+                hw = h.hardware
+                qs = h.summary.quickStats
+                cpu_total_mhz = int(hw.cpuInfo.hz * hw.cpuInfo.numCpuCores / 1_000_000)
+                cpu_used_mhz = qs.overallCpuUsage or 0
+                mem_total_mib = int(hw.memorySize / 1024 / 1024)
+                mem_used_mib = qs.overallMemoryUsage or 0
+                vms = []
+                for vm in h.vm:
+                    try:
+                        vms.append(vm.name)
+                    except Exception:
+                        pass
+                out[h.name] = {
+                    "cpu_pct": round(100.0 * cpu_used_mhz / cpu_total_mhz, 1) if cpu_total_mhz else 0,
+                    "mem_pct": round(100.0 * mem_used_mib / mem_total_mib, 1) if mem_total_mib else 0,
+                    "cpu_used_mhz": cpu_used_mhz,
+                    "cpu_total_mhz": cpu_total_mhz,
+                    "mem_used_mib": mem_used_mib,
+                    "mem_total_mib": mem_total_mib,
+                    "vms": vms,
+                }
+            hview.Destroy()
+        finally:
+            Disconnect(si)
+        with _hosts_lock:
+            _hosts_cache.update(ts=time.monotonic(), body=out)
+        return out
+
+    def _prom_scalar(query, default=0.0):
+        u = f"{PROM_URL}/api/v1/query?query=" + urllib.parse.quote(query)
+        try:
+            with urllib.request.urlopen(u, timeout=5) as r:
+                d = json.loads(r.read())
+            res = d.get("data", {}).get("result") or []
+            if not res:
+                return default
+            return float(res[0]["value"][1])
+        except Exception:
+            return default
+
+    def _tdarr_prom_metrics(k8s_node):
+        cpu_q = (
+            f'100 * sum(rate(container_cpu_usage_seconds_total{{namespace="tdarr",'
+            f'pod=~"tdarr-tdarr-gpu-workers.*",container="worker",'
+            f'kubernetes_io_hostname="{k8s_node}"}}[2m])) / on() '
+            f'sum(kube_node_status_allocatable{{node="{k8s_node}",resource="cpu"}})'
+        )
+        mem_q = (
+            f'100 * sum(container_memory_working_set_bytes{{namespace="tdarr",'
+            f'pod=~"tdarr-tdarr-gpu-workers.*",container="worker",'
+            f'kubernetes_io_hostname="{k8s_node}"}}) / on() '
+            f'sum(kube_node_status_allocatable{{node="{k8s_node}",resource="memory"}})'
+        )
+        vid_q = (
+            f'100 * (sum(intel_gpu_client_engine_busy_ratio{{engine="video",'
+            f'comm="tdarr-ffmpeg",node="{k8s_node}"}}) or vector(0))'
+        )
+        return (
+            round(_prom_scalar(cpu_q), 1),
+            round(_prom_scalar(mem_q), 1),
+            round(_prom_scalar(vid_q), 1),
+        )
+
+    def _fetch_tdarr_by_host():
+        now = time.monotonic()
+        with _tdarr_lock:
+            if _tdarr_cache["body"] and now - _tdarr_cache["ts"] < _TDARR_TTL:
+                return _tdarr_cache["body"]
+        hosts = _fetch_hosts()
+        req = urllib.request.Request(
+            f"{TDARR_URL}/api/v2/get-nodes",
+            headers={"x-api-key": TDARR_KEY},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            nodes = json.loads(resp.read())
+        by_name = {n.get("nodeName"): n for n in nodes.values() if n.get("nodeName")}
+        out = {}
+        for hname, h in hosts.items():
+            match = None
+            for vm in h.get("vms", []):
+                if vm in by_name:
+                    match = by_name[vm]; break
+            if not match:
+                out[hname] = {"node": None}
+                continue
+            workers = match.get("workers") or {}
+            limits = match.get("workerLimits") or {}
+            active_transcode = sum(1 for w in workers.values() if (w.get("workerType") or "").startswith("transcode"))
+            active_health = sum(1 for w in workers.values() if (w.get("workerType") or "").startswith("healthcheck"))
+            node_name = match.get("nodeName")
+            cpu_pct, mem_pct, video_pct = _tdarr_prom_metrics(node_name)
+            out[hname] = {
+                "node": node_name,
+                "paused": bool(match.get("nodePaused")),
+                "status": "Paused" if match.get("nodePaused") else "Running",
+                "transcode_active": active_transcode,
+                "transcode_max": (limits.get("transcodecpu") or 0) + (limits.get("transcodegpu") or 0),
+                "healthcheck_active": active_health,
+                "healthcheck_max": (limits.get("healthcheckcpu") or 0) + (limits.get("healthcheckgpu") or 0),
+                "cpu_pct": cpu_pct,
+                "mem_pct": mem_pct,
+                "video_pct": video_pct,
+            }
+        with _tdarr_lock:
+            _tdarr_cache.update(ts=time.monotonic(), body=out)
+        return out
+
+    def _fetch_truenas_pools():
+        now = time.monotonic()
+        if _pools_cache["body"] and now - _pools_cache["ts"] < _POOLS_TTL:
+            return _pools_cache["body"]
+        req = urllib.request.Request(
+            f"{TRUENAS_URL}/api/v2.0/pool",
+            headers={"Authorization": f"Bearer {TRUENAS_TOKEN}"},
+        )
+        with urllib.request.urlopen(req, timeout=10, context=_insecure_ctx) as resp:
+            pools = json.loads(resp.read())
+        out = {}
+        for p in pools:
+            out[p["name"]] = {
+                "size": p.get("size"),
+                "allocated": p.get("allocated"),
+                "free": p.get("free"),
+                "healthy": p.get("healthy"),
+                "status": p.get("status"),
+            }
+        _pools_cache.update(ts=now, body=out)
+        return out
+
+    def _fetch_vsan():
+        now = time.monotonic()
+        if _vsan_cache["body"] and now - _vsan_cache["ts"] < _VSAN_TTL:
+            return _vsan_cache["body"]
+        from pyVim.connect import SmartConnect, Disconnect
+        from pyVmomi import vim
+        si = SmartConnect(
+            host=VSPHERE_HOST, user=VSPHERE_USER, pwd=VSPHERE_PASS,
+            sslContext=_insecure_ctx, disableSslCertValidation=True,
+        )
+        try:
+            content = si.RetrieveContent()
+            dview = content.viewManager.CreateContainerView(
+                content.rootFolder, [vim.Datastore], True
+            )
+            out = None
+            for ds in dview.view:
+                if ds.name == VSAN_DATASTORE:
+                    s = ds.summary
+                    cap = s.capacity or 0
+                    free = s.freeSpace or 0
+                    used = cap - free
+                    out = {
+                        "capacity": cap,
+                        "free": free,
+                        "used": used,
+                        "used_pct": round(100.0 * used / cap, 1) if cap else 0,
+                        "accessible": bool(s.accessible),
+                    }
+                    break
+            dview.Destroy()
+        finally:
+            Disconnect(si)
+        if out is None:
+            out = {"capacity": 0, "free": 0, "used": 0, "used_pct": 0, "accessible": False}
+        _vsan_cache.update(ts=now, body=out)
+        return out
+
+    def _fetch_longhorn():
+        now = time.monotonic()
+        if _longhorn_cache["body"] and now - _longhorn_cache["ts"] < _LONGHORN_TTL:
+            return _longhorn_cache["body"]
+        with urllib.request.urlopen(f"{LONGHORN_API_URL}/v1/volumes", timeout=5) as r:
+            vols = json.loads(r.read()).get("data") or []
+        with urllib.request.urlopen(f"{LONGHORN_API_URL}/v1/nodes", timeout=5) as r:
+            nodes = json.loads(r.read()).get("data") or []
+        vol_total = len(vols)
+        vol_degraded = sum(1 for v in vols if v.get("robustness") == "degraded")
+        cap = 0
+        avail = 0
+        sched = 0
+        for n in nodes:
+            for d in (n.get("disks") or {}).values():
+                cap += int(d.get("storageMaximum") or 0)
+                avail += int(d.get("storageAvailable") or 0)
+                sched += int(d.get("storageScheduled") or 0)
+        used = cap - avail
+        out = {
+            "volumes_total": vol_total,
+            "volumes_degraded": vol_degraded,
+            "disk_capacity": cap,
+            "disk_used": used,
+            "disk_scheduled": sched,
+            "used_pct": round(100.0 * used / cap, 1) if cap else 0,
+        }
+        _longhorn_cache.update(ts=now, body=out)
+        return out
+
+    def _fetch_kasten():
+        now = time.monotonic()
+        if _kasten_cache["body"] and now - _kasten_cache["ts"] < _KASTEN_TTL:
+            return _kasten_cache["body"]
+        def q(expr):
+            u = f"{KASTEN_PROM_URL}/api/v1/query?query=" + urllib.parse.quote(expr)
+            try:
+                with urllib.request.urlopen(u, timeout=5) as r:
+                    d = json.loads(r.read())
+                res = d.get("data", {}).get("result") or []
+                if not res:
+                    return 0.0
+                return float(res[0]["value"][1])
+            except Exception:
+                return 0.0
+        out = {
+            "compliant": int(q('sum(compliance_count{state="Compliant"})')),
+            "not_compliant": int(q('sum(compliance_count{state="NotCompliant"})')),
+            "backups_succeeded": int(q('sum(action_backup_ended_overall{state="succeeded"})')),
+            "backups_failed": int(q('sum(action_backup_ended_overall{state="failed"})')),
+            "catalog_used_bytes": int(q('sum(catalog_persistent_volume_disk_space_used_bytes)')),
+        }
+        _kasten_cache.update(ts=now, body=out)
+        return out
+
+    def _fetch_disk():
+        now = time.monotonic()
+        if _disk_cache["body"] and now - _disk_cache["ts"] < _DISK_TTL:
+            return _disk_cache["body"]
+        ds = TRUENAS_DATASET.replace("/", "%2F")
+        req = urllib.request.Request(
+            f"{TRUENAS_URL}/api/v2.0/pool/dataset/id/{ds}",
+            headers={"Authorization": f"Bearer {TRUENAS_TOKEN}"},
+        )
+        with urllib.request.urlopen(req, timeout=10, context=_insecure_ctx) as resp:
+            d = json.loads(resp.read())
+        body = {
+            "used": d.get("used", {}).get("parsed"),
+            "available": d.get("available", {}).get("parsed"),
+        }
+        _disk_cache.update(ts=now, body=body)
+        return body
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/api/v1/public/streams":
+                try:
+                    payload = _transform(_fetch_streams())
+                    body = json.dumps(payload).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                except Exception as e:
+                    msg = f"upstream error: {e}".encode()
+                    self.send_response(502)
+                    self.send_header("Content-Length", str(len(msg)))
+                    self.end_headers()
+                    self.wfile.write(msg)
+                return
+            if self.path.startswith("/tdarr-host/"):
+                name = self.path[len("/tdarr-host/"):]
+                try:
+                    tdmap = _fetch_tdarr_by_host()
+                    entry = None
+                    for k, v in tdmap.items():
+                        if k == name or k.split(".")[0] == name:
+                            entry = v; break
+                    if entry is None:
+                        self.send_response(404); self.end_headers(); return
+                    body = json.dumps(entry).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                except Exception as e:
+                    msg = f"upstream error: {e}".encode()
+                    self.send_response(502)
+                    self.send_header("Content-Length", str(len(msg)))
+                    self.end_headers()
+                    self.wfile.write(msg)
+                return
+            if self.path.startswith("/host/"):
+                name = self.path[len("/host/"):]
+                try:
+                    hosts = _fetch_hosts()
+                    entry = None
+                    for k, v in hosts.items():
+                        if k == name or k.split(".")[0] == name:
+                            entry = v; break
+                    if entry is None:
+                        self.send_response(404); self.end_headers(); return
+                    body = json.dumps(entry).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                except Exception as e:
+                    msg = f"upstream error: {e}".encode()
+                    self.send_response(502)
+                    self.send_header("Content-Length", str(len(msg)))
+                    self.end_headers()
+                    self.wfile.write(msg)
+                return
+            if self.path == "/truenas-pools":
+                try:
+                    body = json.dumps(_fetch_truenas_pools()).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                except Exception as e:
+                    msg = f"upstream error: {e}".encode()
+                    self.send_response(502)
+                    self.send_header("Content-Length", str(len(msg)))
+                    self.end_headers()
+                    self.wfile.write(msg)
+                return
+            if self.path == "/vsan":
+                try:
+                    body = json.dumps(_fetch_vsan()).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                except Exception as e:
+                    msg = f"upstream error: {e}".encode()
+                    self.send_response(502)
+                    self.send_header("Content-Length", str(len(msg)))
+                    self.end_headers()
+                    self.wfile.write(msg)
+                return
+            if self.path == "/longhorn":
+                try:
+                    body = json.dumps(_fetch_longhorn()).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                except Exception as e:
+                    msg = f"upstream error: {e}".encode()
+                    self.send_response(502)
+                    self.send_header("Content-Length", str(len(msg)))
+                    self.end_headers()
+                    self.wfile.write(msg)
+                return
+            if self.path == "/kasten":
+                try:
+                    body = json.dumps(_fetch_kasten()).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                except Exception as e:
+                    msg = f"upstream error: {e}".encode()
+                    self.send_response(502)
+                    self.send_header("Content-Length", str(len(msg)))
+                    self.end_headers()
+                    self.wfile.write(msg)
+                return
+            if self.path == "/disk":
+                try:
+                    body = json.dumps(_fetch_disk()).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                except Exception as e:
+                    msg = f"upstream error: {e}".encode()
+                    self.send_response(502)
+                    self.send_header("Content-Length", str(len(msg)))
+                    self.end_headers()
+                    self.wfile.write(msg)
+                return
+            self.send_response(404); self.end_headers()
+
+        def log_message(self, *a, **kw):
+            return
+
+    def _sampler():
+        while True:
+            try:
+                _transform(_fetch_streams())
+            except Exception as e:
+                print(f"sampler error: {e}", file=sys.stderr, flush=True)
+            time.sleep(5)
+
+    def main():
+        threading.Thread(target=_sampler, daemon=True).start()
+        srv = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+        print(f"data-proxy listening on 127.0.0.1:{PORT}", flush=True)
+        srv.serve_forever()
+
+    if __name__ == "__main__":
+        main()
