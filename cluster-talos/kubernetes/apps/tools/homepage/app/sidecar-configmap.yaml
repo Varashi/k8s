@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: homepage-test-proxy
+  name: homepage-proxy
 data:
   proxy.py: |
     import http.server

@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: homepage-test
+  name: homepage-config
 data:
   settings.yaml: |
     title: Boeye.net Infrastructure
@@ -403,79 +403,6 @@ data:
             widget:
               type: gatus
               url: http://gatus.gatus.svc:8080
-    - GPU:
-        - GPU busy:
-            icon: mdi-expansion-card-variant
-            widget:
-              type: customapi
-              url: http://prometheus-server.monitoring.svc/api/v1/query?query=(intel_gpu_busy_ratio%7Bnode%3D%22k8s-talos-gpu-worker-1%22%7D%20or%20intel_gpu_busy_ratio%7Bnode%3D%22k8s-talos-gpu-worker-2%22%7D%20or%20intel_gpu_busy_ratio%7Bnode%3D%22k8s-talos-gpu-worker-3%22%7D)*100
-              refreshInterval: 5000
-              display: list
-              mappings:
-                - field: data.result.0.value.1
-                  label: worker-1
-                  format: percent
-                - field: data.result.1.value.1
-                  label: worker-2
-                  format: percent
-                - field: data.result.2.value.1
-                  label: worker-3
-                  format: percent
-        - GPU power:
-            icon: mdi-flash
-            widget:
-              type: customapi
-              url: http://prometheus-server.monitoring.svc/api/v1/query?query=sum(intel_gpu_power_watts)
-              refreshInterval: 5000
-              display: list
-              mappings:
-                - field: data.result.0.value.1
-                  label: Total (W)
-                  format: float
-        - GPU VRAM:
-            icon: mdi-memory
-            widget:
-              type: customapi
-              url: http://prometheus-server.monitoring.svc/api/v1/query?query=sum(intel_gpu_client_memory_bytes%7Bregion%3D%22local0%22%2Cstate%3D%22resident%22%7D)
-              refreshInterval: 5000
-              display: list
-              mappings:
-                - field: data.result.0.value.1
-                  label: Resident
-                  format: bytes
-        - GPU top transcoder:
-            icon: mdi-video
-            widget:
-              type: customapi
-              url: http://prometheus-server.monitoring.svc/api/v1/query?query=max(intel_gpu_client_engine_busy_ratio%7Bengine%3D%22video%22%7D)*100
-              refreshInterval: 5000
-              display: list
-              mappings:
-                - field: data.result.0.value.1
-                  label: Video engine
-                  format: percent
-        - Plex transcoder:
-            icon: mdi-plex
-            widget:
-              type: customapi
-              url: http://prometheus-server.monitoring.svc/api/v1/query?query=(sum(intel_gpu_client_engine_busy_ratio%7Bcomm%3D%22Plex%20Transcoder%22%2Cengine%3D%22video%22%7D)%20or%20vector(0))*100
-              refreshInterval: 5000
-              display: list
-              mappings:
-                - field: data.result.0.value.1
-                  label: Video engine
-                  format: percent
-        - Tdarr transcoder:
-            icon: mdi-video-switch
-            widget:
-              type: customapi
-              url: http://prometheus-server.monitoring.svc/api/v1/query?query=(sum(intel_gpu_client_engine_busy_ratio%7Bcomm%3D%22tdarr-ffmpeg%22%2Cengine%3D%22video%22%7D)%20or%20vector(0))*100
-              refreshInterval: 5000
-              display: list
-              mappings:
-                - field: data.result.0.value.1
-                  label: Video engine
-                  format: percent
   bookmarks.yaml: |
     []
   widgets.yaml: |

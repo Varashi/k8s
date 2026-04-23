@@ -1,0 +1,15 @@
+---
+apiVersion: networking.cfargotunnel.com/v1alpha1
+kind: TunnelBinding
+metadata:
+  name: homepage
+  namespace: homepage
+subjects:
+  - name: homepage
+    spec:
+      fqdn: status.${SECRET_DOMAIN}
+      target: http://homepage.homepage.svc.cluster.local:3000
+      protocol: http
+tunnelRef:
+  kind: ClusterTunnel
+  name: k8s-talos
