@@ -3,6 +3,11 @@ kind: HTTPRoute
 metadata:
   name: nzbget
   namespace: nzbget
+  annotations:
+    gatus.home-operations.com/endpoint: |
+      conditions: ["[STATUS] < 500"]
+      interval: 60s
+      group: arr
 spec:
   parentRefs:
     - name: main

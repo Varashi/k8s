@@ -52,6 +52,11 @@ spec:
       route:
         main:
           enabled: true
+          annotations:
+            gatus.home-operations.com/endpoint: |
+              conditions: ["[STATUS] < 500"]
+              interval: 60s
+              group: tools
           parentRefs:
             - name: main
               namespace: cilium
