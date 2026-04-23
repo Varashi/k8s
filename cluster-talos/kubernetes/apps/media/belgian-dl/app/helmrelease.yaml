@@ -102,6 +102,12 @@ spec:
         path: /mnt/DATA/mediapool/downloads/belgian-dl
         globalMounts:
           - path: /downloads
+      media:
+        type: nfs
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
+        path: /mnt/DATA/mediapool/media
+        globalMounts:
+          - path: /media
       # KasmVNC / openbox need /dev/shm; tmpfs keeps it off disk
       dshm:
         type: emptyDir
