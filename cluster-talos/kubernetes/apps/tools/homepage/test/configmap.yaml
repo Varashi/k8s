@@ -38,7 +38,7 @@ data:
                 - field: node
                   label: Node
                 - field: hw
-                  label: HW
+                  label: HW Transcode
         - Plex:
             icon: plex.png
             href: https://plex.boeye.net
