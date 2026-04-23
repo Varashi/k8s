@@ -41,15 +41,13 @@ spec:
           app:
             image:
               repository: ghcr.io/varashi/be-stream-downloader
-              tag: main@sha256:558d7dd0f1b02bfd8185a8db4063d7c28ff8411cf6c23ad71c07059ca16b0867
+              tag: main@sha256:c3949f3f922573b9bbdcb41f997380d9e25a9fcaa010e820abedd96e3beeaedf
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
               PUID: "1000"
               PGID: "1000"
               TITLE: Belgian Downloader
-              KEYBOARD: nl-be-azerty
-              XKB_DEFAULT_LAYOUT: be
             resources:
               requests:
                 cpu: 300m
