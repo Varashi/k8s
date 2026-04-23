@@ -54,7 +54,7 @@ data:
     _PLEX_TTL = 30.0
     _plex_lock = threading.Lock()
     PLEX_NS = os.getenv("PLEX_NAMESPACE", "plex")
-    PLEX_POD_RE = os.getenv("PLEX_POD_RE", "plex-.*")
+    PLEX_POD_RE = os.getenv("PLEX_POD_RE", "plex-[a-z0-9]+-[a-z0-9]+")
     PLEX_COMM = os.getenv("PLEX_GPU_COMM", "Plex Transcoder")
 
     _lock = threading.Lock()
@@ -181,7 +181,7 @@ data:
             "node",
         ) or "-"
         uptime_sec = _prom_scalar(
-            f'time() - max(kube_pod_start_time_seconds{{namespace="{PLEX_NS}",pod=~"{PLEX_POD_RE}"}})'
+            f'time() - max(kube_pod_created{{namespace="{PLEX_NS}",pod=~"{PLEX_POD_RE}"}})'
         )
         hw_val = 0.0
         if node and node != "-":
