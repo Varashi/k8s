@@ -20,6 +20,8 @@ spec:
       homepage-internal:
         replicas: 1
         strategy: Recreate
+        annotations:
+          reloader.stakater.com/auto: "true"
         serviceAccount:
           identifier: homepage-internal
         containers:
