@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: belgian-dl-config
+  namespace: belgian-dl
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: vsan
+  resources:
+    requests:
+      storage: 5Gi
