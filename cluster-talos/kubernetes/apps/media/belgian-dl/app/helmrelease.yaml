@@ -41,13 +41,16 @@ spec:
           app:
             image:
               repository: ghcr.io/varashi/be-stream-downloader
-              tag: main@sha256:6580987353b8a0704ebbbbca756a29f0bbd953e7e3b8101b708e88003efccccd
+              tag: main@sha256:f33a66ae44a0ae62f31de698c9d0f2fc8d5639818bdc3da0eed9687502f462a5
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
               PUID: "1000"
               PGID: "1000"
               TITLE: Belgian Downloader
+            envFrom:
+              - secretRef:
+                  name: belgian-dl-creds
             resources:
               requests:
                 cpu: 300m
