@@ -48,7 +48,7 @@ spec:
               PUID: "1000"
               PGID: "1000"
               TITLE: Belgian Downloader
-              KEYBOARD: fr-be-azerty
+              KEYBOARD: nl-be-azerty
             resources:
               requests:
                 cpu: 300m
