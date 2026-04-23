@@ -50,6 +50,12 @@ data:
     _LONGHORN_TTL = 30.0
     _kasten_cache = {"ts": 0.0, "body": None}
     _KASTEN_TTL = 60.0
+    _plex_cache = {"ts": 0.0, "body": None}
+    _PLEX_TTL = 30.0
+    _plex_lock = threading.Lock()
+    PLEX_NS = os.getenv("PLEX_NAMESPACE", "plex")
+    PLEX_POD_RE = os.getenv("PLEX_POD_RE", "plex-[a-z0-9]+-[a-z0-9]+")
+    PLEX_COMM = os.getenv("PLEX_GPU_COMM", "Plex Transcoder")
 
     _lock = threading.Lock()
     _history = {}  # stream_id -> list[(ts, speed)]
@@ -138,6 +144,59 @@ data:
         with _hosts_lock:
             _hosts_cache.update(ts=time.monotonic(), body=out)
         return out
+
+    def _prom_label(query, label):
+        u = f"{PROM_URL}/api/v1/query?query=" + urllib.parse.quote(query)
+        try:
+            with urllib.request.urlopen(u, timeout=5) as r:
+                d = json.loads(r.read())
+            res = d.get("data", {}).get("result") or []
+            if not res:
+                return None
+            return res[0].get("metric", {}).get(label)
+        except Exception:
+            return None
+
+    def _fmt_uptime(secs):
+        secs = int(max(0, secs))
+        d, rem = divmod(secs, 86400)
+        h, rem = divmod(rem, 3600)
+        m, _ = divmod(rem, 60)
+        if d:
+            return f"{d}d {h}h"
+        if h:
+            return f"{h}h {m}m"
+        return f"{m}m"
+
+    def _fetch_plex_service():
+        now = time.monotonic()
+        with _plex_lock:
+            if _plex_cache["body"] and now - _plex_cache["ts"] < _PLEX_TTL:
+                return _plex_cache["body"]
+        status = int(_prom_scalar(
+            f'sum(kube_deployment_status_replicas_available{{namespace="{PLEX_NS}",deployment="plex"}}) or vector(0)'
+        ))
+        node = _prom_label(
+            f'kube_pod_info{{namespace="{PLEX_NS}",pod=~"{PLEX_POD_RE}"}}',
+            "node",
+        ) or "-"
+        uptime_sec = _prom_scalar(
+            f'time() - max(kube_pod_created{{namespace="{PLEX_NS}",pod=~"{PLEX_POD_RE}"}})'
+        )
+        hw_val = 0.0
+        if node and node != "-":
+            hw_val = _prom_scalar(
+                f'max(intel_gpu_client_engine_busy_ratio{{engine="video",node="{node}",comm="{PLEX_COMM}"}}) or vector(0)'
+            )
+        body = {
+            "status": str(status),
+            "uptime": _fmt_uptime(uptime_sec) if status else "-",
+            "node": node or "-",
+            "hw": "Active" if hw_val > 0 else "Idle",
+        }
+        with _plex_lock:
+            _plex_cache.update(ts=time.monotonic(), body=body)
+        return body
 
     def _prom_scalar(query, default=0.0):
         u = f"{PROM_URL}/api/v1/query?query=" + urllib.parse.quote(query)
@@ -463,6 +522,21 @@ data:
             if self.path == "/kasten":
                 try:
                     body = json.dumps(_fetch_kasten()).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                except Exception as e:
+                    msg = f"upstream error: {e}".encode()
+                    self.send_response(502)
+                    self.send_header("Content-Length", str(len(msg)))
+                    self.end_headers()
+                    self.wfile.write(msg)
+                return
+            if self.path == "/plex-service":
+                try:
+                    body = json.dumps(_fetch_plex_service()).encode()
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.send_header("Content-Length", str(len(body)))

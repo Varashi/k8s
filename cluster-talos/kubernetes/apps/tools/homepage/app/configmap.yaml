@@ -22,17 +22,23 @@ data:
             description: Status
             widget:
               type: customapi
-              url: http://prometheus-server.monitoring.svc/api/v1/query?query=sum%28kube_deployment_status_replicas_available%7Bnamespace%3D%22plex%22%2Cdeployment%3D%22plex%22%7D%29%20or%20vector%280%29
+              url: http://127.0.0.1:8088/plex-service
               refreshInterval: 30000
               display: block
               mappings:
-                - field: data.result.0.value.1
-                  label: Plex
+                - field: status
+                  label: Service
                   remap:
                     - value: "1"
                       to: Up
                     - any: true
                       to: Down
+                - field: uptime
+                  label: Uptime
+                - field: node
+                  label: Node
+                - field: hw
+                  label: HW Transcode
         - Plex:
             icon: plex.png
             href: https://plex.boeye.net
