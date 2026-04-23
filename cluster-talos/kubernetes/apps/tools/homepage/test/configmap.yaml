@@ -399,7 +399,7 @@ data:
         - Gatus:
             icon: gatus.png
             href: https://services.boeye.net
-            description: Endpoint monitor
+            description: Click here to see services status
             widget:
               type: gatus
               url: http://gatus.gatus.svc:8080

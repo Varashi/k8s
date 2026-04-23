@@ -5,7 +5,7 @@ metadata:
   name: homepage-test
 spec:
   hostnames:
-    - testhome.boeye.net
+    - status.boeye.net
   parentRefs:
     - name: main
       namespace: cilium

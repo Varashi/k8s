@@ -68,7 +68,7 @@ spec:
               containerPort: 3000
           env:
             - name: HOMEPAGE_ALLOWED_HOSTS
-              value: testhome.boeye.net
+              value: status.boeye.net
           envFrom:
             - secretRef:
                 name: homepage-widgets
@@ -89,7 +89,7 @@ spec:
               port: 3000
               httpHeaders:
                 - name: Host
-                  value: testhome.boeye.net
+                  value: status.boeye.net
             initialDelaySeconds: 5
           livenessProbe:
             httpGet:
@@ -97,7 +97,7 @@ spec:
               port: 3000
               httpHeaders:
                 - name: Host
-                  value: testhome.boeye.net
+                  value: status.boeye.net
             initialDelaySeconds: 15
           volumeMounts:
             - name: config-rw
