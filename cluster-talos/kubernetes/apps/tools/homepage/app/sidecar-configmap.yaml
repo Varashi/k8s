@@ -55,7 +55,6 @@ data:
     _plex_lock = threading.Lock()
     PLEX_NS = os.getenv("PLEX_NAMESPACE", "plex")
     PLEX_POD_RE = os.getenv("PLEX_POD_RE", "plex-[a-z0-9]+-[a-z0-9]+")
-    PLEX_COMM = os.getenv("PLEX_GPU_COMM", "Plex Transcoder")
 
     _lock = threading.Lock()
     _history = {}  # stream_id -> list[(ts, speed)]
@@ -183,16 +182,16 @@ data:
         uptime_sec = _prom_scalar(
             f'time() - max(kube_pod_created{{namespace="{PLEX_NS}",pod=~"{PLEX_POD_RE}"}})'
         )
-        hw_val = 0.0
+        hw_present = 0.0
         if node and node != "-":
-            hw_val = _prom_scalar(
-                f'max(intel_gpu_client_engine_busy_ratio{{engine="video",node="{node}",comm="{PLEX_COMM}"}}) or vector(0)'
+            hw_present = _prom_scalar(
+                f'count(intel_gpu_busy_ratio{{node="{node}"}}) or vector(0)'
             )
         body = {
             "status": str(status),
             "uptime": _fmt_uptime(uptime_sec) if status else "-",
             "node": node or "-",
-            "hw": "Active" if hw_val > 0 else "Idle",
+            "hw": "Available" if hw_present > 0 else "Error",
         }
         with _plex_lock:
             _plex_cache.update(ts=time.monotonic(), body=body)
