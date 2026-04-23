@@ -41,7 +41,7 @@ spec:
           app:
             image:
               repository: ghcr.io/varashi/be-stream-downloader
-              tag: main@sha256:f33a66ae44a0ae62f31de698c9d0f2fc8d5639818bdc3da0eed9687502f462a5
+              tag: main@sha256:347afd12b58f8639a4b17b981d96cb2c63fd3a774b9cbf77cf66f0fbaff20c0d
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
@@ -62,7 +62,7 @@ spec:
         controller: belgian-dl
         ports:
           http:
-            port: 3000
+            port: 8000
     route:
       app:
         annotations:
