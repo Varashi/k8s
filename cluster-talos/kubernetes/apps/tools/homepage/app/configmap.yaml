@@ -37,8 +37,8 @@ data:
                   label: Uptime
                 - field: node
                   label: Node
-                - field: hw
-                  label: HW Transcode
+                - field: recent24h
+                  label: Added 24h
         - Plex:
             icon: plex.png
             href: https://plex.boeye.net

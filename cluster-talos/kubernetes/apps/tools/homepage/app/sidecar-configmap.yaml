@@ -55,6 +55,8 @@ data:
     _plex_lock = threading.Lock()
     PLEX_NS = os.getenv("PLEX_NAMESPACE", "plex")
     PLEX_POD_RE = os.getenv("PLEX_POD_RE", "plex-[a-z0-9]+-[a-z0-9]+")
+    TAUTULLI_URL = os.getenv("TAUTULLI_URL", "http://tautulli.tautulli.svc:8181")
+    TAUTULLI_KEY = os.getenv("HOMEPAGE_VAR_TAUTULLI", "")
 
     _lock = threading.Lock()
     _history = {}  # stream_id -> list[(ts, speed)]
@@ -182,16 +184,22 @@ data:
         uptime_sec = _prom_scalar(
             f'time() - max(kube_pod_created{{namespace="{PLEX_NS}",pod=~"{PLEX_POD_RE}"}})'
         )
-        hw_present = 0.0
-        if node and node != "-":
-            hw_present = _prom_scalar(
-                f'count(intel_gpu_busy_ratio{{node="{node}"}}) or vector(0)'
-            )
+        recent = 0
+        if TAUTULLI_KEY:
+            try:
+                u = f"{TAUTULLI_URL}/api/v2?apikey={TAUTULLI_KEY}&cmd=get_recently_added&count=250"
+                with urllib.request.urlopen(u, timeout=5) as r:
+                    d = json.loads(r.read())
+                items = d.get("response", {}).get("data", {}).get("recently_added") or []
+                cut = time.time() - 86400
+                recent = sum(1 for i in items if int(i.get("added_at") or 0) > cut)
+            except Exception:
+                recent = 0
         body = {
             "status": str(status),
             "uptime": _fmt_uptime(uptime_sec) if status else "-",
             "node": node or "-",
-            "hw": "Available" if hw_present > 0 else "Error",
+            "recent24h": str(recent),
         }
         with _plex_lock:
             _plex_cache.update(ts=time.monotonic(), body=body)
