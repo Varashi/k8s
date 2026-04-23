@@ -1,0 +1,581 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-test-config
+data:
+  settings.yaml: |
+    title: Boeye.net Infrastructure
+    theme: dark
+    color: slate
+    headerStyle: clean
+    background:
+      image: https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=2400&q=80
+      blur: sm
+      saturate: 80
+      brightness: 50
+      opacity: 70
+  services.yaml: |
+    - Now Streaming:
+        - Plex Service:
+            icon: mdi-check-circle
+            description: Status
+            widget:
+              type: customapi
+              url: http://prometheus-server.monitoring.svc/api/v1/query?query=sum%28kube_deployment_status_replicas_available%7Bnamespace%3D%22plex%22%2Cdeployment%3D%22plex%22%7D%29%20or%20vector%280%29
+              refreshInterval: 30000
+              display: block
+              mappings:
+                - field: data.result.0.value.1
+                  label: Plex
+                  remap:
+                    - value: "1"
+                      to: Up
+                    - any: true
+                      to: Down
+        - Plex:
+            icon: plex.png
+            href: https://plex.boeye.net
+            description: Media server
+            widget:
+              type: plex
+              url: http://plex.plex.svc:32400
+              key: "{{HOMEPAGE_VAR_PLEX}}"
+              fields: ["streams", "movies", "tv"]
+        - Tracearr:
+            icon: mdi-history
+            href: https://tracearr.boeye.net
+            description: Plex stats
+            widget:
+              type: tracearr
+              url: http://127.0.0.1:8088
+              key: "{{HOMEPAGE_VAR_TRACEARR}}"
+              view: both
+              showEpisodeNumber: true
+              expandOneStreamToTwoRows: false
+        - Transcode stats:
+            icon: mdi-chip
+            description: Plex performance
+            widget:
+              type: customapi
+              url: http://prometheus-server.monitoring.svc/api/v1/query?query=label_replace%28100%20%2A%20sum%28rate%28container_cpu_usage_seconds_total%7Bnamespace%3D%22plex%22%2Ccontainer%3D%22app%22%7D%5B2m%5D%29%29%20/%20on%28%29%20group_left%20sum%28kube_node_status_allocatable%7Bresource%3D%22cpu%22%7D%20%2A%20on%28node%29%20group_right%20kube_pod_info%7Bnamespace%3D%22plex%22%2Ccreated_by_kind%3D%22ReplicaSet%22%7D%29%2C%22metric%22%2C%22cpupct%22%2C%22%22%2C%22%22%29%20or%20label_replace%28100%20%2A%20sum%28container_memory_working_set_bytes%7Bnamespace%3D%22plex%22%2Ccontainer%3D%22app%22%7D%29%20/%20on%28%29%20group_left%20sum%28kube_node_status_allocatable%7Bresource%3D%22memory%22%7D%20%2A%20on%28node%29%20group_right%20kube_pod_info%7Bnamespace%3D%22plex%22%2Ccreated_by_kind%3D%22ReplicaSet%22%7D%29%2C%22metric%22%2C%22mempct%22%2C%22%22%2C%22%22%29%20or%20label_replace%28%28sum%28intel_gpu_client_engine_busy_ratio%7Bcomm%3D%22Plex%20Transcoder%22%2Cengine%3D%22video%22%7D%29%20or%20vector%280%29%29%2A100%2C%22metric%22%2C%22engine%22%2C%22%22%2C%22%22%29%20or%20label_replace%28sum%28rate%28node_mountstats_nfs_read_bytes_total%7Bexport%3D~%22.%2Amediapool/media%22%7D%5B2m%5D%29%20%2A%20on%28node%29%20group_left%28%29%20kube_pod_info%7Bnamespace%3D%22plex%22%2Ccreated_by_kind%3D%22ReplicaSet%22%7D%29/1e6%2C%22metric%22%2C%22nfsread%22%2C%22%22%2C%22%22%29
+              refreshInterval: 5000
+              display: block
+              mappings:
+                - field: data.result.0.value.1
+                  label: CPU
+                  format: float
+                  suffix: "%"
+                - field: data.result.1.value.1
+                  label: Mem
+                  format: float
+                  suffix: "%"
+                - field: data.result.2.value.1
+                  label: GPU encoder
+                  format: float
+                  suffix: "%"
+                - field: data.result.3.value.1
+                  label: Disk read
+                  format: float
+                  suffix: " MB/s"
+        - Transcode streams:
+            icon: mdi-swap-horizontal
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/api/v1/public/streams
+              refreshInterval: 5000
+              display: dynamic-list
+              mappings:
+                items: data
+                name: videoDecision
+                label: transcodeInfo.speed
+                format: float
+                suffix: "×"
+    - Media Pipeline:
+        - Ombi:
+            icon: ombi.png
+            href: https://plexrequests.boeye.net
+            description: Plex requests
+            widget:
+              type: ombi
+              url: http://ombi.ombi.svc:3579
+              key: "{{HOMEPAGE_VAR_OMBI}}"
+        - Disk Space:
+            icon: mdi-harddisk
+            description: mediapool
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/disk
+              refreshInterval: 60000
+              display: block
+              mappings:
+                - field: used
+                  label: Library
+                  format: bytes
+                - field: available
+                  label: Free
+                  format: bytes
+        - Sonarr:
+            icon: sonarr.png
+            description: TV shows
+            widget:
+              type: sonarr
+              url: http://sonarr.sonarr.svc:8989
+              key: "{{HOMEPAGE_VAR_SONARR}}"
+        - Radarr:
+            icon: radarr.png
+            description: Movies
+            widget:
+              type: radarr
+              url: http://radarr.radarr.svc:7878
+              key: "{{HOMEPAGE_VAR_RADARR}}"
+        - NZBGet:
+            icon: nzbget.png
+            description: Usenet downloader
+            widget:
+              type: nzbget
+              url: http://nzbget.nzbget.svc:6789
+              username: varashi
+              password: "{{HOMEPAGE_VAR_NZBGET}}"
+        - qBittorrent:
+            icon: qbittorrent.png
+            description: Torrent downloader
+            widget:
+              type: qbittorrent
+              url: http://qbittorrent-app.qbittorrent.svc:8080
+              username: homepage
+              password: homepage
+    - Infrastructure - Compute:
+        - VM Host 1:
+            icon: mdi-server
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/host/skw-esxi4
+              refreshInterval: 15000
+              display: block
+              mappings:
+                - field: cpu_pct
+                  label: CPU
+                  format: float
+                  suffix: "%"
+                - field: mem_pct
+                  label: Memory
+                  format: float
+                  suffix: "%"
+        - VM Host 2:
+            icon: mdi-server
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/host/skw-esxi5
+              refreshInterval: 15000
+              display: block
+              mappings:
+                - field: cpu_pct
+                  label: CPU
+                  format: float
+                  suffix: "%"
+                - field: mem_pct
+                  label: Memory
+                  format: float
+                  suffix: "%"
+        - VM Host 3:
+            icon: mdi-server
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/host/skw-esxi6
+              refreshInterval: 15000
+              display: block
+              mappings:
+                - field: cpu_pct
+                  label: CPU
+                  format: float
+                  suffix: "%"
+                - field: mem_pct
+                  label: Memory
+                  format: float
+                  suffix: "%"
+        - GPU Worker 1:
+            icon: mdi-kubernetes
+            description: k8s-talos-gpu-worker-1
+            widget:
+              type: customapi
+              url: http://prometheus-server.monitoring.svc/api/v1/query?query=label_replace%28round%28100%20-%20100%20%2A%20avg%28rate%28node_cpu_seconds_total%7Bmode%3D%22idle%22%2Cnode%3D%22k8s-talos-gpu-worker-1%22%7D%5B2m%5D%29%29%2C%200.1%29%2C%22metric%22%2C%22cpu%22%2C%22%22%2C%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_memory_MemAvailable_bytes%7Bnode%3D%22k8s-talos-gpu-worker-1%22%7D%20%2F%20node_memory_MemTotal_bytes%7Bnode%3D%22k8s-talos-gpu-worker-1%22%7D%29%2C%200.1%29%2C%22metric%22%2C%22mem%22%2C%22%22%2C%22%22%29
+              refreshInterval: 15000
+              display: block
+              mappings:
+                - field: data.result.0.value.1
+                  label: CPU
+                  format: float
+                  suffix: "%"
+                - field: data.result.1.value.1
+                  label: Memory
+                  format: float
+                  suffix: "%"
+        - GPU Worker 2:
+            icon: mdi-kubernetes
+            description: k8s-talos-gpu-worker-2
+            widget:
+              type: customapi
+              url: http://prometheus-server.monitoring.svc/api/v1/query?query=label_replace%28round%28100%20-%20100%20%2A%20avg%28rate%28node_cpu_seconds_total%7Bmode%3D%22idle%22%2Cnode%3D%22k8s-talos-gpu-worker-2%22%7D%5B2m%5D%29%29%2C%200.1%29%2C%22metric%22%2C%22cpu%22%2C%22%22%2C%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_memory_MemAvailable_bytes%7Bnode%3D%22k8s-talos-gpu-worker-2%22%7D%20%2F%20node_memory_MemTotal_bytes%7Bnode%3D%22k8s-talos-gpu-worker-2%22%7D%29%2C%200.1%29%2C%22metric%22%2C%22mem%22%2C%22%22%2C%22%22%29
+              refreshInterval: 15000
+              display: block
+              mappings:
+                - field: data.result.0.value.1
+                  label: CPU
+                  format: float
+                  suffix: "%"
+                - field: data.result.1.value.1
+                  label: Memory
+                  format: float
+                  suffix: "%"
+        - GPU Worker 3:
+            icon: mdi-kubernetes
+            description: k8s-talos-gpu-worker-3
+            widget:
+              type: customapi
+              url: http://prometheus-server.monitoring.svc/api/v1/query?query=label_replace%28round%28100%20-%20100%20%2A%20avg%28rate%28node_cpu_seconds_total%7Bmode%3D%22idle%22%2Cnode%3D%22k8s-talos-gpu-worker-3%22%7D%5B2m%5D%29%29%2C%200.1%29%2C%22metric%22%2C%22cpu%22%2C%22%22%2C%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_memory_MemAvailable_bytes%7Bnode%3D%22k8s-talos-gpu-worker-3%22%7D%20%2F%20node_memory_MemTotal_bytes%7Bnode%3D%22k8s-talos-gpu-worker-3%22%7D%29%2C%200.1%29%2C%22metric%22%2C%22mem%22%2C%22%22%2C%22%22%29
+              refreshInterval: 15000
+              display: block
+              mappings:
+                - field: data.result.0.value.1
+                  label: CPU
+                  format: float
+                  suffix: "%"
+                - field: data.result.1.value.1
+                  label: Memory
+                  format: float
+                  suffix: "%"
+        - Tdarr Node 1:
+            icon: mdi-video-switch
+            description: Library transcoder
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/tdarr-host/skw-esxi4
+              refreshInterval: 15000
+              display: block
+              mappings:
+                - field: transcode_active
+                  label: Transcode
+                - field: cpu_pct
+                  label: CPU
+                  format: float
+                  suffix: "%"
+                - field: mem_pct
+                  label: Memory
+                  format: float
+                  suffix: "%"
+                - field: video_pct
+                  label: Encoder
+                  format: float
+                  suffix: "%"
+        - Tdarr Node 2:
+            icon: mdi-video-switch
+            description: Library transcoder
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/tdarr-host/skw-esxi5
+              refreshInterval: 15000
+              display: block
+              mappings:
+                - field: transcode_active
+                  label: Transcode
+                - field: cpu_pct
+                  label: CPU
+                  format: float
+                  suffix: "%"
+                - field: mem_pct
+                  label: Memory
+                  format: float
+                  suffix: "%"
+                - field: video_pct
+                  label: Encoder
+                  format: float
+                  suffix: "%"
+        - Tdarr Node 3:
+            icon: mdi-video-switch
+            description: Library transcoder
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/tdarr-host/skw-esxi6
+              refreshInterval: 15000
+              display: block
+              mappings:
+                - field: transcode_active
+                  label: Transcode
+                - field: cpu_pct
+                  label: CPU
+                  format: float
+                  suffix: "%"
+                - field: mem_pct
+                  label: Memory
+                  format: float
+                  suffix: "%"
+                - field: video_pct
+                  label: Encoder
+                  format: float
+                  suffix: "%"
+    - Infrastructure - Storage:
+        - TrueNAS:
+            icon: mdi-nas
+            description: Media storage
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/truenas-pools
+              refreshInterval: 60000
+              display: block
+              mappings:
+                - field: DATA.allocated
+                  label: DATA Used
+                  format: bytes
+                - field: DATA.free
+                  label: DATA Free
+                  format: bytes
+                - field: SSD.allocated
+                  label: SSD Used
+                  format: bytes
+                - field: SSD.free
+                  label: SSD Free
+                  format: bytes
+        - vSAN:
+            icon: mdi-database
+            description: VM storage
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/vsan
+              refreshInterval: 60000
+              display: block
+              mappings:
+                - field: capacity
+                  label: Capacity
+                  format: bytes
+                - field: used
+                  label: Used
+                  format: bytes
+                - field: free
+                  label: Free
+                  format: bytes
+                - field: used_pct
+                  label: Used
+                  format: float
+                  suffix: "%"
+        - Longhorn:
+            icon: mdi-harddisk-plus
+            description: GPU pod storage
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/longhorn
+              refreshInterval: 30000
+              display: block
+              mappings:
+                - field: volumes_total
+                  label: Volumes
+                - field: volumes_degraded
+                  label: Degraded
+                - field: disk_used
+                  label: Used
+                  format: bytes
+                - field: used_pct
+                  label: Used
+                  format: float
+                  suffix: "%"
+        - Kasten:
+            icon: mdi-backup-restore
+            description: K8s backup
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/kasten
+              refreshInterval: 60000
+              display: block
+              mappings:
+                - field: compliant
+                  label: Compliant
+                - field: not_compliant
+                  label: Not compliant
+                - field: backups_succeeded
+                  label: Succeeded
+                - field: backups_failed
+                  label: Failed
+    - Services Status:
+        - Gatus:
+            icon: gatus.png
+            href: https://services.boeye.net
+            description: Click here to see services status
+            widget:
+              type: gatus
+              url: http://gatus.gatus.svc:8080
+  bookmarks.yaml: |
+    []
+  widgets.yaml: |
+    - greeting:
+        text_size: 4xl
+        text: "Boeye.net Home Ops Status"
+    - resources:
+        backend: kubernetes
+        expanded: true
+        cpu: true
+        memory: true
+    - kubernetes:
+        cluster:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: k8s-talos
+        nodes:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+    - datetime:
+        text_size: xl
+        format:
+          timeStyle: short
+          dateStyle: short
+  docker.yaml: |
+    {}
+  kubernetes.yaml: |
+    mode: cluster
+    ingress: false
+    gateway: false
+    traefik: false
+  custom.css: |
+    /* Spacey banner title (greeting widget) */
+    #information-widgets .text-4xl,
+    #information-widgets .text-3xl,
+    h1 {
+      background: linear-gradient(90deg, #67e8f9, #a78bfa, #67e8f9) !important;
+      -webkit-background-clip: text !important;
+      background-clip: text !important;
+      color: transparent !important;
+      text-shadow: 0 0 30px rgba(103, 232, 249, 0.4);
+      letter-spacing: 0.08em;
+      font-weight: 700 !important;
+    }
+    /* Translucent cards so space background shows through */
+    .service-card, #information-widgets {
+      background-color: rgba(15, 23, 42, 0.72) !important;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+    }
+    #services > .services-group {
+      flex-basis: 100% !important;
+      max-width: 100% !important;
+    }
+    /* Playback group: tracearr left (full height), stats+streams stacked right */
+    .services-group:has(li[data-name="Tracearr"]) ul.services-list {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto auto 1fr;
+      column-gap: 0.25rem;
+      row-gap: 0;
+    }
+    .services-group:has(li[data-name="Tracearr"]) li[data-name="Plex Service"] {
+      grid-column: 1;
+      grid-row: 1;
+    }
+    .services-group:has(li[data-name="Tracearr"]) li[data-name="Plex"] {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    .services-group:has(li[data-name="Tracearr"]) li[data-name="Tracearr"] {
+      grid-column: 1;
+      grid-row: 2 / span 2;
+    }
+    .services-group:has(li[data-name="Tracearr"]) li[data-name="Transcode stats"] {
+      grid-column: 2;
+      grid-row: 2;
+    }
+    .services-group:has(li[data-name="Tracearr"]) li[data-name="Transcode streams"] {
+      grid-column: 2;
+      grid-row: 3;
+    }
+    /* Fuse Transcode stats + Transcode streams into one visual card */
+    li[data-name="Transcode stats"] .service-card {
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+      border-bottom-left-radius: 0 !important;
+      border-bottom-right-radius: 0 !important;
+      box-shadow: none !important;
+    }
+    li[data-name="Transcode streams"] .service-title {
+      display: none !important;
+    }
+    li[data-name="Transcode streams"] .service-card {
+      margin-top: 0 !important;
+      padding-top: 0 !important;
+      border-top-left-radius: 0 !important;
+      border-top-right-radius: 0 !important;
+    }
+    /* Match Tracearr row dimensions: h-5 (20px), mt-1 (4px), mx-1, rounded-md */
+    li[data-name="Transcode streams"] .service-container > div > div {
+      flex: 0 0 auto !important;
+      height: 1.25rem !important;
+      margin: 0.25rem 0.25rem 0 0.25rem !important;
+      padding: 0 0.5rem !important;
+      border-radius: 0.375rem !important;
+    }
+    li[data-name="Transcode streams"] .service-container > div {
+      padding-bottom: 0.25rem !important;
+    }
+    /* Media Pipeline: Ombi (col 1 full height) | Sonarr/Radarr stacked | NZBGet/qBittorrent stacked */
+    .services-group:has(li[data-name="Ombi"]) ul.services-list {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      column-gap: 0.25rem;
+      row-gap: 0.25rem;
+    }
+    .services-group:has(li[data-name="Ombi"]) li[data-name="Ombi"] {
+      grid-column: 1;
+      grid-row: 1;
+    }
+    .services-group:has(li[data-name="Ombi"]) li[data-name="Disk Space"] {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    .services-group:has(li[data-name="Ombi"]) li[data-name="Sonarr"] {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    .services-group:has(li[data-name="Ombi"]) li[data-name="Radarr"] {
+      grid-column: 2;
+      grid-row: 2;
+    }
+    .services-group:has(li[data-name="Ombi"]) li[data-name="NZBGet"] {
+      grid-column: 3;
+      grid-row: 1;
+    }
+    .services-group:has(li[data-name="Ombi"]) li[data-name="qBittorrent"] {
+      grid-column: 3;
+      grid-row: 2;
+    }
+    /* Infrastructure: 3 cols (hosts), 3 rows (host / gpu-worker / tdarr-node) */
+    .services-group:has(li[data-name="VM Host 1"]) ul.services-list {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: auto auto auto;
+      column-gap: 0.25rem;
+      row-gap: 0.25rem;
+    }
+    .services-group:has(li[data-name="VM Host 1"]) li[data-name="VM Host 1"] { grid-column: 1; grid-row: 1; }
+    .services-group:has(li[data-name="VM Host 1"]) li[data-name="VM Host 2"] { grid-column: 2; grid-row: 1; }
+    .services-group:has(li[data-name="VM Host 1"]) li[data-name="VM Host 3"] { grid-column: 3; grid-row: 1; }
+    .services-group:has(li[data-name="VM Host 1"]) li[data-name="GPU Worker 1"] { grid-column: 1; grid-row: 2; }
+    .services-group:has(li[data-name="VM Host 1"]) li[data-name="GPU Worker 2"] { grid-column: 2; grid-row: 2; }
+    .services-group:has(li[data-name="VM Host 1"]) li[data-name="GPU Worker 3"] { grid-column: 3; grid-row: 2; }
+    .services-group:has(li[data-name="VM Host 1"]) li[data-name="Tdarr Node 1"] { grid-column: 1; grid-row: 3; }
+    .services-group:has(li[data-name="VM Host 1"]) li[data-name="Tdarr Node 2"] { grid-column: 2; grid-row: 3; }
+    .services-group:has(li[data-name="VM Host 1"]) li[data-name="Tdarr Node 3"] { grid-column: 3; grid-row: 3; }
+    /* Infrastructure - Storage: 4 columns */
+    .services-group:has(li[data-name="TrueNAS"]) ul.services-list {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      column-gap: 0.25rem;
+      row-gap: 0.25rem;
+    }
+    .services-group:has(li[data-name="TrueNAS"]) li[data-name="TrueNAS"] { grid-column: 1; }
+    .services-group:has(li[data-name="TrueNAS"]) li[data-name="vSAN"] { grid-column: 2; }
+    .services-group:has(li[data-name="TrueNAS"]) li[data-name="Longhorn"] { grid-column: 3; }
+    .services-group:has(li[data-name="TrueNAS"]) li[data-name="Kasten"] { grid-column: 4; }
+  custom.js: ""

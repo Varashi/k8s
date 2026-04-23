@@ -28,7 +28,7 @@ spec:
               repository: ghcr.io/gethomepage/homepage
               tag: v1.12.3
             env:
-              HOMEPAGE_ALLOWED_HOSTS: dashboard.${SECRET_DOMAIN}
+              HOMEPAGE_ALLOWED_HOSTS: status-test.${SECRET_DOMAIN}
             envFrom:
               - secretRef:
                   name: homepage-widgets
@@ -42,8 +42,8 @@ spec:
                     port: 3000
                     httpHeaders:
                       - name: Host
-                        value: dashboard.${SECRET_DOMAIN}
-                  initialDelaySeconds: 10
+                        value: status-test.${SECRET_DOMAIN}
+                  initialDelaySeconds: 15
               readiness:
                 enabled: true
                 custom: true
@@ -53,7 +53,7 @@ spec:
                     port: 3000
                     httpHeaders:
                       - name: Host
-                        value: dashboard.${SECRET_DOMAIN}
+                        value: status-test.${SECRET_DOMAIN}
                   initialDelaySeconds: 5
               startup:
                 enabled: true
@@ -64,18 +64,42 @@ spec:
                     port: 3000
                     httpHeaders:
                       - name: Host
-                        value: dashboard.${SECRET_DOMAIN}
+                        value: status-test.${SECRET_DOMAIN}
                   periodSeconds: 2
                   failureThreshold: 30
             resources:
               requests:
                 cpu: 10m
-                memory: 128Mi
+                memory: 64Mi
               limits:
-                memory: 512Mi
+                memory: 256Mi
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
+              capabilities:
+                drop: ["ALL"]
+          data-proxy:
+            image:
+              repository: python
+              tag: "3.12-slim"
+            command:
+              - sh
+              - -c
+              - "pip install --quiet --no-cache-dir --target /tmp/pylibs pyvmomi && PYTHONPATH=/tmp/pylibs python3 /app/proxy.py"
+            envFrom:
+              - secretRef:
+                  name: homepage-widgets
+              - secretRef:
+                  name: homepage-extras
+                  optional: true
+            resources:
+              requests:
+                cpu: 10m
+                memory: 128Mi
+              limits:
+                memory: 384Mi
+            securityContext:
+              allowPrivilegeEscalation: false
               capabilities:
                 drop: ["ALL"]
 
@@ -89,7 +113,7 @@ spec:
     route:
       app:
         hostnames:
-          - dashboard.${SECRET_DOMAIN}
+          - status-test.${SECRET_DOMAIN}
         parentRefs:
           - name: main
             namespace: cilium
@@ -103,242 +127,58 @@ spec:
               - identifier: app
                 port: http
 
-    configMaps:
-      config:
-        data:
-          settings.yaml: |
-            title: Boeye homelab
-            theme: dark
-            color: slate
-            headerStyle: clean
-            layout:
-              Media:
-                style: column
-                columns: 1
-              Arr:
-                style: column
-                columns: 1
-              Downloaders:
-                style: column
-                columns: 1
-              Tools:
-                style: column
-                columns: 1
-              Network-SKW:
-                style: row
-                columns: 4
-                icon: mdi-lan
-              Network-STA:
-                style: row
-                columns: 2
-                icon: mdi-vpn
-            kubernetes:
-              mode: cluster
-              gateway: true
-          services.yaml: |
-            - Network-SKW:
-                - WAN IP SKW:
-                    icon: mdi-ip-outline-#38bdf8
-                    description: Public IP @ SKW
-                    weight: 5
-                    widget:
-                      type: customapi
-                      url: https://dns.google/resolve?name=skw.wan.${SECRET_DOMAIN}&type=A
-                      refreshInterval: 60000
-                      mappings:
-                        - field: Answer.0.data
-                          label: IP
-                - OPNsense:
-                    icon: opnsense.png
-                    href: https://skw-edgerouter.${SECRET_DOMAIN}
-                    description: SKW firewall
-                    weight: 10
-                    widget:
-                      type: opnsense
-                      url: https://skw-edgerouter.${SECRET_DOMAIN}
-                      username: "{{`{{HOMEPAGE_VAR_OPNSENSE_KEY}}`}}"
-                      password: "{{`{{HOMEPAGE_VAR_OPNSENSE_SECRET}}`}}"
-                - skw-switch10g1:
-                    icon: mikrotik.png
-                    href: http://skw-switch10g1.${SECRET_DOMAIN}
-                    description: 10G core (RSTP root)
-                    weight: 20
-                    widget:
-                      type: mikrotik
-                      url: http://skw-switch10g1.${SECRET_DOMAIN}
-                      username: admin
-                      password: "{{`{{HOMEPAGE_VAR_MIKROTIK}}`}}"
-                - skw-switch10g2:
-                    icon: mikrotik.png
-                    href: http://skw-switch10g2.${SECRET_DOMAIN}
-                    description: 10G core (secondary)
-                    weight: 30
-                    widget:
-                      type: mikrotik
-                      url: http://skw-switch10g2.${SECRET_DOMAIN}
-                      username: admin
-                      password: "{{`{{HOMEPAGE_VAR_MIKROTIK}}`}}"
-                - skw-switch1g1:
-                    icon: mikrotik.png
-                    href: http://skw-switch1g1.${SECRET_DOMAIN}
-                    description: 1G PoE (ground floor)
-                    weight: 40
-                    widget:
-                      type: mikrotik
-                      url: http://skw-switch1g1.${SECRET_DOMAIN}
-                      username: admin
-                      password: "{{`{{HOMEPAGE_VAR_MIKROTIK}}`}}"
-                - skw-switch1g2:
-                    icon: mikrotik.png
-                    href: http://skw-switch1g2.${SECRET_DOMAIN}
-                    description: 1G PoE (first floor)
-                    weight: 50
-                    widget:
-                      type: mikrotik
-                      url: http://skw-switch1g2.${SECRET_DOMAIN}
-                      username: admin
-                      password: "{{`{{HOMEPAGE_VAR_MIKROTIK}}`}}"
-                - WG SKW-STA:
-                    icon: wireguard.png
-                    href: https://skw-edgerouter.${SECRET_DOMAIN}/ui/wireguard/general
-                    description: Site-to-site tunnel
-                    weight: 60
-                    widget:
-                      type: customapi
-                      url: https://skw-edgerouter.${SECRET_DOMAIN}/api/wireguard/service/show
-                      username: "{{`{{HOMEPAGE_VAR_OPNSENSE_KEY}}`}}"
-                      password: "{{`{{HOMEPAGE_VAR_OPNSENSE_SECRET}}`}}"
-                      refreshInterval: 30000
-                      mappings:
-                        - field: rows.1.peer-status
-                          label: State
-                        - field: rows.1.latest-handshake-age
-                          label: Last HS
-                          format: duration
-                        - field: rows.1.transfer-rx
-                          label: RX
-                          format: bytes
-                        - field: rows.1.transfer-tx
-                          label: TX
-                          format: bytes
-            - Network-STA:
-                - WAN IP STA:
-                    icon: mdi-ip-outline-#38bdf8
-                    description: Public IP @ STA
-                    weight: 5
-                    widget:
-                      type: customapi
-                      url: https://dns.google/resolve?name=sta.wan.${SECRET_DOMAIN}&type=A
-                      refreshInterval: 60000
-                      mappings:
-                        - field: Answer.0.data
-                          label: IP
-                - STA pfSense:
-                    icon: pfsense.png
-                    href: https://sta-router.${SECRET_DOMAIN}
-                    description: STA firewall (SG-3100, no API)
-                    weight: 10
-            - Downloaders:
-                - NZBGet:
-                    icon: nzbget.png
-                    href: https://nzbget.${SECRET_DOMAIN}
-                    description: Usenet downloader (TrueNAS)
-                    weight: 10
-                    widget:
-                      type: nzbget
-                      url: http://nzbget.nzbget.svc:6789
-                      username: varashi
-                      password: "{{`{{HOMEPAGE_VAR_NZBGET}}`}}"
-          bookmarks.yaml: |
-            - Infra:
-                - vCenter:
-                    - abbr: VC
-                      href: https://skw-vcsa.${SECRET_DOMAIN}
-                - OPNsense:
-                    - abbr: FW
-                      href: https://skw-edgerouter.${SECRET_DOMAIN}
-                - TrueNAS:
-                    - abbr: NAS
-                      href: https://skw-truenas-data.${SECRET_DOMAIN}
-                - Home Assistant:
-                    - abbr: HA
-                      href: https://ha.${SECRET_DOMAIN}
-          widgets.yaml: |
-            - resources:
-                backend: kubernetes
-                expanded: true
-                cpu: true
-                memory: true
-            - kubernetes:
-                cluster:
-                  show: true
-                  cpu: true
-                  memory: true
-                  showLabel: true
-                  label: k8s-talos
-                nodes:
-                  show: true
-                  cpu: true
-                  memory: true
-                  showLabel: true
-            - search:
-                provider: google
-                target: _blank
-            - datetime:
-                text_size: xl
-                format:
-                  timeStyle: short
-                  dateStyle: short
-          docker.yaml: |
-            {}
-          kubernetes.yaml: |
-            mode: cluster
-            gateway: true
-          custom.css: |
-            /* force last 2 top-level service groups (Network-SKW / Network-STA) full width */
-            #services > .services-group:nth-last-child(-n+2) {
-              flex-basis: 100% !important;
-              max-width: 100% !important;
-            }
-          custom.js: ""
-
     persistence:
       config:
         type: emptyDir
-        globalMounts:
-          - path: /app/config
-      settings:
-        type: configMap
-        name: homepage-test
-        globalMounts:
-          - path: /app/config/settings.yaml
-            subPath: settings.yaml
-            readOnly: true
-          - path: /app/config/services.yaml
-            subPath: services.yaml
-            readOnly: true
-          - path: /app/config/bookmarks.yaml
-            subPath: bookmarks.yaml
-            readOnly: true
-          - path: /app/config/widgets.yaml
-            subPath: widgets.yaml
-            readOnly: true
-          - path: /app/config/docker.yaml
-            subPath: docker.yaml
-            readOnly: true
-          - path: /app/config/kubernetes.yaml
-            subPath: kubernetes.yaml
-            readOnly: true
-          - path: /app/config/custom.css
-            subPath: custom.css
-            readOnly: true
-          - path: /app/config/custom.js
-            subPath: custom.js
-            readOnly: true
+        advancedMounts:
+          homepage-test:
+            app:
+              - path: /app/config
       logs:
         type: emptyDir
-        globalMounts:
-          - path: /app/config/logs
+        advancedMounts:
+          homepage-test:
+            app:
+              - path: /app/config/logs
+      settings:
+        type: configMap
+        name: homepage-test-config
+        advancedMounts:
+          homepage-test:
+            app:
+              - path: /app/config/settings.yaml
+                subPath: settings.yaml
+                readOnly: true
+              - path: /app/config/services.yaml
+                subPath: services.yaml
+                readOnly: true
+              - path: /app/config/bookmarks.yaml
+                subPath: bookmarks.yaml
+                readOnly: true
+              - path: /app/config/widgets.yaml
+                subPath: widgets.yaml
+                readOnly: true
+              - path: /app/config/docker.yaml
+                subPath: docker.yaml
+                readOnly: true
+              - path: /app/config/kubernetes.yaml
+                subPath: kubernetes.yaml
+                readOnly: true
+              - path: /app/config/custom.css
+                subPath: custom.css
+                readOnly: true
+              - path: /app/config/custom.js
+                subPath: custom.js
+                readOnly: true
+      proxy-script:
+        type: configMap
+        name: homepage-test-proxy
+        advancedMounts:
+          homepage-test:
+            data-proxy:
+              - path: /app/proxy.py
+                subPath: proxy.py
+                readOnly: true
 
     serviceAccount:
       homepage-test: {}
