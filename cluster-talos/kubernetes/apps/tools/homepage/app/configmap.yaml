@@ -468,33 +468,28 @@ data:
       flex-basis: 100% !important;
       max-width: 100% !important;
     }
-    /* Playback group: tracearr left (full height), stats+streams stacked right */
-    .services-group:has(li[data-name="Tracearr"]) ul.services-list {
+    /* Mobile: stack tiles in all custom-grid groups */
+    .services-group:has(li[data-name="Tracearr"]) ul.services-list,
+    .services-group:has(li[data-name="Ombi"]) ul.services-list,
+    .services-group:has(li[data-name="VM Host 1"]) ul.services-list,
+    .services-group:has(li[data-name="TrueNAS"]) ul.services-list {
       display: grid !important;
-      grid-template-columns: 1fr 1fr;
-      grid-template-rows: auto auto 1fr;
-      column-gap: 0.25rem;
-      row-gap: 0;
+      grid-template-columns: 1fr;
+      row-gap: 0.25rem;
     }
-    .services-group:has(li[data-name="Tracearr"]) li[data-name="Plex Service"] {
-      grid-column: 1;
-      grid-row: 1;
-    }
-    .services-group:has(li[data-name="Tracearr"]) li[data-name="Plex"] {
-      grid-column: 2;
-      grid-row: 1;
-    }
-    .services-group:has(li[data-name="Tracearr"]) li[data-name="Tracearr"] {
-      grid-column: 1;
-      grid-row: 2 / span 2;
-    }
-    .services-group:has(li[data-name="Tracearr"]) li[data-name="Transcode stats"] {
-      grid-column: 2;
-      grid-row: 2;
-    }
-    .services-group:has(li[data-name="Tracearr"]) li[data-name="Transcode streams"] {
-      grid-column: 2;
-      grid-row: 3;
+    /* Playback group (tablet+): tracearr left (full height), stats+streams stacked right */
+    @media (min-width: 500px) {
+      .services-group:has(li[data-name="Tracearr"]) ul.services-list {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto 1fr;
+        column-gap: 0.25rem;
+        row-gap: 0;
+      }
+      .services-group:has(li[data-name="Tracearr"]) li[data-name="Plex Service"] { grid-column: 1; grid-row: 1; }
+      .services-group:has(li[data-name="Tracearr"]) li[data-name="Plex"] { grid-column: 2; grid-row: 1; }
+      .services-group:has(li[data-name="Tracearr"]) li[data-name="Tracearr"] { grid-column: 1; grid-row: 2 / span 2; }
+      .services-group:has(li[data-name="Tracearr"]) li[data-name="Transcode stats"] { grid-column: 2; grid-row: 2; }
+      .services-group:has(li[data-name="Tracearr"]) li[data-name="Transcode streams"] { grid-column: 2; grid-row: 3; }
     }
     /* Fuse Transcode stats + Transcode streams into one visual card */
     li[data-name="Transcode stats"] .service-card {
@@ -524,64 +519,65 @@ data:
     li[data-name="Transcode streams"] .service-container > div {
       padding-bottom: 0.25rem !important;
     }
-    /* Media Pipeline: Ombi (col 1 full height) | Sonarr/Radarr stacked | NZBGet/qBittorrent stacked */
-    .services-group:has(li[data-name="Ombi"]) ul.services-list {
-      display: grid !important;
-      grid-template-columns: 1fr 1fr 1fr;
-      grid-template-rows: 1fr 1fr;
-      column-gap: 0.25rem;
-      row-gap: 0.25rem;
+    /* Media Pipeline (tablet): 2 columns auto-flow */
+    @media (min-width: 500px) and (max-width: 767px) {
+      .services-group:has(li[data-name="Ombi"]) ul.services-list {
+        grid-template-columns: 1fr 1fr;
+        column-gap: 0.25rem;
+        row-gap: 0.25rem;
+      }
     }
-    .services-group:has(li[data-name="Ombi"]) li[data-name="Ombi"] {
-      grid-column: 1;
-      grid-row: 1;
+    /* Media Pipeline (desktop): Ombi (col 1 full height) | Sonarr/Radarr stacked | NZBGet/qBittorrent stacked */
+    @media (min-width: 768px) {
+      .services-group:has(li[data-name="Ombi"]) ul.services-list {
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        column-gap: 0.25rem;
+        row-gap: 0.25rem;
+      }
+      .services-group:has(li[data-name="Ombi"]) li[data-name="Ombi"] { grid-column: 1; grid-row: 1; }
+      .services-group:has(li[data-name="Ombi"]) li[data-name="Disk Space"] { grid-column: 1; grid-row: 2; }
+      .services-group:has(li[data-name="Ombi"]) li[data-name="Sonarr"] { grid-column: 2; grid-row: 1; }
+      .services-group:has(li[data-name="Ombi"]) li[data-name="Radarr"] { grid-column: 2; grid-row: 2; }
+      .services-group:has(li[data-name="Ombi"]) li[data-name="NZBGet"] { grid-column: 3; grid-row: 1; }
+      .services-group:has(li[data-name="Ombi"]) li[data-name="qBittorrent"] { grid-column: 3; grid-row: 2; }
     }
-    .services-group:has(li[data-name="Ombi"]) li[data-name="Disk Space"] {
-      grid-column: 1;
-      grid-row: 2;
+    /* Infrastructure - Compute (desktop): 3 cols (hosts), 3 rows (host / gpu-worker / tdarr-node) */
+    @media (min-width: 768px) {
+      .services-group:has(li[data-name="VM Host 1"]) ul.services-list {
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: auto auto auto;
+        column-gap: 0.25rem;
+        row-gap: 0.25rem;
+      }
+      .services-group:has(li[data-name="VM Host 1"]) li[data-name="VM Host 1"] { grid-column: 1; grid-row: 1; }
+      .services-group:has(li[data-name="VM Host 1"]) li[data-name="VM Host 2"] { grid-column: 2; grid-row: 1; }
+      .services-group:has(li[data-name="VM Host 1"]) li[data-name="VM Host 3"] { grid-column: 3; grid-row: 1; }
+      .services-group:has(li[data-name="VM Host 1"]) li[data-name="GPU Worker 1"] { grid-column: 1; grid-row: 2; }
+      .services-group:has(li[data-name="VM Host 1"]) li[data-name="GPU Worker 2"] { grid-column: 2; grid-row: 2; }
+      .services-group:has(li[data-name="VM Host 1"]) li[data-name="GPU Worker 3"] { grid-column: 3; grid-row: 2; }
+      .services-group:has(li[data-name="VM Host 1"]) li[data-name="Tdarr Node 1"] { grid-column: 1; grid-row: 3; }
+      .services-group:has(li[data-name="VM Host 1"]) li[data-name="Tdarr Node 2"] { grid-column: 2; grid-row: 3; }
+      .services-group:has(li[data-name="VM Host 1"]) li[data-name="Tdarr Node 3"] { grid-column: 3; grid-row: 3; }
     }
-    .services-group:has(li[data-name="Ombi"]) li[data-name="Sonarr"] {
-      grid-column: 2;
-      grid-row: 1;
+    /* Infrastructure - Storage (tablet): 2x2 */
+    @media (min-width: 500px) and (max-width: 899px) {
+      .services-group:has(li[data-name="TrueNAS"]) ul.services-list {
+        grid-template-columns: 1fr 1fr;
+        column-gap: 0.25rem;
+        row-gap: 0.25rem;
+      }
     }
-    .services-group:has(li[data-name="Ombi"]) li[data-name="Radarr"] {
-      grid-column: 2;
-      grid-row: 2;
+    /* Infrastructure - Storage (desktop): 4 columns */
+    @media (min-width: 900px) {
+      .services-group:has(li[data-name="TrueNAS"]) ul.services-list {
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        column-gap: 0.25rem;
+        row-gap: 0.25rem;
+      }
+      .services-group:has(li[data-name="TrueNAS"]) li[data-name="TrueNAS"] { grid-column: 1; }
+      .services-group:has(li[data-name="TrueNAS"]) li[data-name="vSAN"] { grid-column: 2; }
+      .services-group:has(li[data-name="TrueNAS"]) li[data-name="Longhorn"] { grid-column: 3; }
+      .services-group:has(li[data-name="TrueNAS"]) li[data-name="Kasten"] { grid-column: 4; }
     }
-    .services-group:has(li[data-name="Ombi"]) li[data-name="NZBGet"] {
-      grid-column: 3;
-      grid-row: 1;
-    }
-    .services-group:has(li[data-name="Ombi"]) li[data-name="qBittorrent"] {
-      grid-column: 3;
-      grid-row: 2;
-    }
-    /* Infrastructure: 3 cols (hosts), 3 rows (host / gpu-worker / tdarr-node) */
-    .services-group:has(li[data-name="VM Host 1"]) ul.services-list {
-      display: grid !important;
-      grid-template-columns: 1fr 1fr 1fr;
-      grid-template-rows: auto auto auto;
-      column-gap: 0.25rem;
-      row-gap: 0.25rem;
-    }
-    .services-group:has(li[data-name="VM Host 1"]) li[data-name="VM Host 1"] { grid-column: 1; grid-row: 1; }
-    .services-group:has(li[data-name="VM Host 1"]) li[data-name="VM Host 2"] { grid-column: 2; grid-row: 1; }
-    .services-group:has(li[data-name="VM Host 1"]) li[data-name="VM Host 3"] { grid-column: 3; grid-row: 1; }
-    .services-group:has(li[data-name="VM Host 1"]) li[data-name="GPU Worker 1"] { grid-column: 1; grid-row: 2; }
-    .services-group:has(li[data-name="VM Host 1"]) li[data-name="GPU Worker 2"] { grid-column: 2; grid-row: 2; }
-    .services-group:has(li[data-name="VM Host 1"]) li[data-name="GPU Worker 3"] { grid-column: 3; grid-row: 2; }
-    .services-group:has(li[data-name="VM Host 1"]) li[data-name="Tdarr Node 1"] { grid-column: 1; grid-row: 3; }
-    .services-group:has(li[data-name="VM Host 1"]) li[data-name="Tdarr Node 2"] { grid-column: 2; grid-row: 3; }
-    .services-group:has(li[data-name="VM Host 1"]) li[data-name="Tdarr Node 3"] { grid-column: 3; grid-row: 3; }
-    /* Infrastructure - Storage: 4 columns */
-    .services-group:has(li[data-name="TrueNAS"]) ul.services-list {
-      display: grid !important;
-      grid-template-columns: 1fr 1fr 1fr 1fr;
-      column-gap: 0.25rem;
-      row-gap: 0.25rem;
-    }
-    .services-group:has(li[data-name="TrueNAS"]) li[data-name="TrueNAS"] { grid-column: 1; }
-    .services-group:has(li[data-name="TrueNAS"]) li[data-name="vSAN"] { grid-column: 2; }
-    .services-group:has(li[data-name="TrueNAS"]) li[data-name="Longhorn"] { grid-column: 3; }
-    .services-group:has(li[data-name="TrueNAS"]) li[data-name="Kasten"] { grid-column: 4; }
   custom.js: ""
