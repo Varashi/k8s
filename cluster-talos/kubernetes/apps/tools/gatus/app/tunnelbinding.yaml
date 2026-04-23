@@ -6,7 +6,7 @@ metadata:
 subjects:
   - name: gatus
     spec:
-      fqdn: status.${SECRET_DOMAIN}
+      fqdn: services.${SECRET_DOMAIN}
       target: http://gatus.gatus.svc.cluster.local:8080
       protocol: http
 tunnelRef:

@@ -96,9 +96,9 @@ spec:
           gethomepage.dev/description: Status page
           gethomepage.dev/group: Tools
           gethomepage.dev/icon: gatus.png
-          gethomepage.dev/href: https://status.${SECRET_DOMAIN}
+          gethomepage.dev/href: https://services.${SECRET_DOMAIN}
         hostnames:
-          - status.${SECRET_DOMAIN}
+          - services.${SECRET_DOMAIN}
         parentRefs:
           - name: main
             namespace: cilium
@@ -121,7 +121,7 @@ spec:
               path: $${GATUS_DATABASE_URL}
               caching: true
             ui:
-              title: status.${SECRET_DOMAIN}
+              title: services.${SECRET_DOMAIN}
               header: Boeye homelab
               default-sort-by: group
             endpoints:
