@@ -25,6 +25,8 @@ data:
     VSPHERE_HOST = os.getenv("VSPHERE_HOST", "skw-vcsa.boeye.net")
     VSPHERE_USER = os.getenv("VSPHERE_USER", "")
     VSPHERE_PASS = os.getenv("VSPHERE_PASS", "")
+    ESXI_USER = os.getenv("ESXI_USER", "root")
+    ESXI_PASSWORD = os.getenv("ESXI_PASSWORD", "")
     _insecure_ctx = ssl.create_default_context()
     _insecure_ctx.check_hostname = False
     _insecure_ctx.verify_mode = ssl.CERT_NONE
@@ -33,6 +35,10 @@ data:
     _hosts_cache = {"ts": 0.0, "body": {}}
     _HOSTS_TTL = 30.0
     _hosts_lock = threading.Lock()
+    _memtier_cache = {}  # host -> {"ts": float, "ok": bool, "body": dict}
+    _MEMTIER_TTL = 30.0
+    _MEMTIER_FAIL_TTL = 300.0
+    _memtier_lock = threading.Lock()
     TDARR_URL = os.getenv("TDARR_URL", "http://tdarr.tdarr.svc:8265")
     TDARR_KEY = os.getenv("HOMEPAGE_VAR_TDARR", "")
     PROM_URL = os.getenv("PROM_URL", "http://prometheus-server.monitoring.svc")
@@ -124,6 +130,14 @@ data:
                 cpu_used_mhz = qs.overallCpuUsage or 0
                 mem_total_mib = int(hw.memorySize / 1024 / 1024)
                 mem_used_mib = qs.overallMemoryUsage or 0
+                dram_size_mib = 0
+                nvme_size_mib = 0
+                for t in getattr(hw, "memoryTierInfo", None) or []:
+                    size_mib = int((t.size or 0) / 1024 / 1024)
+                    if t.type == "DRAM":
+                        dram_size_mib += size_mib
+                    elif t.type == "NVMe":
+                        nvme_size_mib += size_mib
                 vms = []
                 for vm in h.vm:
                     try:
@@ -137,6 +151,8 @@ data:
                     "cpu_total_mhz": cpu_total_mhz,
                     "mem_used_mib": mem_used_mib,
                     "mem_total_mib": mem_total_mib,
+                    "dram_size_mib": dram_size_mib,
+                    "nvme_size_mib": nvme_size_mib,
                     "vms": vms,
                 }
             hview.Destroy()
@@ -144,6 +160,70 @@ data:
             Disconnect(si)
         with _hosts_lock:
             _hosts_cache.update(ts=time.monotonic(), body=out)
+        return out
+
+    def _fetch_host_memtier(host):
+        now = time.monotonic()
+        with _memtier_lock:
+            e = _memtier_cache.get(host)
+            if e:
+                ttl = _MEMTIER_TTL if e.get("ok") else _MEMTIER_FAIL_TTL
+                if now - e["ts"] < ttl:
+                    return e["body"]
+        body = {}
+        ok = False
+        if ESXI_PASSWORD:
+            try:
+                import paramiko
+                client = paramiko.SSHClient()
+                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                client.connect(
+                    host, username=ESXI_USER, password=ESXI_PASSWORD,
+                    timeout=5, auth_timeout=5, banner_timeout=5,
+                    allow_agent=False, look_for_keys=False,
+                )
+                try:
+                    _, stdout, _ = client.exec_command(
+                        "memstats -r vmtier-stats -u mb -s name:memSize:tier0Consumed:tier1Consumed",
+                        timeout=10,
+                    )
+                    text = stdout.read().decode("utf-8", "replace")
+                finally:
+                    client.close()
+                for line in text.splitlines():
+                    parts = line.strip().split()
+                    if len(parts) >= 4 and parts[0] == "Total":
+                        try:
+                            body = {
+                                "tier0_consumed_mib": int(parts[2]),
+                                "tier1_consumed_mib": int(parts[3]),
+                            }
+                            ok = True
+                        except ValueError:
+                            pass
+                        break
+            except Exception as e:
+                body = {"error": str(e)[:120]}
+        with _memtier_lock:
+            _memtier_cache[host] = {"ts": now, "ok": ok, "body": body}
+        return body
+
+    def _enrich_with_memtier(host_name, entry):
+        mt = _fetch_host_memtier(host_name)
+        out = dict(entry)
+        t0 = mt.get("tier0_consumed_mib")
+        t1 = mt.get("tier1_consumed_mib")
+        if t0 is not None and t1 is not None:
+            dram_size = entry.get("dram_size_mib") or 0
+            nvme_size = entry.get("nvme_size_mib") or 0
+            # overallMemoryUsage = DRAM + NVMe (VMs + VMkernel); subtract NVMe = DRAM in use
+            dram_in_use = max(0, (entry.get("mem_used_mib") or 0) - t1)
+            out["dram_pct"] = round(100.0 * dram_in_use / dram_size, 1) if dram_size else 0
+            out["nvme_pct"] = round(100.0 * t1 / nvme_size, 1) if nvme_size else 0
+            out["nvme_used_gib"] = round(t1 / 1024.0, 1)
+            out["dram_used_mib"] = dram_in_use
+            out["nvme_used_mib"] = t1
+            out["vm_tier0_consumed_mib"] = t0
         return out
 
     def _prom_label(query, label):
@@ -463,11 +543,13 @@ data:
                 try:
                     hosts = _fetch_hosts()
                     entry = None
+                    host_key = None
                     for k, v in hosts.items():
                         if k == name or k.split(".")[0] == name:
-                            entry = v; break
+                            entry = v; host_key = k; break
                     if entry is None:
                         self.send_response(404); self.end_headers(); return
+                    entry = _enrich_with_memtier(host_key, entry)
                     body = json.dumps(entry).encode()
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")

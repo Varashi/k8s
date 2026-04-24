@@ -164,10 +164,18 @@ data:
                   label: CPU
                   format: float
                   suffix: "%"
-                - field: mem_pct
-                  label: Memory
+                - field: dram_pct
+                  label: DRAM
                   format: float
                   suffix: "%"
+                - field: nvme_pct
+                  label: NVMe
+                  format: float
+                  suffix: "%"
+                - field: nvme_used_gib
+                  label: NVMe used
+                  format: float
+                  suffix: " GB"
         - VM Host 2:
             icon: mdi-server
             widget:
@@ -180,10 +188,18 @@ data:
                   label: CPU
                   format: float
                   suffix: "%"
-                - field: mem_pct
-                  label: Memory
+                - field: dram_pct
+                  label: DRAM
                   format: float
                   suffix: "%"
+                - field: nvme_pct
+                  label: NVMe
+                  format: float
+                  suffix: "%"
+                - field: nvme_used_gib
+                  label: NVMe used
+                  format: float
+                  suffix: " GB"
         - VM Host 3:
             icon: mdi-server
             widget:
@@ -196,10 +212,18 @@ data:
                   label: CPU
                   format: float
                   suffix: "%"
-                - field: mem_pct
-                  label: Memory
+                - field: dram_pct
+                  label: DRAM
                   format: float
                   suffix: "%"
+                - field: nvme_pct
+                  label: NVMe
+                  format: float
+                  suffix: "%"
+                - field: nvme_used_gib
+                  label: NVMe used
+                  format: float
+                  suffix: " GB"
         - GPU Worker 1:
             icon: mdi-kubernetes
             description: k8s-talos-gpu-worker-1

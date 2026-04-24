@@ -87,7 +87,9 @@ spec:
             command:
               - sh
               - -c
-              - "pip install --quiet --no-cache-dir --target /tmp/pylibs pyvmomi && PYTHONPATH=/tmp/pylibs python3 /app/proxy.py"
+              - "pip install --quiet --no-cache-dir --target /tmp/pylibs pyvmomi paramiko && PYTHONPATH=/tmp/pylibs python3 /app/proxy.py"
+            env:
+              ESXI_USER: root
             envFrom:
               - secretRef:
                   name: homepage-widgets
