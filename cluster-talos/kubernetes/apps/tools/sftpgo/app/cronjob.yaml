@@ -24,7 +24,6 @@ data:
 
     PLEX_TOKEN = os.environ["PLEX_TOKEN"]
     PLEX_MACHINE_ID = os.environ["PLEX_MACHINE_ID"]
-    PLEX_OWNER_USERNAME = os.environ.get("PLEX_OWNER_USERNAME", "").strip()
     SFTPGO_URL = os.environ.get("SFTPGO_URL", "http://sftpgo-app.sftpgo.svc.cluster.local:8080")
     SFTPGO_ADMIN_USER = os.environ["SFTPGO_DEFAULT_ADMIN_USERNAME"]
     SFTPGO_ADMIN_PASSWORD = os.environ["SFTPGO_DEFAULT_ADMIN_PASSWORD"]
@@ -74,6 +73,19 @@ data:
             if uname:
                 users.add(uname)
         return users
+
+
+    def plex_owner_username():
+        # /api/v2/user returns the account tied to PLEX_TOKEN as literal JSON
+        # (Plex stores `&amp;` verbatim in usernames — do not decode).
+        url = f"https://plex.tv/api/v2/user?X-Plex-Token={PLEX_TOKEN}"
+        status, body = http("GET", url, headers={"Accept": "application/json"})
+        if status != 200:
+            sys.exit(f"plex owner lookup failed: {status} {body[:200]!r}")
+        uname = (json.loads(body).get("username") or "").strip()
+        if not uname:
+            sys.exit("plex owner lookup: empty username")
+        return uname
 
 
     def sftpgo_token():
@@ -170,8 +182,7 @@ data:
 
     def main():
         wanted = plex_shared_users()
-        if PLEX_OWNER_USERNAME:
-            wanted.add(PLEX_OWNER_USERNAME)
+        wanted.add(plex_owner_username())
         print(f"plex shared users: {len(wanted)}")
 
         token = sftpgo_token()
@@ -228,8 +239,6 @@ spec:
               env:
                 - name: PLEX_MACHINE_ID
                   value: 4c80459876491ea1a93c53e6f0d9bbbec06f3672
-                - name: PLEX_OWNER_USERNAME
-                  value: "frank&amp;veerle"  # literal Plex username — Plex stores `&amp;` as-is, Authentik preserves it.
                 - name: SFTPGO_URL
                   value: http://sftpgo-app.sftpgo.svc.cluster.local:8080
               envFrom:
