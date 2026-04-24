@@ -6,6 +6,7 @@ resources:
   - guacamole/ks.yaml
   - homepage/ks.yaml
   - netbox/ks.yaml
+  - netbox-lb-sync/ks.yaml
   - ocis/ks.yaml
   - octodns/ks.yaml
   - rustdesk/ks.yaml

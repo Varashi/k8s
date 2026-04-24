@@ -1,0 +1,118 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: netbox-lb-sync
+  namespace: netbox-lb-sync
+data:
+  # Mirror k8s LoadBalancer service IPs into NetBox IPAM.
+  #
+  # Per-IP (deduplicated: services that share an IP collapse to one NetBox
+  # entry, preferring the one carrying an external-dns hostname annotation):
+  #   - address   = <ip>/24  (matches node-entry convention in SKW-K8S prefix)
+  #   - status    = active
+  #   - dns_name  = first hostname from external-dns.alpha.kubernetes.io/hostname
+  #                 (skipped when annotation absent/empty)
+  #   - description = "<app.kubernetes.io/name | svc name> load balancer"
+  #   - tag       = k8s-lb  (auto-created once if missing)
+  #
+  # Entries tagged k8s-lb but no longer present in k8s are pruned.
+  sync.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    : "${NETBOX_URL:=https://ipam.boeye.net}"
+    : "${NETBOX_API_TOKEN:?NETBOX_API_TOKEN required}"
+    TAG_SLUG="${TAG_SLUG:-k8s-lb}"
+    TAG_NAME="${TAG_NAME:-k8s-lb}"
+    MASK="${MASK:-24}"
+
+    nb() {
+      curl -sS --fail-with-body \
+        -H "Authorization: Token ${NETBOX_API_TOKEN}" \
+        -H "Content-Type: application/json" \
+        -H "Accept: application/json" \
+        "$@"
+    }
+
+    # 1. Ensure tag exists (idempotent)
+    tag_id=$(nb "${NETBOX_URL}/api/extras/tags/?slug=${TAG_SLUG}" | jq -r '.results[0].id // empty')
+    if [[ -z "${tag_id}" ]]; then
+      echo "tag ${TAG_SLUG} missing, creating"
+      tag_id=$(nb -X POST "${NETBOX_URL}/api/extras/tags/" \
+        -d "$(jq -nc --arg n "${TAG_NAME}" --arg s "${TAG_SLUG}" '{name:$n,slug:$s}')" \
+        | jq -r '.id')
+    fi
+    echo "tag ${TAG_SLUG} id=${tag_id}"
+
+    # 2. Desired set from cluster — one row per distinct IP.
+    #    Sort rows without a hostname annotation last so dedupe keeps the
+    #    DNS-bearing row (relevant for shared-IP LBs like qbittorrent tcp/udp).
+    desired=$(kubectl get svc -A -o json | jq -c --arg mask "${MASK}" --arg tag "${TAG_SLUG}" '
+      [ .items[]
+        | select(.spec.type=="LoadBalancer")
+        | select((.status.loadBalancer.ingress // []) | length > 0)
+        | select(.status.loadBalancer.ingress[0].ip)
+        | {
+            ip: .status.loadBalancer.ingress[0].ip,
+            app: (.metadata.labels["app.kubernetes.io/name"] // .metadata.name),
+            dns: (((.metadata.annotations // {})["external-dns.alpha.kubernetes.io/hostname"] // "")
+                   | split(",") | .[0] // "" | gsub("^\\s+|\\s+$"; ""))
+          }
+      ]
+      | sort_by((.dns | length) == 0)
+      | group_by(.ip)
+      | map(.[0])
+      | map({
+          address: "\(.ip)/\($mask)",
+          status: "active",
+          description: "\(.app) load balancer",
+          dns_name: .dns,
+          tags: [{slug: $tag}]
+        })
+    ')
+    desired_count=$(jq 'length' <<<"${desired}")
+    echo "desired LB IPs: ${desired_count}"
+
+    # 3. Current NetBox rows tagged k8s-lb
+    existing=$(nb "${NETBOX_URL}/api/ipam/ip-addresses/?tag=${TAG_SLUG}&limit=500" \
+      | jq -c '[.results[] | {id, address, description, dns_name}]')
+    existing_count=$(jq 'length' <<<"${existing}")
+    echo "existing tagged rows: ${existing_count}"
+
+    # 4. Upsert. Match on address — catches rows that exist without our tag
+    #    (e.g. pre-created manually) and brings them under management.
+    jq -c '.[]' <<<"${desired}" | while IFS= read -r d; do
+      addr=$(jq -r '.address' <<<"${d}")
+      hit=$(nb "${NETBOX_URL}/api/ipam/ip-addresses/?address=${addr}" \
+        | jq -c '.results[0] // empty')
+      if [[ -z "${hit}" ]]; then
+        echo "POST ${addr}"
+        nb -X POST "${NETBOX_URL}/api/ipam/ip-addresses/" -d "${d}" >/dev/null
+      else
+        hit_id=$(jq -r '.id' <<<"${hit}")
+        drift=$(jq -n --argjson e "${hit}" --argjson d "${d}" '
+          ($e.description // "") != $d.description
+          or ($e.dns_name // "") != $d.dns_name
+          or (($e.status.value // "") != $d.status)
+          or ((($e.tags // []) | map(.slug)) | contains([$d.tags[0].slug]) | not)
+        ')
+        if [[ "${drift}" == "true" ]]; then
+          echo "PATCH ${addr} id=${hit_id}"
+          nb -X PATCH "${NETBOX_URL}/api/ipam/ip-addresses/${hit_id}/" -d "${d}" >/dev/null
+        else
+          echo "ok   ${addr}"
+        fi
+      fi
+    done
+
+    # 5. Prune: rows tagged k8s-lb whose address is no longer desired
+    desired_addrs=$(jq -r '.[].address' <<<"${desired}" | sort -u)
+    jq -r '.[] | "\(.id)\t\(.address)"' <<<"${existing}" | while IFS=$'\t' read -r id addr; do
+      if ! grep -qxF "${addr}" <<<"${desired_addrs}"; then
+        echo "DEL  ${addr} id=${id}"
+        nb -X DELETE "${NETBOX_URL}/api/ipam/ip-addresses/${id}/" >/dev/null
+      fi
+    done
+
+    echo "done"

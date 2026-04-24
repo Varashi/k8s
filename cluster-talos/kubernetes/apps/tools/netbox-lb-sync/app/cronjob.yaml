@@ -1,0 +1,50 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: netbox-lb-sync
+  namespace: netbox-lb-sync
+spec:
+  schedule: "*/15 * * * *"
+  timeZone: Europe/Brussels
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: netbox-lb-sync
+          containers:
+            - name: sync
+              # renovate: datasource=docker depName=alpine/k8s versioning=docker
+              image: alpine/k8s:1.32.2
+              imagePullPolicy: IfNotPresent
+              command: ["/bin/bash", "/etc/netbox-lb-sync/sync.sh"]
+              envFrom:
+                - secretRef:
+                    name: netbox-lb-sync
+              volumeMounts:
+                - name: script
+                  mountPath: /etc/netbox-lb-sync
+                  readOnly: true
+              securityContext:
+                runAsUser: 1000
+                runAsGroup: 1000
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+                seccompProfile:
+                  type: RuntimeDefault
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 256Mi }
+          volumes:
+            - name: script
+              configMap:
+                name: netbox-lb-sync
+                defaultMode: 0555
