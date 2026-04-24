@@ -40,7 +40,7 @@ spec:
                 custom: true
                 spec:
                   tcpSocket:
-                    port: 25
+                    port: 2525
                   initialDelaySeconds: 30
                   periodSeconds: 30
               readiness:
@@ -48,11 +48,15 @@ spec:
                 custom: true
                 spec:
                   tcpSocket:
-                    port: 25
+                    port: 2525
                   initialDelaySeconds: 10
                   periodSeconds: 10
               startup:
                 enabled: false
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
             resources:
               requests:
                 cpu: 20m
@@ -70,7 +74,7 @@ spec:
         ports:
           smtp:
             port: 25
-            targetPort: 25
+            targetPort: 2525
 
     persistence:
       config:
@@ -82,8 +86,22 @@ spec:
               - path: /data/config.yml
                 subPath: config.yml
                 readOnly: true
+      data:
+        type: emptyDir
+        advancedMounts:
+          smtp2graph:
+            app:
+              - path: /data
 
     defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
