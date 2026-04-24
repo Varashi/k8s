@@ -27,6 +27,12 @@ spec:
     # NodeFeatureRule CR drives labels — disable noisy built-in feature labels we don't use
     master:
       replicaCount: 1
+      resources:
+        requests:
+          cpu: 25m
+          memory: 128Mi
+        limits:
+          memory: 256Mi
       config:
         noPublish: false
         # only emit labels matched by NodeFeatureRule, not raw feature.node.kubernetes.io/* dump
@@ -53,3 +59,9 @@ spec:
     # GC reaps stale NodeFeature objects when nodes vanish
     gc:
       enable: true
+      resources:
+        requests:
+          cpu: 10m
+          memory: 128Mi
+        limits:
+          memory: 256Mi

@@ -46,60 +46,57 @@ spec:
               - op: add
                 path: /spec/template/spec/containers/0/args/-
                 value: --requeue-dependency=5s
+          # Resources tuned from KRR (96h Prom data, 2026-04-24): drop chart's
+          # cpu limits (controllers idle most of the time, brief reconcile
+          # bursts shouldn't be throttled), align mem requests with observed.
           - target:
               kind: Deployment
               name: source-controller
             patch: |-
-              apiVersion: apps/v1
-              kind: Deployment
-              metadata:
-                name: all
-              spec:
-                template:
-                  spec:
-                    containers:
-                      - name: manager
-                        resources:
-                          requests:
-                            memory: 192Mi
-                          limits:
-                            memory: 2Gi
+              - op: replace
+                path: /spec/template/spec/containers/0/resources
+                value:
+                  requests:
+                    cpu: 25m
+                    memory: 320Mi
+                  limits:
+                    memory: 2Gi
           - target:
               kind: Deployment
               name: kustomize-controller
             patch: |-
-              apiVersion: apps/v1
-              kind: Deployment
-              metadata:
-                name: all
-              spec:
-                template:
-                  spec:
-                    containers:
-                      - name: manager
-                        resources:
-                          requests:
-                            memory: 192Mi
-                          limits:
-                            memory: 2Gi
+              - op: replace
+                path: /spec/template/spec/containers/0/resources
+                value:
+                  requests:
+                    cpu: 50m
+                    memory: 192Mi
+                  limits:
+                    memory: 2Gi
           - target:
               kind: Deployment
               name: helm-controller
             patch: |-
-              apiVersion: apps/v1
+              - op: replace
+                path: /spec/template/spec/containers/0/resources
+                value:
+                  requests:
+                    cpu: 25m
+                    memory: 256Mi
+                  limits:
+                    memory: 2Gi
+          - target:
               kind: Deployment
-              metadata:
-                name: all
-              spec:
-                template:
-                  spec:
-                    containers:
-                      - name: manager
-                        resources:
-                          requests:
-                            memory: 128Mi
-                          limits:
-                            memory: 2Gi
+              name: notification-controller
+            patch: |-
+              - op: replace
+                path: /spec/template/spec/containers/0/resources
+                value:
+                  requests:
+                    cpu: 25m
+                    memory: 128Mi
+                  limits:
+                    memory: 1Gi
           - target:
               kind: Deployment
               name: kustomize-controller

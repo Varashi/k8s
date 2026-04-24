@@ -42,7 +42,7 @@ spec:
       resources:
         requests:
           cpu: 50m
-          memory: 1Gi
+          memory: 4Gi
         limits:
           memory: 4Gi
       tolerations:
