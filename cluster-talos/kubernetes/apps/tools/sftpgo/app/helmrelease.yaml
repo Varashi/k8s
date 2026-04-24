@@ -1,0 +1,156 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: sftpgo
+  namespace: sftpgo
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 4.6.2
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      strategy: rollback
+      retries: 3
+  values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        supplementalGroups: [568]  # NFS `apps` group on TrueNAS
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: DoesNotExist
+
+    controllers:
+      sftpgo:
+        containers:
+          app:
+            image:
+              repository: ghcr.io/drakkan/sftpgo
+              tag: v2.6.6-alpine
+            envFrom:
+              - secretRef:
+                  name: sftpgo-secrets
+            env:
+              TZ: Europe/Brussels
+              SFTPGO_LOG_LEVEL: info
+              # HTTP binding — Gateway terminates TLS.
+              SFTPGO_HTTPD__BINDINGS__0__ADDRESS: "0.0.0.0"
+              SFTPGO_HTTPD__BINDINGS__0__PORT: "8080"
+              SFTPGO_HTTPD__BINDINGS__0__ENABLE_HTTPS: "false"
+              SFTPGO_HTTPD__BINDINGS__0__PROXY_ALLOWED: "0.0.0.0/0"
+              SFTPGO_HTTPD__BINDINGS__0__ENABLED_LOGIN_METHODS: "3"  # OIDC(2) + admin(1); disables user password login.
+              # OIDC to Authentik.
+              SFTPGO_HTTPD__BINDINGS__0__OIDC__CONFIG_URL: "https://sso.${SECRET_DOMAIN}/application/o/sftpgo/"
+              SFTPGO_HTTPD__BINDINGS__0__OIDC__CLIENT_ID: sftpgo
+              SFTPGO_HTTPD__BINDINGS__0__OIDC__REDIRECT_BASE_URL: "https://plexmedia.${SECRET_DOMAIN}"
+              SFTPGO_HTTPD__BINDINGS__0__OIDC__USERNAME_FIELD: preferred_username
+              SFTPGO_HTTPD__BINDINGS__0__OIDC__SCOPES: "openid,profile,email"
+              SFTPGO_HTTPD__BINDINGS__0__OIDC__IMPLICIT_ROLES: "false"
+              # Disable SFTP/FTP daemons — HTTP web client only.
+              SFTPGO_SFTPD__BINDINGS__0__PORT: "0"
+              SFTPGO_FTPD__BINDINGS__0__PORT: "0"
+              SFTPGO_WEBDAVD__BINDINGS__0__PORT: "0"
+              # SQLite.
+              SFTPGO_DATA_PROVIDER__DRIVER: sqlite
+              SFTPGO_DATA_PROVIDER__NAME: /var/lib/sftpgo/sftpgo.db
+              SFTPGO_DATA_PROVIDER__CREATE_DEFAULT_ADMIN: "true"
+              # Allow `&` in usernames — Plex owner is "frank&veerle".
+              SFTPGO_DATA_PROVIDER__USERNAME_REGEX: "^[a-zA-Z0-9][a-zA-Z0-9_.@+&-]*$"
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+            probes:
+              liveness: &probe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 8080
+                  initialDelaySeconds: 20
+                  periodSeconds: 30
+              readiness: *probe
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+
+    service:
+      app:
+        controller: sftpgo
+        ports:
+          http:
+            port: 8080
+      sftpgo-public:
+        type: ExternalName
+        externalName: skw.wan.${SECRET_DOMAIN}
+        annotations:
+          external-dns.alpha.kubernetes.io/hostname: plexmedia.${SECRET_DOMAIN}
+          external-dns.alpha.kubernetes.io/public: "true"
+        ports:
+          http:
+            port: 443
+
+    route:
+      app:
+        annotations:
+          gatus.home-operations.com/endpoint: |
+            conditions: ["[STATUS] < 500"]
+            interval: 60s
+            group: tools
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: sftpgo (Plex media)
+          gethomepage.dev/description: Plex library downloads
+          gethomepage.dev/group: Tools
+          gethomepage.dev/icon: sftpgo.png
+          gethomepage.dev/href: https://plexmedia.${SECRET_DOMAIN}
+        hostnames:
+          - plexmedia.${SECRET_DOMAIN}
+        parentRefs:
+          - name: main
+            namespace: cilium
+            sectionName: https
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: app
+                port: http
+
+    persistence:
+      data:
+        existingClaim: sftpgo-data
+        globalMounts:
+          - path: /var/lib/sftpgo
+      media:
+        type: nfs
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
+        path: /mnt/DATA/mediapool/media
+        globalMounts:
+          - path: /srv/media
+            readOnly: true

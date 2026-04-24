@@ -11,3 +11,4 @@ resources:
   - octodns/ks.yaml
   - rustdesk/ks.yaml
   - smtp2graph/ks.yaml
+  - sftpgo/ks.yaml

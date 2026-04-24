@@ -1,0 +1,255 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sftpgo-plex-sync
+  namespace: sftpgo
+data:
+  sync.py: |
+    #!/usr/bin/env python3
+    """Mirror Plex shared users into sftpgo as download-only accounts.
+
+    Called daily by a CronJob. Plex owner token + machine ID list who has
+    access; sftpgo admin API creates/updates matching users and disables
+    any sftpgo user no longer present in the Plex share.
+    """
+    import base64
+    import json
+    import os
+    import sys
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+    import xml.etree.ElementTree as ET
+
+    PLEX_TOKEN = os.environ["PLEX_TOKEN"]
+    PLEX_MACHINE_ID = os.environ["PLEX_MACHINE_ID"]
+    PLEX_OWNER_USERNAME = os.environ.get("PLEX_OWNER_USERNAME", "").strip()
+    SFTPGO_URL = os.environ.get("SFTPGO_URL", "http://sftpgo.sftpgo.svc.cluster.local:8080")
+    SFTPGO_ADMIN_USER = os.environ["SFTPGO_DEFAULT_ADMIN_USERNAME"]
+    SFTPGO_ADMIN_PASSWORD = os.environ["SFTPGO_DEFAULT_ADMIN_PASSWORD"]
+
+    HOME_DIR = "/srv/media"
+    WEB_CLIENT_DISABLED = [
+        "publickey-change-disabled",
+        "tls-cert-change-disabled",
+        "write-disabled",
+        "mfa-disabled",
+        "password-change-disabled",
+        "api-key-auth-change-disabled",
+        "info-change-disabled",
+        "shares-disabled",
+        "password-reset-disabled",
+    ]
+
+
+    def http(method, url, headers=None, body=None, timeout=30):
+        hdrs = dict(headers or {})
+        data = None
+        if body is not None:
+            if isinstance(body, (dict, list)):
+                data = json.dumps(body).encode("utf-8")
+                hdrs.setdefault("Content-Type", "application/json")
+            elif isinstance(body, bytes):
+                data = body
+            else:
+                data = str(body).encode("utf-8")
+        req = urllib.request.Request(url, data=data, method=method, headers=hdrs)
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.status, r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read()
+
+
+    def plex_shared_users():
+        url = f"https://plex.tv/api/servers/{PLEX_MACHINE_ID}/shared_servers?X-Plex-Token={PLEX_TOKEN}"
+        status, body = http("GET", url)
+        if status != 200:
+            sys.exit(f"plex shared_servers failed: {status} {body[:200]!r}")
+        root = ET.fromstring(body)
+        users = set()
+        for ss in root.findall("SharedServer"):
+            uname = ss.get("username") or ""
+            if uname:
+                users.add(uname)
+        return users
+
+
+    def sftpgo_token():
+        creds = base64.b64encode(
+            f"{SFTPGO_ADMIN_USER}:{SFTPGO_ADMIN_PASSWORD}".encode()
+        ).decode()
+        status, body = http(
+            "GET",
+            f"{SFTPGO_URL}/api/v2/token",
+            headers={"Authorization": f"Basic {creds}"},
+        )
+        if status != 200:
+            sys.exit(f"sftpgo token failed: {status} {body!r}")
+        return json.loads(body)["access_token"]
+
+
+    def sftpgo_list_users(token):
+        users = {}
+        offset = 0
+        while True:
+            status, body = http(
+                "GET",
+                f"{SFTPGO_URL}/api/v2/users?limit=500&offset={offset}",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            if status != 200:
+                sys.exit(f"sftpgo list users failed: {status} {body!r}")
+            page = json.loads(body)
+            if not page:
+                break
+            for u in page:
+                users[u["username"]] = u
+            if len(page) < 500:
+                break
+            offset += 500
+        return users
+
+
+    def user_payload(username):
+        return {
+            "status": 1,
+            "username": username,
+            "home_dir": HOME_DIR,
+            "uid": 1000,
+            "gid": 1000,
+            "permissions": {"/": ["list", "download"]},
+            "filters": {"web_client": WEB_CLIENT_DISABLED},
+        }
+
+
+    def create_user(token, username):
+        status, body = http(
+            "POST",
+            f"{SFTPGO_URL}/api/v2/users",
+            headers={"Authorization": f"Bearer {token}"},
+            body=user_payload(username),
+        )
+        if status not in (200, 201):
+            print(f"create {username}: {status} {body!r}", file=sys.stderr)
+            return False
+        print(f"created {username}")
+        return True
+
+
+    def enable_user(token, username):
+        status, body = http(
+            "PUT",
+            f"{SFTPGO_URL}/api/v2/users/{urllib.parse.quote(username, safe='')}",
+            headers={"Authorization": f"Bearer {token}"},
+            body=user_payload(username),
+        )
+        if status not in (200, 204):
+            print(f"enable {username}: {status} {body!r}", file=sys.stderr)
+            return False
+        print(f"enabled {username}")
+        return True
+
+
+    def disable_user(token, username, existing):
+        patched = dict(existing)
+        patched["status"] = 0
+        status, body = http(
+            "PUT",
+            f"{SFTPGO_URL}/api/v2/users/{urllib.parse.quote(username, safe='')}",
+            headers={"Authorization": f"Bearer {token}"},
+            body=patched,
+        )
+        if status not in (200, 204):
+            print(f"disable {username}: {status} {body!r}", file=sys.stderr)
+            return False
+        print(f"disabled {username}")
+        return True
+
+
+    def main():
+        wanted = plex_shared_users()
+        if PLEX_OWNER_USERNAME:
+            wanted.add(PLEX_OWNER_USERNAME)
+        print(f"plex shared users: {len(wanted)}")
+
+        token = sftpgo_token()
+        existing = sftpgo_list_users(token)
+        print(f"sftpgo users: {len(existing)}")
+
+        for uname in sorted(wanted):
+            if uname in existing:
+                if existing[uname].get("status") != 1:
+                    enable_user(token, uname)
+            else:
+                create_user(token, uname)
+
+        for uname, u in existing.items():
+            if uname in wanted:
+                continue
+            if u.get("status") == 1:
+                disable_user(token, uname, u)
+
+
+    if __name__ == "__main__":
+        main()
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sftpgo-plex-sync
+  namespace: sftpgo
+spec:
+  schedule: "17 3 * * *"  # Daily at 03:17 local.
+  timeZone: Europe/Brussels
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 600
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            fsGroup: 1000
+          containers:
+            - name: sync
+              image: python:3.13-alpine
+              command: ["python3", "/scripts/sync.py"]
+              env:
+                - name: PLEX_MACHINE_ID
+                  value: 4c80459876491ea1a93c53e6f0d9bbbec06f3672
+                - name: PLEX_OWNER_USERNAME
+                  value: "frank&veerle"
+                - name: SFTPGO_URL
+                  value: http://sftpgo.sftpgo.svc.cluster.local:8080
+              envFrom:
+                - secretRef:
+                    name: sftpgo-secrets
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 20m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          volumes:
+            - name: script
+              configMap:
+                name: sftpgo-plex-sync
+                defaultMode: 0o555
