@@ -19,3 +19,4 @@ resources:
   - spegel/ks.yaml
   - renovate/ks.yaml
   - tuppr/ks.yaml
+  - authentik/ks.yaml

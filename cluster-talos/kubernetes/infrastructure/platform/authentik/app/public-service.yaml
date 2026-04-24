@@ -1,0 +1,18 @@
+---
+# Publishes sso.boeye.net via external-dns public zone (DDNS CNAME → skw.wan).
+# HTTPRoute already exposes it on the internal main gateway (172.16.4.100);
+# public DNS answer points to WAN DDNS so external users reach the same gateway via port-forward.
+apiVersion: v1
+kind: Service
+metadata:
+  name: authentik-public
+  namespace: authentik
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: sso.${SECRET_DOMAIN}
+    external-dns.alpha.kubernetes.io/public: "true"
+spec:
+  type: ExternalName
+  externalName: skw.wan.${SECRET_DOMAIN}
+  ports:
+    - name: http
+      port: 443

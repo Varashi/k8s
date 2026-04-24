@@ -1,0 +1,93 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: authentik
+  namespace: authentik
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: authentik
+      version: 2026.2.2
+      sourceRef:
+        kind: HelmRepository
+        name: authentik
+        namespace: flux-system
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      strategy: rollback
+      retries: 3
+  values:
+    global:
+      affinity:
+        nodeAffinity:
+          type: hard
+          matchExpressions:
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: DoesNotExist
+      envFrom:
+        - secretRef:
+            name: authentik-extra-env
+
+    # Bundled DB/cache are off; CNPG + app-template redis handle it.
+    postgresql:
+      enabled: false
+    redis:
+      enabled: false
+
+    authentik:
+      log_level: info
+      error_reporting:
+        enabled: false
+      postgresql:
+        host: authentik-db-rw.authentik.svc
+        name: authentik
+        user: authentik
+        port: 5432
+      redis:
+        host: authentik-redis.authentik.svc
+        port: 6379
+
+    server:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+        limits:
+          memory: 1Gi
+      route:
+        main:
+          enabled: true
+          hostnames:
+            - sso.${SECRET_DOMAIN}
+          parentRefs:
+            - name: main
+              namespace: cilium
+              sectionName: https
+          annotations:
+            gatus.home-operations.com/endpoint: |
+              conditions: ["[STATUS] < 500"]
+              interval: 60s
+              group: tools
+            gethomepage.dev/enabled: "true"
+            gethomepage.dev/name: Authentik
+            gethomepage.dev/description: SSO / IdP
+            gethomepage.dev/group: Tools
+            gethomepage.dev/icon: authentik.png
+            gethomepage.dev/href: https://sso.${SECRET_DOMAIN}
+
+    worker:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 100m
+          memory: 384Mi
+        limits:
+          memory: 1Gi

@@ -23,3 +23,4 @@ resources:
   - stakater.yaml
   - fluent.yaml
   - gpu-node-vsphere-maintenance-controller.yaml
+  - authentik.yaml
