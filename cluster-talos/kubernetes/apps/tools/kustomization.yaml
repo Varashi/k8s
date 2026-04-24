@@ -10,3 +10,4 @@ resources:
   - octodns/ks.yaml
   - postfix-relay/ks.yaml
   - rustdesk/ks.yaml
+  - smtp2graph/ks.yaml
