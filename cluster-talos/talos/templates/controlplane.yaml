@@ -66,6 +66,10 @@ cluster:
     extraArgs:
       default-not-ready-toleration-seconds: "120"
       default-unreachable-toleration-seconds: "120"
+    resources:
+      requests:
+        cpu: 200m
+        memory: 2048Mi
   network:
     cni:
       name: none
@@ -79,9 +83,17 @@ cluster:
     extraArgs:
       bind-address: 0.0.0.0
       attach-detach-reconcile-sync-period: 15s
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
   scheduler:
     extraArgs:
       bind-address: 0.0.0.0
+    resources:
+      requests:
+        cpu: 10m
+        memory: 128Mi
 ---
 apiVersion: v1alpha1
 kind: HostnameConfig
