@@ -145,7 +145,7 @@ spec:
                 requestRedirect:
                   path:
                     type: ReplaceFullPath
-                    replaceFullPath: /web/oidc/login
+                    replaceFullPath: /web/client/oidclogin
                   statusCode: 302
           - matches:
               - path:
