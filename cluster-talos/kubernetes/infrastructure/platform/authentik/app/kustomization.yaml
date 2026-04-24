@@ -6,5 +6,6 @@ resources:
   - pvc.yaml
   - cluster.yaml
   - redis.yaml
+  - branding-configmap.yaml
   - helmrelease.yaml
   - public-service.yaml
