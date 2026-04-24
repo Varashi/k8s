@@ -20,9 +20,12 @@ spec:
       create: false
     networkPolicy:
       create: false
+    # Chart default has limits.cpu: 2; null strips it after deep-merge.
+    # KRR (96h Prom): operator idle, brief reconcile bursts shouldn't throttle.
     resources:
       requests:
         cpu: 25m
         memory: 192Mi
       limits:
+        cpu: ~
         memory: 1Gi
