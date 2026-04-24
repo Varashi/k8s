@@ -67,8 +67,10 @@ spec:
           configMap:
             name: authentik-branding-assets
       volumeMounts:
+        # Authentik serves /static/* from /web/dist; mounting into a
+        # custom subdir exposes the SVGs at /static/custom/*.
         - name: branding-assets
-          mountPath: /media/public
+          mountPath: /web/dist/custom
           readOnly: true
       route:
         main:
