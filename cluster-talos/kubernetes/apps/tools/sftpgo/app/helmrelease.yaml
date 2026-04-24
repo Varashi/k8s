@@ -142,27 +142,15 @@ spec:
             namespace: cilium
             sectionName: https
         rules:
-          # Escape hatch: /web/client/login?local=1 bypasses the OIDC
-          # redirect and shows the native sftpgo form. Useful when an
-          # admin session + stale oidc cookie trap you in a redirect
-          # loop — open this URL to break out and/or log in locally.
+          # Seamless entry: typed-URL visitors to plexmedia.boeye.net/
+          # go straight into the Authentik OIDC flow. The redirect is
+          # scoped to the root path only — sftpgo's own 302s to
+          # /web/client/login on OIDC failure then pass through
+          # untouched so users see the flash error instead of looping.
           - matches:
               - path:
                   type: Exact
-                  value: /web/client/login
-                queryParams:
-                  - name: local
-                    value: "1"
-            backendRefs:
-              - identifier: app
-                port: http
-          # Default: skip the sftpgo user login form — punt straight to
-          # Authentik OIDC. Admin login at /web/admin/login is not
-          # matched and stays reachable.
-          - matches:
-              - path:
-                  type: Exact
-                  value: /web/client/login
+                  value: /
             filters:
               - type: RequestRedirect
                 requestRedirect:

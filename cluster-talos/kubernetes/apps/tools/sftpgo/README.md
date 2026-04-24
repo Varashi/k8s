@@ -25,29 +25,30 @@ they can only browse + download (no writes, no SFTP/FTP).
 
 Authentik application `sftpgo` at `sso.boeye.net`. Flow:
 
-1. User hits `plexmedia.boeye.net` → sftpgo 302s to
-   `/web/client/login`.
-2. HTTPRoute has an **Exact-match** rule on `/web/client/login` that
-   302s to `/web/client/oidclogin` — skips the sftpgo form entirely so
-   the user never sees it.
-3. sftpgo kicks off the OIDC dance, Authentik runs the Plex source
+1. User hits `plexmedia.boeye.net/` → HTTPRoute has an **Exact-match**
+   rule on `/` that 302s to `/web/client/oidclogin`, skipping the
+   sftpgo form entirely on first visit.
+2. sftpgo kicks off the OIDC dance, Authentik runs the Plex source
    (first login = Plex OAuth popup, silent on subsequent visits), user
    lands in `/web/client/`.
 
 Admin login at `/web/admin/login` is **not** rewritten — local password
 access still works for the `admin` account.
 
-### Escape hatch: `?local=1`
+### Why the redirect is scoped to `/`, not `/web/client/login`
 
-`https://plexmedia.boeye.net/web/client/login?local=1` bypasses the
-OIDC redirect and shows sftpgo's native form. The `oidc` session
-cookie is scoped `Path=/` and persists across sessions, so a stale
-token from a prior user login combined with the unconditional OIDC
-redirect can produce an ERR_TOO_MANY_REDIRECTS loop (each failure
-302s back to `/web/client/login`, which re-fires the OIDC flow).
-`?local=1` breaks the cycle — use it to reach the local form without
-clearing cookies. Gateway API `HTTPRoute` query-param matcher routes
-only that specific URL straight through to the backend.
+An earlier iteration redirected `/web/client/login` → `/web/client/oidclogin`.
+That traps users in an `ERR_TOO_MANY_REDIRECTS` loop: sftpgo's OIDC
+callback handler calls `doRedirect()` → `/web/client/login` on any
+validation failure (invalid token, non-matching user, wrong role).
+The filter then bounces that to `/web/client/oidclogin`, which
+restarts the OIDC flow; Authentik silently re-grants because its
+session is still live; the callback fails the same way; repeat.
+
+Scoping the redirect to **only the root path** keeps the seamless
+entry for typed-URL visitors while letting sftpgo's internal 302s to
+`/web/client/login` pass through untouched — users see the native
+form with the flash error message and can retry manually.
 
 ## Branding
 
