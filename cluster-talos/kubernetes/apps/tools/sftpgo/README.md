@@ -1,9 +1,9 @@
 # sftpgo — Plex library download portal
 
-Public, HTTP-only download interface for the Plex media library at
-`https://plexmedia.boeye.net`. Gated by Plex server membership via
-Authentik OIDC — only users who share this Plex server can log in, and
-they can only browse + download (no writes, no SFTP/FTP).
+Public, HTTP-only download interface for the Plex media library.
+Gated by Plex server membership via Authentik OIDC — only users who
+share this Plex server can log in, and they can only browse + download
+(no writes, no SFTP/FTP).
 
 ## Architecture
 
@@ -13,19 +13,18 @@ they can only browse + download (no writes, no SFTP/FTP).
   terminates TLS; sftpgo listens plaintext on 8080.
 - **Data:** SQLite provider on a 1 GiB vSAN RWO PVC (`sftpgo-data`).
   Single replica — SQLite + RWO PVC, no HA.
-- **Media mount:** read-only NFS from
-  `skw-truenas-nfs.boeye.net:/mnt/DATA/mediapool/media` → `/srv/media`.
-  Pod joins supplemental group `568` (`apps` on TrueNAS).
+- **Media mount:** read-only NFS to the TrueNAS media dataset →
+  `/srv/media`. Pod joins supplemental group `568` (`apps` on TrueNAS).
 - **Public exposure:** no Cloudflare tunnel (media-TOS 2.8). The
-  `sftpgo-public` ExternalName Service CNAMEs `plexmedia.boeye.net` to
+  `sftpgo-public` ExternalName Service CNAMEs the public hostname to
   the WAN DDNS via `external-dns ... /public: "true"`. HTTPRoute on
   `cilium/main/https` serves the internal path.
 
 ## OIDC login
 
-Authentik application `sftpgo` at `sso.boeye.net`. Flow:
+Authentik application `sftpgo` on the SSO host. Flow:
 
-1. User hits `plexmedia.boeye.net/` → HTTPRoute has an **Exact-match**
+1. User hits the public hostname `/` → HTTPRoute has an **Exact-match**
    rule on `/` that 302s to `/web/client/oidclogin`, skipping the
    sftpgo form entirely on first visit.
 2. sftpgo kicks off the OIDC dance, Authentik runs the Plex source
@@ -37,17 +36,17 @@ access still works for the `admin` account.
 
 ### Stuck as `akadmin` → "Failed to get user associated with OpenID token"
 
-If you've logged into Authentik as `akadmin` (e.g. via `sso.boeye.net`
-admin console), that session bleeds into the sftpgo OIDC flow:
-Authentik silently grants with the `akadmin` identity, sftpgo gets
+If you've logged into Authentik as `akadmin` (e.g. via the SSO admin
+console), that session bleeds into the sftpgo OIDC flow: Authentik
+silently grants with the `akadmin` identity, sftpgo gets
 `preferred_username=akadmin`, no matching user in its DB, rejection.
 
-Kill the Authentik session:
-`https://sso.boeye.net/if/flow/default-invalidation-flow/`
+Kill the Authentik session via the invalidation flow:
+`/if/flow/default-invalidation-flow/` on the SSO host.
 
-Then retry `plexmedia.boeye.net` → Plex OAuth → lands as the Plex
-username. Alternative: use a private window for `plexmedia.boeye.net`
-so the admin session stays intact for other work.
+Then retry the sftpgo URL → Plex OAuth → lands as the Plex username.
+Alternative: use a private window for sftpgo so the admin session
+stays intact for other work.
 
 ### Why the redirect is scoped to `/`, not `/web/client/login`
 
@@ -67,7 +66,7 @@ form with the flash error message and can retry manually.
 ## Branding
 
 Web-client pages (login + files/shares/etc.) are re-skinned to match
-Homepage's `status.boeye.net` look: Unsplash starfield background, dark
+the Homepage status-page look: Unsplash starfield background, dark
 translucent cards with backdrop-blur, cyan primary buttons, cyan→violet
 gradient headings. Admin UI (`/web/admin/*`) stays default.
 
@@ -125,6 +124,6 @@ All in Bitwarden SM, pulled via the ExternalSecret in `app/`:
 - `SECRET_SFTPGO_DATA_KEY` — data provider encryption key.
 - `SECRET_SFTPGO_OIDC_CLIENT_SECRET` — matches the Authentik `sftpgo`
   provider client secret.
-- `SECRET_PLEX_TOKEN` — Frank's Plex auth token, used by the sync cron
-  only. Does **not** need to match Authentik's Plex-source token; the
-  cron talks to plex.tv directly.
+- `SECRET_PLEX_TOKEN` — owner's Plex auth token, used by the sync
+  cron only. Does **not** need to match Authentik's Plex-source token;
+  the cron talks to plex.tv directly.
