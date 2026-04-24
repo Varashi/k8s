@@ -142,8 +142,23 @@ spec:
             namespace: cilium
             sectionName: https
         rules:
-          # Skip sftpgo user login form — punt straight to Authentik OIDC.
-          # Admin login at /web/admin/login is not matched and stays reachable.
+          # Escape hatch: /web/client/login?local=1 bypasses the OIDC
+          # redirect and shows the native sftpgo form. Useful when an
+          # admin session + stale oidc cookie trap you in a redirect
+          # loop — open this URL to break out and/or log in locally.
+          - matches:
+              - path:
+                  type: Exact
+                  value: /web/client/login
+                queryParams:
+                  - name: local
+                    value: "1"
+            backendRefs:
+              - identifier: app
+                port: http
+          # Default: skip the sftpgo user login form — punt straight to
+          # Authentik OIDC. Admin login at /web/admin/login is not
+          # matched and stays reachable.
           - matches:
               - path:
                   type: Exact

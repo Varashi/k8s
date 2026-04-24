@@ -37,6 +37,18 @@ Authentik application `sftpgo` at `sso.boeye.net`. Flow:
 Admin login at `/web/admin/login` is **not** rewritten — local password
 access still works for the `admin` account.
 
+### Escape hatch: `?local=1`
+
+`https://plexmedia.boeye.net/web/client/login?local=1` bypasses the
+OIDC redirect and shows sftpgo's native form. The `oidc` session
+cookie is scoped `Path=/` and persists across sessions, so a stale
+token from a prior user login combined with the unconditional OIDC
+redirect can produce an ERR_TOO_MANY_REDIRECTS loop (each failure
+302s back to `/web/client/login`, which re-fires the OIDC flow).
+`?local=1` breaks the cycle — use it to reach the local form without
+clearing cookies. Gateway API `HTTPRoute` query-param matcher routes
+only that specific URL straight through to the backend.
+
 ## Branding
 
 Web-client pages (login + files/shares/etc.) are re-skinned to match
