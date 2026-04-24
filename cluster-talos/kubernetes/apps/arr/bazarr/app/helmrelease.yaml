@@ -52,6 +52,11 @@ spec:
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
+            resources:
+              requests:
+                cpu: 100m
+              limits:
+                cpu: 1000m
     service:
       app:
         controller: bazarr

@@ -60,12 +60,6 @@ spec:
             env:
               TZ: Europe/Brussels
               TAUTULLI__PORT: 8181
-            resources:
-              requests:
-                cpu: 26m
-                memory: 1Gi
-              limits:
-                memory: 2Gi
     service:
       app:
         controller: tautulli

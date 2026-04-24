@@ -48,7 +48,7 @@ spec:
                 value: --requeue-dependency=5s
           - target:
               kind: Deployment
-              name: (kustomize-controller|helm-controller|source-controller)
+              name: source-controller
             patch: |-
               apiVersion: apps/v1
               kind: Deployment
@@ -60,6 +60,44 @@ spec:
                     containers:
                       - name: manager
                         resources:
+                          requests:
+                            memory: 192Mi
+                          limits:
+                            memory: 2Gi
+          - target:
+              kind: Deployment
+              name: kustomize-controller
+            patch: |-
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: all
+              spec:
+                template:
+                  spec:
+                    containers:
+                      - name: manager
+                        resources:
+                          requests:
+                            memory: 192Mi
+                          limits:
+                            memory: 2Gi
+          - target:
+              kind: Deployment
+              name: helm-controller
+            patch: |-
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: all
+              spec:
+                template:
+                  spec:
+                    containers:
+                      - name: manager
+                        resources:
+                          requests:
+                            memory: 128Mi
                           limits:
                             memory: 2Gi
           - target:
