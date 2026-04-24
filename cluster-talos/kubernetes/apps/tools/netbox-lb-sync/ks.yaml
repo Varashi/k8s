@@ -15,7 +15,3 @@ spec:
     name: flux-system
   wait: true
   timeout: 10m
-  postBuild:
-    substituteFrom:
-      - kind: Secret
-        name: cluster-vars
