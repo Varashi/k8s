@@ -65,8 +65,8 @@ spec:
         controller: smtp2graph
         type: LoadBalancer
         annotations:
-          io.cilium/lb-ipam-ips: "172.16.4.109"
-          external-dns.alpha.kubernetes.io/hostname: smtptest.${SECRET_DOMAIN}
+          io.cilium/lb-ipam-ips: "172.16.4.105"
+          external-dns.alpha.kubernetes.io/hostname: smtp.${SECRET_DOMAIN}
         ports:
           smtp:
             port: 25

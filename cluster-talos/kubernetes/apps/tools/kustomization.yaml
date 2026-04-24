@@ -8,6 +8,5 @@ resources:
   - netbox/ks.yaml
   - ocis/ks.yaml
   - octodns/ks.yaml
-  - postfix-relay/ks.yaml
   - rustdesk/ks.yaml
   - smtp2graph/ks.yaml
