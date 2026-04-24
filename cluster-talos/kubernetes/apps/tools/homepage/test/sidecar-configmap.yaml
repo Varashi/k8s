@@ -216,11 +216,14 @@ data:
         if t0 is not None and t1 is not None:
             dram_size = entry.get("dram_size_mib") or 0
             nvme_size = entry.get("nvme_size_mib") or 0
-            out["dram_pct"] = round(100.0 * t0 / dram_size, 1) if dram_size else 0
+            # overallMemoryUsage = DRAM + NVMe (VMs + VMkernel); subtract NVMe = DRAM in use
+            dram_in_use = max(0, (entry.get("mem_used_mib") or 0) - t1)
+            out["dram_pct"] = round(100.0 * dram_in_use / dram_size, 1) if dram_size else 0
             out["nvme_pct"] = round(100.0 * t1 / nvme_size, 1) if nvme_size else 0
             out["nvme_used_gib"] = round(t1 / 1024.0, 1)
-            out["dram_used_mib"] = t0
+            out["dram_used_mib"] = dram_in_use
             out["nvme_used_mib"] = t1
+            out["vm_tier0_consumed_mib"] = t0
         return out
 
     def _prom_label(query, label):
