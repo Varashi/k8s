@@ -25,7 +25,7 @@ data:
     PLEX_TOKEN = os.environ["PLEX_TOKEN"]
     PLEX_MACHINE_ID = os.environ["PLEX_MACHINE_ID"]
     PLEX_OWNER_USERNAME = os.environ.get("PLEX_OWNER_USERNAME", "").strip()
-    SFTPGO_URL = os.environ.get("SFTPGO_URL", "http://sftpgo.sftpgo.svc.cluster.local:8080")
+    SFTPGO_URL = os.environ.get("SFTPGO_URL", "http://sftpgo-app.sftpgo.svc.cluster.local:8080")
     SFTPGO_ADMIN_USER = os.environ["SFTPGO_DEFAULT_ADMIN_USERNAME"]
     SFTPGO_ADMIN_PASSWORD = os.environ["SFTPGO_DEFAULT_ADMIN_PASSWORD"]
 
@@ -229,7 +229,7 @@ spec:
                 - name: PLEX_OWNER_USERNAME
                   value: "frank&veerle"
                 - name: SFTPGO_URL
-                  value: http://sftpgo.sftpgo.svc.cluster.local:8080
+                  value: http://sftpgo-app.sftpgo.svc.cluster.local:8080
               envFrom:
                 - secretRef:
                     name: sftpgo-secrets
