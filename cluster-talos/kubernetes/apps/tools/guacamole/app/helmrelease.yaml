@@ -27,13 +27,14 @@ spec:
               GUACD_HOSTNAME: guacamole-guacd
               GUACD_PORT: "4822"
               GUACAMOLE_HOME: /etc/guacamole/
+              WEBAPP_CONTEXT: ROOT
             probes:
               liveness:
                 enabled: true
                 custom: true
                 spec:
                   httpGet:
-                    path: /guacamole/
+                    path: /
                     port: 8080
                   initialDelaySeconds: 45
                   timeoutSeconds: 10
@@ -42,7 +43,7 @@ spec:
                 custom: true
                 spec:
                   httpGet:
-                    path: /guacamole/
+                    path: /
                     port: 8080
                   initialDelaySeconds: 2
                   timeoutSeconds: 10
@@ -89,22 +90,9 @@ spec:
               - path:
                   type: PathPrefix
                   value: /
-            filters:
-              - type: URLRewrite
-                urlRewrite:
-                  path:
-                    type: ReplacePrefixMatch
-                    replacePrefixMatch: /guacamole
             backendRefs:
               - identifier: app
                 port: http
-
-    configMaps:
-      root-redirect:
-        enabled: true
-        data:
-          index.jsp: |
-            <% response.sendRedirect("/guacamole"); %>
 
     persistence:
       guacamole-conf:
@@ -114,12 +102,3 @@ spec:
           guacamole:
             app:
               - path: /etc/guacamole/
-      root-redirect:
-        type: configMap
-        name: guacamole-root-redirect
-        advancedMounts:
-          guacamole:
-            app:
-              - path: /usr/local/tomcat/webapps/ROOT/index.jsp
-                subPath: index.jsp
-                readOnly: true
