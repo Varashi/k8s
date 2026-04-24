@@ -35,6 +35,20 @@ Authentik application `sftpgo` at `sso.boeye.net`. Flow:
 Admin login at `/web/admin/login` is **not** rewritten — local password
 access still works for the `admin` account.
 
+### Stuck as `akadmin` → "Failed to get user associated with OpenID token"
+
+If you've logged into Authentik as `akadmin` (e.g. via `sso.boeye.net`
+admin console), that session bleeds into the sftpgo OIDC flow:
+Authentik silently grants with the `akadmin` identity, sftpgo gets
+`preferred_username=akadmin`, no matching user in its DB, rejection.
+
+Kill the Authentik session:
+`https://sso.boeye.net/if/flow/default-invalidation-flow/`
+
+Then retry `plexmedia.boeye.net` → Plex OAuth → lands as the Plex
+username. Alternative: use a private window for `plexmedia.boeye.net`
+so the admin session stays intact for other work.
+
 ### Why the redirect is scoped to `/`, not `/web/client/login`
 
 An earlier iteration redirected `/web/client/login` → `/web/client/oidclogin`.
