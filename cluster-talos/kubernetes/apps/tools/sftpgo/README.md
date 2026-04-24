@@ -37,6 +37,21 @@ Authentik application `sftpgo` at `sso.boeye.net`. Flow:
 Admin login at `/web/admin/login` is **not** rewritten — local password
 access still works for the `admin` account.
 
+## Branding
+
+Web-client pages (login + files/shares/etc.) are re-skinned to match
+Homepage's `status.boeye.net` look: Unsplash starfield background, dark
+translucent cards with backdrop-blur, cyan primary buttons, cyan→violet
+gradient headings. Admin UI (`/web/admin/*`) stays default.
+
+- Assets ship via ConfigMap `sftpgo-branding-assets` (2 SVGs + 1 CSS),
+  mounted at `/usr/share/sftpgo/static/branding/` → served at
+  `/static/branding/*` by sftpgo's static-files handler.
+- Wired through `httpd.bindings[0].branding.web_client.*`
+  (`LOGO_PATH`, `FAVICON_PATH`, `EXTRA_CSS`, `NAME`, `SHORT_NAME`).
+  Templates in the sftpgo binary render these via
+  `{{.StaticURL}}{{.Branding.LogoPath}}` etc., where `.StaticURL = /static`.
+
 ### Config notes
 
 - `SFTPGO_HTTPD__BINDINGS__0__ENABLED_LOGIN_METHODS=0` — bitmask values

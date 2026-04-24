@@ -4,5 +4,6 @@ resources:
   - namespace.yaml
   - externalsecret.yaml
   - pvc.yaml
+  - branding-configmap.yaml
   - helmrelease.yaml
   - cronjob.yaml

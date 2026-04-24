@@ -76,6 +76,14 @@ spec:
               SFTPGO_DATA_PROVIDER__CREATE_DEFAULT_ADMIN: "true"
               # Allow `&` in usernames — Plex owner is "frank&veerle".
               SFTPGO_DATA_PROVIDER__USERNAME_REGEX: "^[a-zA-Z0-9][a-zA-Z0-9_.@+&-]*$"
+              # Web-client branding — admin UI stays default. Paths relative
+              # to static_files_path (/usr/share/sftpgo/static) → rendered
+              # under /static/.
+              SFTPGO_HTTPD__BINDINGS__0__BRANDING__WEB_CLIENT__NAME: "Boeye.net Media"
+              SFTPGO_HTTPD__BINDINGS__0__BRANDING__WEB_CLIENT__SHORT_NAME: "Boeye.net"
+              SFTPGO_HTTPD__BINDINGS__0__BRANDING__WEB_CLIENT__LOGO_PATH: branding/boeye-banner.svg
+              SFTPGO_HTTPD__BINDINGS__0__BRANDING__WEB_CLIENT__FAVICON_PATH: branding/boeye-logo-mark.svg
+              SFTPGO_HTTPD__BINDINGS__0__BRANDING__WEB_CLIENT__EXTRA_CSS: branding/custom.css
             resources:
               requests:
                 cpu: 50m
@@ -166,4 +174,10 @@ spec:
         path: /mnt/DATA/mediapool/media
         globalMounts:
           - path: /srv/media
+            readOnly: true
+      branding:
+        type: configMap
+        name: sftpgo-branding-assets
+        globalMounts:
+          - path: /usr/share/sftpgo/static/branding
             readOnly: true
