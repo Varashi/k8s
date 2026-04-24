@@ -34,6 +34,16 @@ spec:
       tag: latest
       pullPolicy: Always
 
+    # Strip CPU limit — gunicorn workers spike sub-second to 750m default and
+    # hit CFS throttling (96h: throttle MAX 63%, AVG 17.76%) despite ~17m
+    # sustained usage. Single-tenant IPAM, no crowd-out concern. Mem lim kept.
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        memory: 1536Mi
+
     # Enable NetBox DNS plugin — module is baked into the custom image.
     plugins:
       - netbox_dns
