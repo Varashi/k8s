@@ -1,0 +1,23 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: flux-webhook
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: flux-instance
+    - name: cloudflare-operator
+    - name: external-secrets
+  path: ./cluster-talos/kubernetes/infrastructure/flux-system/webhook/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+  timeout: 5m
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
