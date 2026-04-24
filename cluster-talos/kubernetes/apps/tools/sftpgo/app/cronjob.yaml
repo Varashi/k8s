@@ -219,6 +219,8 @@ spec:
             runAsGroup: 1000
             runAsNonRoot: true
             fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
           containers:
             - name: sync
               image: python:3.13-alpine
