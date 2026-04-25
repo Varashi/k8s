@@ -392,9 +392,11 @@ sonarr:
       type: series
     quality_profiles:
       - name: SD to 4K Dutch-Flemish
-        # Reject any release that does not match either Dutch or Flemish CF
-        # (both are user-defined, not from TRaSH; protected from reset below).
-        min_format_score: 1
+        # Gate: Flemish CF=10000, Dutch CF=5000 (set via API, not TRaSH-managed).
+        # min_format_score=5000 → reject anything without Dutch/Flemish audio,
+        # since max combined non-language quality bonus (~2700) cannot reach it.
+        # Flemish > Dutch + every quality bonus combined → Flemish always preferred.
+        min_format_score: 5000
         reset_unmatched_scores:
           enabled: true
           except:
