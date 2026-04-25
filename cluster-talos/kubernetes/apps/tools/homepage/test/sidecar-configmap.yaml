@@ -343,7 +343,7 @@ data:
                 out[hname] = {
                     "node": None,
                     "status": "DOWN",
-                    "transcode_active": 0,
+                    "transcode_active": "DOWN",
                     "transcode_max": 0,
                     "healthcheck_active": 0,
                     "healthcheck_max": 0,
