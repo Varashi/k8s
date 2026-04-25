@@ -56,6 +56,9 @@ spec:
               COMPlus_EnableDiagnostics: "0"
               RADARR_API_KEY: c11c0b12d16e4dd3be4fce4a9e02bde9
               SONARR_API_KEY: 16c2c87c42c1442ba9b25e866b10b475
+            envFrom:
+              - secretRef:
+                  name: recyclarr-secrets
             args: ["sync"]
             securityContext:
               allowPrivilegeEscalation: false
