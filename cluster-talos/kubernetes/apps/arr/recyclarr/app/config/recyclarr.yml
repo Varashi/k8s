@@ -716,7 +716,7 @@ radarr:
         reset_unmatched_scores:
           enabled: true
           except:
-            - Dutch
+            - Dutch groups
         upgrade:
           allowed: true
           until_quality: Remux-2160p
