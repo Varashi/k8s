@@ -284,6 +284,8 @@ data:
               refreshInterval: 15000
               display: block
               mappings:
+                - field: status
+                  label: Status
                 - field: transcode_active
                   label: Transcode
                 - field: cpu_pct
@@ -307,6 +309,8 @@ data:
               refreshInterval: 15000
               display: block
               mappings:
+                - field: status
+                  label: Status
                 - field: transcode_active
                   label: Transcode
                 - field: cpu_pct
@@ -330,6 +334,8 @@ data:
               refreshInterval: 15000
               display: block
               mappings:
+                - field: status
+                  label: Status
                 - field: transcode_active
                   label: Transcode
                 - field: cpu_pct
