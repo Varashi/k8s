@@ -1,0 +1,109 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: radarr-nl
+  namespace: radarr-nl
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 4.6.2
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    defaultPodOptions:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: DoesNotExist
+      tolerations:
+        - key: node.cloudprovider.kubernetes.io/uninitialized
+          operator: Exists
+          effect: NoSchedule
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        supplementalGroups: [568]
+        seccompProfile:
+          type: RuntimeDefault
+    controllers:
+      radarr-nl:
+        containers:
+          app:
+            image:
+              repository: ghcr.io/home-operations/radarr
+              tag: 6.2.0.10390
+              pullPolicy: IfNotPresent
+            env:
+              TZ: Europe/Brussels
+    service:
+      app:
+        controller: radarr-nl
+        ports:
+          http:
+            port: 7878
+    route:
+      app:
+        annotations:
+          gatus.home-operations.com/endpoint: |
+            conditions: ["[STATUS] < 500"]
+            interval: 60s
+            group: arr
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Radarr NL
+          gethomepage.dev/description: Movies (NL)
+          gethomepage.dev/group: Arr
+          gethomepage.dev/weight: "40"
+          gethomepage.dev/icon: radarr.png
+          gethomepage.dev/href: https://nlradarr.${SECRET_DOMAIN}
+          gethomepage.dev/widget.type: radarr
+          gethomepage.dev/widget.url: http://radarr-nl.radarr-nl.svc:7878
+          gethomepage.dev/widget.key: "{{`{{HOMEPAGE_VAR_RADARR_NL}}`}}"
+        hostnames:
+          - nlradarr.${SECRET_DOMAIN}
+        parentRefs:
+          - name: main
+            namespace: cilium
+            sectionName: https
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: app
+                port: http
+    persistence:
+      config:
+        type: persistentVolumeClaim
+        existingClaim: radarr-nl-config
+        globalMounts:
+          - path: /config
+      media:
+        type: nfs
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
+        path: /mnt/DATA/mediapool
+        globalMounts:
+          - path: /mnt/skw-truenas-data
+      backup:
+        type: nfs
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
+        path: /mnt/DATA/backup/radarr-nl
+        globalMounts:
+          - path: /backup

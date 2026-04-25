@@ -6,6 +6,7 @@ resources:
   - neutarr/ks.yaml
   - prowlarr/ks.yaml
   - radarr/ks.yaml
+  - radarr-nl/ks.yaml
   - recyclarr/ks.yaml
   - sonarr/ks.yaml
   - sonarr-nl/ks.yaml
