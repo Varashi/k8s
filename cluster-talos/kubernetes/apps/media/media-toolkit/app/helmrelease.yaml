@@ -1,0 +1,65 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: media-toolkit
+  namespace: media-toolkit
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 4.6.2
+      interval: 30m
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        supplementalGroups: [568]
+      nodeSelector:
+        intel.feature.node.kubernetes.io/gpu: "true"
+      tolerations:
+        - key: "intel.feature.node.kubernetes.io/gpu"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+    controllers:
+      media-toolkit:
+        containers:
+          app:
+            image:
+              repository: ghcr.io/varashi/media-toolkit
+              tag: sha-d88a437@sha256:1b46d49fda10f7e84b405e152f35a9aee5a8e48bd52b6d6e9e9d55d86e90cdb5
+              pullPolicy: IfNotPresent
+            envFrom:
+              - secretRef:
+                  name: media-toolkit-secrets
+            resources:
+              requests:
+                cpu: 250m
+                memory: 1Gi
+              limits:
+                gpu.intel.com/i915: 1
+                memory: 8Gi
+    persistence:
+      media:
+        type: nfs
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
+        path: /mnt/DATA/mediapool/media
+        globalMounts:
+          - path: /mnt/media/media
+      scratch:
+        type: emptyDir
+        sizeLimit: 50Gi
+        globalMounts:
+          - path: /scratch
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
