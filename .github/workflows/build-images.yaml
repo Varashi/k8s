@@ -7,12 +7,14 @@ on:
     paths:
       - "cluster-talos/kubernetes/apps/tools/netbox/image/**"
       - "cluster-talos/kubernetes/apps/tools/octodns/image/**"
+      - "cluster-talos/kubernetes/apps/media/media-toolkit/image/**"
       - ".github/workflows/build-images.yaml"
   pull_request:
     branches: ["main"]
     paths:
       - "cluster-talos/kubernetes/apps/tools/netbox/image/**"
       - "cluster-talos/kubernetes/apps/tools/octodns/image/**"
+      - "cluster-talos/kubernetes/apps/media/media-toolkit/image/**"
       - ".github/workflows/build-images.yaml"
   workflow_dispatch:
 
@@ -36,6 +38,8 @@ jobs:
             context: cluster-talos/kubernetes/apps/tools/netbox/image
           - name: octodns
             context: cluster-talos/kubernetes/apps/tools/octodns/image
+          - name: media-toolkit
+            context: cluster-talos/kubernetes/apps/media/media-toolkit/image
     steps:
       - name: Checkout
         uses: actions/checkout@v4
