@@ -35,7 +35,7 @@ spec:
             env:
               TZ: Europe/Brussels
               ASR_ENGINE: faster_whisper
-              ASR_MODEL: medium
+              ASR_MODEL: small
             resources:
               requests:
                 cpu: 250m
