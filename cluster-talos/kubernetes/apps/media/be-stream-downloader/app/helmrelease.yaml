@@ -52,12 +52,12 @@ spec:
                 cpu: 100m
                 memory: 256Mi
               limits:
-                # Sized for parallel batches: ~9 concurrent n-m3u8dl-re processes
-                # each peak ~150 MiB + half a core; 1 GiB / 2 cores starved the
-                # FastAPI event loop and pushed the pod to ~88% memory during a
-                # full-season fetch, so head room here matters more than tightness.
-                cpu: "4"
-                memory: 4Gi
+                # Serial-only execution (BEDL_MAX_CONCURRENT_DOWNLOADS=1):
+                # one n-m3u8dl-re peaks ~1.5 cores + ~600 MiB during a 4 Mbps
+                # DASH decode; this leaves headroom for a concurrent show
+                # refresh scrape and the FastAPI event loop without slack.
+                cpu: "2"
+                memory: 2Gi
             probes:
               liveness:
                 enabled: true
