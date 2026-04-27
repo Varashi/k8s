@@ -31,7 +31,7 @@ spec:
             image:
               # renovate: datasource=docker depName=ghcr.io/varashi/be-stream-downloader
               repository: ghcr.io/varashi/be-stream-downloader
-              tag: 03b292f1c3af391e4b01514ca846af8c38d120c1@sha256:ed1c28a378848ecf37b87ec53d1abd24662aab0905985a7e19df8ff2551aa9c0
+              tag: fc01aa544493366e5f052f9c4fb4d36f460dc1e2@sha256:1de87635ee855aa44624770c6d3c81e92532b2b3c93cea6b42720666d74944cc
               pullPolicy: IfNotPresent
             env:
               # Image default is /downloads; remap because we mount the
@@ -52,8 +52,12 @@ spec:
                 cpu: 100m
                 memory: 256Mi
               limits:
-                cpu: "2"
-                memory: 1Gi
+                # Sized for parallel batches: ~9 concurrent n-m3u8dl-re processes
+                # each peak ~150 MiB + half a core; 1 GiB / 2 cores starved the
+                # FastAPI event loop and pushed the pod to ~88% memory during a
+                # full-season fetch, so head room here matters more than tightness.
+                cpu: "4"
+                memory: 4Gi
             probes:
               liveness:
                 enabled: true
