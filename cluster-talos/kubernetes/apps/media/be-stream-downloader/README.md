@@ -1,6 +1,7 @@
 # be-stream-downloader
 
-VRT MAX downloader, internal-only. UI at `https://bedl.${SECRET_DOMAIN}`.
+VRT MAX + VTM GO + Streamz downloader, internal-only. UI at `https://bedl.${SECRET_DOMAIN}`.
+Per-provider routing in `app/web/main.py:_provider_for` — host suffix decides which `*-DL.py` script runs.
 
 Source: <https://github.com/Varashi/be-stream-downloader>
 
@@ -10,7 +11,7 @@ Source: <https://github.com/Varashi/be-stream-downloader>
 ks.yaml                  Flux Kustomization
 app/
   namespace.yaml
-  externalsecret.yaml    VRT creds, Plex token, GHCR pull secret, .wvd Secret
+  externalsecret.yaml    VRT + Streamz creds, Plex token, GHCR pull secret, .wvd Secret
   pvc.yaml               vsan PVC be-stream-downloader-data (10 Gi)
   helmrelease.yaml       bjw-s app-template, digest-pinned image
   kustomization.yaml
@@ -26,8 +27,8 @@ To bump: pull `:latest` after a CI build, copy the digest from `podman image ins
 
 | Mount | Source |
 |---|---|
-| `/data` | PVC `be-stream-downloader-data` (vsan, RWO, 10Gi). Holds seeded app code + `state.json` |
-| `/wvd/cdm.wvd` | Secret `be-stream-downloader-wvd` projected from BW SM `SECRET_BEDL_WVD` (base64 of the `.wvd` file) |
+| `/data` | PVC `be-stream-downloader-data` (vsan, RWO, 10Gi). Holds seeded app code + `state.json` + Streamz token cache at `/data/.config/streamz/tokens.json` |
+| `/wvd/cdm.wvd` | Secret `be-stream-downloader-wvd` projected from BW SM `SECRET_BEDL_WVD` (base64 of the `.wvd` file). Same CDM serves both VRT and Streamz |
 | `/media` | NFS `${SECRET_NFS_HOST}:/mnt/DATA/mediapool/media` — mounted at the *parent* of all libraries so the per-show `library` override can target sibling subtrees (`Series`, `Movies`, `MoviesNL`, …) |
 
 ## Secrets (BW SM via ESO)
@@ -36,11 +37,18 @@ To bump: pull `:latest` after a CI build, copy the digest from `podman image ins
 |---|---|---|
 | `SECRET_VRT_EMAIL` | env `VRT_EMAIL` | VRT MAX login |
 | `SECRET_VRT_PASSWORD` | env `VRT_PASSWORD` | VRT MAX login |
+| `SECRET_STREAMZ_EMAIL` | env `STREAMZ_EMAIL` | Streamz Telenet-portal login (Okta IDP) |
+| `SECRET_STREAMZ_PASSWORD` | env `STREAMZ_PASSWORD` | Streamz Telenet-portal login (Okta IDP) |
+| `SECRET_VTMGO_COOKIES` | env `VTMGO_COOKIES` | Raw `Cookie:` header from logged-in Chrome (DPG Media OIDC). Refreshed manually when 401s appear. |
 | `SECRET_PLEX_TOKEN` | env `PLEX_TOKEN` | Plex API auth |
 | `SECRET_BEDL_WVD` | Secret data `cdm.wvd` | Widevine CDM device file (base64 of binary) |
 | `SECRET_GHCR_PULL_TOKEN` | dockerconfigjson `ghcr-pull-secret` | private GHCR pull |
 
 `PLEX_URL` and `MEDIA_LIBRARY_DEFAULT` are set as plain env in the HelmRelease, not secrets.
+
+VRT re-logs every subprocess call. Streamz logs in once and persists the LFVP cookie envelope to `/data/.config/streamz/tokens.json`; Streamz Next.js silently rotates the inner access_token via popcorn-sdk's confidential client_secret, so the cookie is good for ~365 days. `streamz_auth.invalidate()` drops the cache on a real 401 to force re-login.
+
+VTM GO is the odd one out — Akamai BotManager Premier in front of `login.vtmgo.be` requires JS sensor-data validation that no Python TLS-impersonation client can solve. Workaround: log into vtmgo.be in Chrome, F12 → Network → any document request → Copy as cURL, take the `-b '...'` cookie blob, paste into BW SM `SECRET_VTMGO_COOKIES`. ESO refreshes pod env on the next 1h cycle; for an immediate refresh, kubectl rollout the deployment. Per-asset 5-min Bearer JWTs are minted server-side from the `/vtmgo/afspelen/<uuid>` page HTML on each download. Refresh the BW SM entry when scraping/DL starts returning 401/403 (typically every few days).
 
 ## Networking
 
