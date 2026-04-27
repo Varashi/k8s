@@ -93,12 +93,10 @@ spec:
     persistence:
       data:
         type: persistentVolumeClaim
-        # Explicit name avoids reusing the previous longhorn PVC (which
-        # would have been be-stream-downloader by bjw-s default).
-        name: be-stream-downloader-data
-        accessMode: ReadWriteOnce
-        size: 10Gi
-        storageClass: vsan
+        # PVC pre-created in pvc.yaml (vsan); using existingClaim avoids
+        # bjw-s reusing the previous longhorn PVC name and trying to
+        # mutate its immutable spec.
+        existingClaim: be-stream-downloader-data
         globalMounts:
           - path: /data
       wvd:
