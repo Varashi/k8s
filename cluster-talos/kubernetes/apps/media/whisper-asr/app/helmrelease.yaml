@@ -1,0 +1,86 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: whisper-asr
+  namespace: whisper-asr
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 4.6.2
+      interval: 30m
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        supplementalGroups: [568]
+      nodeSelector:
+        intel.feature.node.kubernetes.io/gpu: "true"
+      tolerations:
+        - key: "intel.feature.node.kubernetes.io/gpu"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: plex
+              namespaces:
+                - plex
+              topologyKey: kubernetes.io/hostname
+    controllers:
+      whisper-asr:
+        containers:
+          app:
+            image:
+              repository: ventura8/whisper-pro-asr
+              tag: 1.0.4@sha256:68fa1512e3529d57bcf583707276812267143f4bed16e4e4463a0c1e84c3150f
+              pullPolicy: IfNotPresent
+            env:
+              TZ: Europe/Brussels
+              ASR_DEVICE: AUTO
+              ASR_PREPROCESS_DEVICE: GPU
+              ASR_MODEL: Systran/faster-whisper-medium
+              ASR_BEAM_SIZE: "5"
+              OV_PERFORMANCE_HINT: LATENCY
+              OV_CACHE_DIR: /app/model_cache/openvino
+              FFMPEG_HWACCEL: vaapi
+              WHISPER_TEMP_DIR: /tmp/whisper
+            resources:
+              requests:
+                cpu: 500m
+                memory: 4Gi
+              limits:
+                gpu.intel.com/i915: "1"
+                memory: 10Gi
+    service:
+      app:
+        controller: whisper-asr
+        ports:
+          http:
+            port: 9000
+    persistence:
+      cache:
+        existingClaim: whisper-asr-cache
+        globalMounts:
+          - path: /app/model_cache
+      tmp-whisper:
+        type: emptyDir
+        medium: Memory
+        sizeLimit: 2Gi
+        globalMounts:
+          - path: /tmp/whisper
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
