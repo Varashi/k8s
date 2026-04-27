@@ -1,6 +1,6 @@
 # be-stream-downloader
 
-VRT MAX + VTM GO + GoPlay + Streamz (auth-only) downloader, internal-only. UI at `https://bedl.${SECRET_DOMAIN}`.
+VRT MAX + VTM GO + GoPlay + Streamz downloader, internal-only. UI at `https://bedl.${SECRET_DOMAIN}`.
 Per-provider routing in `app/web/main.py:_provider_for` — host suffix decides which `*-DL.py` script runs.
 
 Downloads run **serially** (`BEDL_MAX_CONCURRENT_DOWNLOADS=1` default; one n-m3u8dl-re saturates the household uplink alone).
@@ -51,6 +51,8 @@ To bump: pull `:latest` after a CI build, copy the digest from `podman image ins
 `PLEX_URL` and `MEDIA_LIBRARY_DEFAULT` are set as plain env in the HelmRelease, not secrets.
 
 VRT re-logs every subprocess call. Streamz logs in once and persists the LFVP cookie envelope to `/data/.config/streamz/tokens.json`; Streamz Next.js silently rotates the inner access_token via popcorn-sdk's confidential client_secret, so the cookie is good for ~365 days. `streamz_auth.invalidate()` drops the cache on a real 401 to force re-login.
+
+Streamz Phase 2 shipped 2026-04-28: the Quick Download flow now goes end-to-end (PSSH from MPD → DRMtoday Widevine license at `lic.drmtoday.com/license-proxy-widevine/cenc/?specConform=true` → `n-m3u8dl-re` decrypt + MKV mux → Dutch VTT subtitle → SRT mux). `STREAMZ-DL.py` ships two CDM classes: `Local_CDM` (default, uses `BEDL_WVD`) and `GetWVKeys_CDM` (cold backup via getwvkeys.cc, gated on env `WV_TOKEN` / optional `WV_BUILDINFO`/`WV_URL`). Library scraper is not yet implemented — Streamz adds via Quick Download URL only.
 
 GoPlay logs in via AWS Cognito USER_SRP_AUTH (public user pool `eu-west-1_dViSsKM5Y`, browser SPA client ID, no client secret) using `pycognito` — username + password is enough; no browser, no cookies. The IdToken cache lives at `/data/.config/goplay/tokens.json` and is proactively refreshed before its 1 h expiry. On a real 401 from `api.play.tv` or `drm.goplay.be`, `goplay_auth.invalidate()` drops the cache and a fresh SRP login fires.
 
