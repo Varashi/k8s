@@ -24,12 +24,6 @@ spec:
         name: bjw-s
         namespace: flux-system
   values:
-    defaultPodOptions:
-      tolerations:
-        - key: "intel.feature.node.kubernetes.io/gpu"
-          operator: "Equal"
-          value: "true"
-          effect: "NoSchedule"
     controllers:
       whisper-asr:
         containers:
@@ -44,10 +38,10 @@ spec:
               ASR_MODEL: medium
             resources:
               requests:
-                cpu: 500m
+                cpu: 250m
                 memory: 2Gi
               limits:
-                cpu: "4"
+                cpu: "2"
                 memory: 4Gi
     service:
       app:
