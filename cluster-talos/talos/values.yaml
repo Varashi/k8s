@@ -10,7 +10,7 @@ cluster:
 # Regenerate at: https://factory.talos.dev (POST /schematics with officialExtensions=[siderolabs/vmtoolsd-guest-agent])
 installer:
   image: factory.talos.dev/installer/903b2da78f99adef03cbbd4df6714563823f63218508800751560d3bc3557e40
-  version: v1.12.6
+  version: v1.13.0
   disk: /dev/sda
 
 machine:
