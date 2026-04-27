@@ -6,6 +6,14 @@ metadata:
   namespace: whisper-asr
 spec:
   interval: 30m
+  install:
+    timeout: 20m
+    remediation:
+      retries: 2
+  upgrade:
+    timeout: 20m
+    remediation:
+      retries: 2
   chart:
     spec:
       chart: app-template
