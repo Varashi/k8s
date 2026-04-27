@@ -48,7 +48,26 @@ To bump: pull `:latest` after a CI build, copy the digest from `podman image ins
 
 VRT re-logs every subprocess call. Streamz logs in once and persists the LFVP cookie envelope to `/data/.config/streamz/tokens.json`; Streamz Next.js silently rotates the inner access_token via popcorn-sdk's confidential client_secret, so the cookie is good for ~365 days. `streamz_auth.invalidate()` drops the cache on a real 401 to force re-login.
 
-VTM GO is the odd one out — Akamai BotManager Premier in front of `login.vtmgo.be` requires JS sensor-data validation that no Python TLS-impersonation client can solve. Workaround: log into vtmgo.be in Chrome, F12 → Network → any document request → Copy as cURL, take the `-b '...'` cookie blob, paste into BW SM `SECRET_VTMGO_COOKIES`. ESO refreshes pod env on the next 1h cycle; for an immediate refresh, kubectl rollout the deployment. Per-asset 5-min Bearer JWTs are minted server-side from the `/vtmgo/afspelen/<uuid>` page HTML on each download. Refresh the BW SM entry when scraping/DL starts returning 401/403 (typically every few days).
+VTM GO is the odd one out — Akamai BotManager Premier in front of `login.vtmgo.be` requires JS sensor-data validation that no Python TLS-impersonation client can solve. Workaround: cookie-replay from a logged-in Chrome session. Per-asset 5-min Bearer JWTs are minted server-side from the `/vtmgo/afspelen/<uuid>` page HTML on each download. Refresh the BW SM entry when scraping/DL starts returning 401/403 (typically every few days).
+
+### VTM GO cookie refresh recipe
+
+When VTM GO scraping or DLs start returning 401/403:
+
+1. Log into `https://www.vtmgo.be/` in Chrome (any device, any network — same WAN IP as the pod is fine).
+2. F12 → **Network** tab → click any `/vtmgo/...` document request (e.g. the homepage) → right-click → **Copy** → **Copy as cURL (bash)**.
+3. From the curl block, extract the `-b '...'` value (the cookie blob, ~6-7 KB).
+4. Push to BW SM:
+   ```sh
+   bws secret edit e55cf33a-3dd7-4499-b5c9-b439013e751d --value "<the cookie blob>"
+   ```
+   (BW SM secret ID for `SECRET_VTMGO_COOKIES`.)
+5. Force pod refresh — ESO polls every 1h, so for immediate effect:
+   ```sh
+   kubectl rollout restart deploy/be-stream-downloader -n be-stream-downloader
+   ```
+
+Cookies typically last a few days. Watch for `[VTM GO] HTTP 4xx` or `cookies expired?` lines in the pod log as the trigger.
 
 ## Networking
 
