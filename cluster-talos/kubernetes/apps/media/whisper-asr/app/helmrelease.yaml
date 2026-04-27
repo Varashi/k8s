@@ -29,23 +29,6 @@ spec:
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
-        supplementalGroups: [568]
-      nodeSelector:
-        intel.feature.node.kubernetes.io/gpu: "true"
-      tolerations:
-        - key: "intel.feature.node.kubernetes.io/gpu"
-          operator: "Equal"
-          value: "true"
-          effect: "NoSchedule"
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app.kubernetes.io/name: plex
-              namespaces:
-                - plex
-              topologyKey: kubernetes.io/hostname
     controllers:
       whisper-asr:
         containers:
@@ -56,21 +39,20 @@ spec:
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
-              ASR_DEVICE: AUTO
-              ASR_PREPROCESS_DEVICE: GPU
+              ASR_DEVICE: CPU
+              ASR_PREPROCESS_DEVICE: CPU
               ASR_MODEL: Systran/faster-whisper-medium
               ASR_BEAM_SIZE: "5"
-              OV_PERFORMANCE_HINT: LATENCY
-              OV_CACHE_DIR: /app/model_cache/openvino
-              FFMPEG_HWACCEL: vaapi
+              ASR_THREADS: "4"
+              FFMPEG_HWACCEL: none
               WHISPER_TEMP_DIR: /tmp/whisper
             resources:
               requests:
-                cpu: 500m
+                cpu: "2"
                 memory: 4Gi
               limits:
-                gpu.intel.com/i915: "1"
-                memory: 10Gi
+                cpu: "6"
+                memory: 8Gi
     service:
       app:
         controller: whisper-asr
