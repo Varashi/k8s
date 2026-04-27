@@ -24,6 +24,14 @@ spec:
         supplementalGroups: [568]
       imagePullSecrets:
         - name: ghcr-pull-secret
+      # Pin to gpu-workers — Longhorn CSI only lives there.
+      nodeSelector:
+        intel.feature.node.kubernetes.io/gpu: "true"
+      tolerations:
+        - key: "intel.feature.node.kubernetes.io/gpu"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
     controllers:
       be-stream-downloader:
         containers:
