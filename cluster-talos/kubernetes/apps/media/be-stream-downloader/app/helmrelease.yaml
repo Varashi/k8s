@@ -31,12 +31,17 @@ spec:
             image:
               # renovate: datasource=docker depName=ghcr.io/varashi/be-stream-downloader
               repository: ghcr.io/varashi/be-stream-downloader
-              tag: 0d034ced83fcedf7ce23ee93ebb7fc8facd53a4b@sha256:6ae9f9385edcea79c0c5f25c47534d0d1bdb6fd7a70d41e583192906bfac91e5
+              tag: 08a6bc444ec183f131e2eb790b2890f609f7991c@sha256:64acdb8d7f6b4a39d83b0c24b53cf2875baee3a60e8151cb8988c32677d9fb90
               pullPolicy: IfNotPresent
             env:
               # Image default is /downloads; remap because we mount the
               # media library directly (no staging area).
               DOWNLOADS_DIR: /media
+              # /media is mounted at the parent of all libraries — this is
+              # the default subfolder applied when no per-show/per-season
+              # library override is set. Picks up existing files at
+              # /media/SeriesNL/<show>/...
+              MEDIA_LIBRARY_DEFAULT: SeriesNL
             envFrom:
               - secretRef:
                   name: be-stream-downloader-secrets
@@ -114,6 +119,9 @@ spec:
       media:
         type: nfs
         server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
-        path: /mnt/DATA/mediapool/media/SeriesNL
+        # Mount the parent so per-show overrides can target sibling
+        # libraries (Series, Movies, MoviesNL, ...). MEDIA_LIBRARY_DEFAULT
+        # above keeps existing shows resolving under SeriesNL/.
+        path: /mnt/DATA/mediapool/media
         globalMounts:
           - path: /media
