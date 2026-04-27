@@ -7,11 +7,11 @@ metadata:
 spec:
   interval: 30m
   install:
-    timeout: 20m
+    timeout: 15m
     remediation:
       retries: 2
   upgrade:
-    timeout: 20m
+    timeout: 15m
     remediation:
       retries: 2
   chart:
@@ -24,35 +24,25 @@ spec:
         name: bjw-s
         namespace: flux-system
   values:
-    defaultPodOptions:
-      securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
     controllers:
       whisper-asr:
         containers:
           app:
             image:
-              repository: ventura8/whisper-pro-asr
-              tag: 1.0.4@sha256:68fa1512e3529d57bcf583707276812267143f4bed16e4e4463a0c1e84c3150f
+              repository: onerahmet/openai-whisper-asr-webservice
+              tag: v1.9.1@sha256:03b402335881cdab2e4939b24620809df8d6ceec3bf2712217d41c8761a0f5d4
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
-              ASR_DEVICE: CPU
-              ASR_PREPROCESS_DEVICE: CPU
-              ASR_MODEL: Systran/faster-whisper-medium
-              ASR_BEAM_SIZE: "5"
-              ASR_THREADS: "4"
-              FFMPEG_HWACCEL: none
-              WHISPER_TEMP_DIR: /tmp/whisper
+              ASR_ENGINE: faster_whisper
+              ASR_MODEL: medium
             resources:
               requests:
                 cpu: "2"
-                memory: 4Gi
+                memory: 3Gi
               limits:
                 cpu: "6"
-                memory: 8Gi
+                memory: 6Gi
     service:
       app:
         controller: whisper-asr
@@ -63,14 +53,4 @@ spec:
       cache:
         existingClaim: whisper-asr-cache
         globalMounts:
-          - path: /app/model_cache
-      tmp-whisper:
-        type: emptyDir
-        medium: Memory
-        sizeLimit: 2Gi
-        globalMounts:
-          - path: /tmp/whisper
-      tmp:
-        type: emptyDir
-        globalMounts:
-          - path: /tmp
+          - path: /root/.cache
