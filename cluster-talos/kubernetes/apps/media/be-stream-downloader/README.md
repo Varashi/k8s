@@ -5,6 +5,8 @@ Per-provider routing in `app/web/main.py:_provider_for` — host suffix decides 
 
 Downloads run **serially** (`BEDL_MAX_CONCURRENT_DOWNLOADS=1` default; one n-m3u8dl-re saturates the household uplink alone).
 
+Auto-DL scheduler (FastAPI lifespan task) ticks every `BEDL_AUTO_DL_INTERVAL_SECONDS` (default `3600`). Per-show toggle in the UI; cold-start is baseline-from-current (only future-published episodes get queued). Quality-upgrade pass re-pulls any Plex-present episode whose video height is below `BEDL_TARGET_HEIGHT` (default `1080`). Multi-show ticks queue serially through the same semaphore as user-clicked downloads.
+
 Source: <https://github.com/Varashi/be-stream-downloader>
 
 ## Layout
@@ -52,7 +54,11 @@ To bump: pull `:latest` after a CI build, copy the digest from `podman image ins
 
 VRT re-logs every subprocess call. Streamz logs in once and persists the LFVP cookie envelope to `/data/.config/streamz/tokens.json`; Streamz Next.js silently rotates the inner access_token via popcorn-sdk's confidential client_secret, so the cookie is good for ~365 days. `streamz_auth.invalidate()` drops the cache on a real 401 to force re-login.
 
-Streamz Phase 2 shipped 2026-04-28: the Quick Download flow now goes end-to-end (PSSH from MPD → DRMtoday Widevine license at `lic.drmtoday.com/license-proxy-widevine/cenc/?specConform=true` → `n-m3u8dl-re` decrypt + MKV mux → Dutch VTT subtitle → SRT mux). `STREAMZ-DL.py` ships two CDM classes: `Local_CDM` (default, uses `BEDL_WVD`) and `GetWVKeys_CDM` (cold backup via getwvkeys.cc, gated on env `WV_TOKEN` / optional `WV_BUILDINFO`/`WV_URL`). Library scraper is not yet implemented — Streamz adds via Quick Download URL only.
+Streamz Phase 2 shipped 2026-04-28: the Quick Download flow now goes end-to-end (PSSH from MPD → DRMtoday Widevine license at `lic.drmtoday.com/license-proxy-widevine/cenc/?specConform=true` → `n-m3u8dl-re` decrypt + MKV mux → Dutch VTT subtitle → SRT mux). `STREAMZ-DL.py` ships two CDM classes: `Local_CDM` (default, uses `BEDL_WVD`) and `GetWVKeys_CDM` (cold backup via getwvkeys.cc, gated on env `WV_TOKEN` / optional `WV_BUILDINFO`/`WV_URL`). Streamz library scraper (`app/scrapers/streamz.py`) shipped 2026-04-28 too — Add Show accepts `streamz.be/streamz/<slug>~<uuid>` URLs.
+
+Auto-DL scheduler shipped 2026-04-28 with two env knobs: `BEDL_AUTO_DL_INTERVAL_SECONDS` (default 3600, min 60) sets the tick cadence; `BEDL_TARGET_HEIGHT` (default 1080) caps the quality-upgrade target. Both default values are sane; the only reason to bump them is if Belgian streamers ever start serving above 1080p.
+
+rc-check + orphan sweep deployed 2026-04-28 across STREAMZ-DL / VTMGO-DL / GOPLAY-DL — `n-m3u8dl-re`'s exit code is now respected and any half-muxed `<save>.mp4`/`.m4a`/`.srt`/`.ts` stems on a crashed run get cleaned up before the wrapper raises. No more orphans masquerading as legitimate Plex content.
 
 GoPlay logs in via AWS Cognito USER_SRP_AUTH (public user pool `eu-west-1_dViSsKM5Y`, browser SPA client ID, no client secret) using `pycognito` — username + password is enough; no browser, no cookies. The IdToken cache lives at `/data/.config/goplay/tokens.json` and is proactively refreshed before its 1 h expiry. On a real 401 from `api.play.tv` or `drm.goplay.be`, `goplay_auth.invalidate()` drops the cache and a fresh SRP login fires.
 
