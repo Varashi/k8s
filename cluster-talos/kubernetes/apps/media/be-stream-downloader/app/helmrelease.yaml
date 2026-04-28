@@ -31,17 +31,20 @@ spec:
             image:
               # renovate: datasource=docker depName=ghcr.io/varashi/be-stream-downloader
               repository: ghcr.io/varashi/be-stream-downloader
-              tag: e12cc847749c1e38d71aad26dcc4110953cd13ae@sha256:fa707db6550346834c1b094c50598285dd201b7237459e6775220586013efd18
+              tag: d1acaca0662d8a3387fce58ae4af4d247c670a03@sha256:d9aef201bbdc77c108ee23092c803dabc142c217919f49f2b4778026a8c3eaed
               pullPolicy: IfNotPresent
             env:
               # Image default is /downloads; remap because we mount the
               # media library directly (no staging area).
               DOWNLOADS_DIR: /media
-              # /media is mounted at the parent of all libraries — this is
-              # the default subfolder applied when no per-show/per-season
-              # library override is set. Picks up existing files at
-              # /media/SeriesNL/<show>/...
-              MEDIA_LIBRARY_DEFAULT: SeriesNL
+              # /media is mounted at the parent of all libraries — these
+              # are the default subfolders when no per-show/per-season
+              # library override is set. Type-aware: shows under SeriesNL,
+              # movies under MoviesNL. (MEDIA_LIBRARY_DEFAULT is the
+              # legacy single-value name still honoured as a fallback for
+              # MEDIA_LIBRARY_DEFAULT_SHOW.)
+              MEDIA_LIBRARY_DEFAULT_SHOW: SeriesNL
+              MEDIA_LIBRARY_DEFAULT_MOVIE: MoviesNL
               # In-cluster Plex URL; PLEX_TOKEN comes from the ESO secret.
               PLEX_URL: http://plex.plex.svc:32400
               # GoPlay premium content enforces KeyOS MinimumSecurityLevel:2000
