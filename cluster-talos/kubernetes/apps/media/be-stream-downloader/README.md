@@ -58,6 +58,8 @@ Streamz Phase 2 shipped 2026-04-28: the Quick Download flow now goes end-to-end 
 
 Auto-DL scheduler shipped 2026-04-28 with two env knobs: `BEDL_AUTO_DL_INTERVAL_SECONDS` (default 3600, min 60) sets the tick cadence; `BEDL_TARGET_HEIGHT` (default 1080) caps the quality-upgrade target. Both default values are sane; the only reason to bump them is if Belgian streamers ever start serving above 1080p.
 
+UI hardening shipped 2026-04-28 alongside the scheduler: per-job log buffer is bounded by `BEDL_LOG_BUFFER_LINES` (default 4000) so a long-running download doesn't grow an unbounded list; n-m3u8dl-re progress lines are coalesced and benign h264 SEI/PPS warnings are filtered to keep the event loop snappy; the `/jobs/{id}/stream` SSE generator emits a 15 s `: keepalive` comment line so queued jobs don't show "stream lost" while waiting at the serial-execution semaphore. Show-page UI now ships collapsible seasons (native `<details>`/`<summary>`) plus cross-season `all/missing/none` selection shortcuts.
+
 rc-check + orphan sweep deployed 2026-04-28 across STREAMZ-DL / VTMGO-DL / GOPLAY-DL — `n-m3u8dl-re`'s exit code is now respected and any half-muxed `<save>.mp4`/`.m4a`/`.srt`/`.ts` stems on a crashed run get cleaned up before the wrapper raises. No more orphans masquerading as legitimate Plex content.
 
 GoPlay logs in via AWS Cognito USER_SRP_AUTH (public user pool `eu-west-1_dViSsKM5Y`, browser SPA client ID, no client secret) using `pycognito` — username + password is enough; no browser, no cookies. The IdToken cache lives at `/data/.config/goplay/tokens.json` and is proactively refreshed before its 1 h expiry. On a real 401 from `api.play.tv` or `drm.goplay.be`, `goplay_auth.invalidate()` drops the cache and a fresh SRP login fires.
