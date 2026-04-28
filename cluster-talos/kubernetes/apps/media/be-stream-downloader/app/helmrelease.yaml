@@ -39,12 +39,11 @@ spec:
               DOWNLOADS_DIR: /media
               # /media is mounted at the parent of all libraries — these
               # are the default subfolders when no per-show/per-season
-              # library override is set. Type-aware: shows under SeriesNL,
-              # movies under MoviesNL. (MEDIA_LIBRARY_DEFAULT is the
-              # legacy single-value name still honoured as a fallback for
-              # MEDIA_LIBRARY_DEFAULT_SHOW.)
-              MEDIA_LIBRARY_DEFAULT_SHOW: SeriesNL
-              MEDIA_LIBRARY_DEFAULT_MOVIE: MoviesNL
+              # library override is set. Type-aware: shows under Series,
+              # movies under Movies. NL-language titles get routed to
+              # SeriesNL / MoviesNL via per-show library overrides.
+              MEDIA_LIBRARY_DEFAULT_SHOW: Series
+              MEDIA_LIBRARY_DEFAULT_MOVIE: Movies
               # In-cluster Plex URL; PLEX_TOKEN comes from the ESO secret.
               PLEX_URL: http://plex.plex.svc:32400
               # GoPlay premium content enforces KeyOS MinimumSecurityLevel:2000
