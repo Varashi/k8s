@@ -1,0 +1,68 @@
+---
+# Periodic host-side fstrim for Talos node EPHEMERAL (/var) and Longhorn
+# data UserVolume (/var/mnt/longhorn). Talos VolumeConfig schema does not
+# expose mount options, so periodic FITRIM is the way to release deleted
+# blocks back to vSAN ESA. Without this, thin VMDKs accumulate stale
+# allocations and vSAN free space erodes even when guest fs usage is low.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: host-fstrim
+  namespace: longhorn-system
+spec:
+  schedule: "30 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      parallelism: 8
+      completions: 8
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app: host-fstrim
+        spec:
+          restartPolicy: Never
+          tolerations:
+            - operator: Exists
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app: host-fstrim
+                  topologyKey: kubernetes.io/hostname
+          containers:
+            - name: fstrim
+              image: alpine:3.20
+              securityContext:
+                privileged: true
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add --no-cache util-linux >/dev/null
+                  echo "=== node $(hostname) ==="
+                  fstrim -v /host/var || true
+                  if [ "$(stat -fc %i /host/var)" != "$(stat -fc %i /host/longhorn)" ]; then
+                    fstrim -v /host/longhorn || true
+                  fi
+              volumeMounts:
+                - name: host-var
+                  mountPath: /host/var
+                  mountPropagation: HostToContainer
+                - name: host-longhorn
+                  mountPath: /host/longhorn
+                  mountPropagation: HostToContainer
+          volumes:
+            - name: host-var
+              hostPath:
+                path: /var
+                type: Directory
+            - name: host-longhorn
+              hostPath:
+                path: /var/mnt/longhorn
+                type: DirectoryOrCreate
