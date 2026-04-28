@@ -33,7 +33,7 @@ spec:
           app:
             image:
               repository: ghcr.io/linuxserver/plex
-              tag: "1.43.1.10611-1e34174b1-ls302"
+              tag: "1.43.1.10611-1e34174b1-ls303"
             env:
               TZ: Europe/Brussels
               VERSION: docker
