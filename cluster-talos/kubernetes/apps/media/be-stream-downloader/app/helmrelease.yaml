@@ -31,7 +31,7 @@ spec:
             image:
               # renovate: datasource=docker depName=ghcr.io/varashi/be-stream-downloader
               repository: ghcr.io/varashi/be-stream-downloader
-              tag: 2b3a1e1ca41bd789cd2929faa26c91b9bb57af64@sha256:c7a3016020e0c7a00aa73daa37859e4b5e40ddba43b9ffecd310e01455aa54f9
+              tag: e12cc847749c1e38d71aad26dcc4110953cd13ae@sha256:fa707db6550346834c1b094c50598285dd201b7237459e6775220586013efd18
               pullPolicy: IfNotPresent
             env:
               # Image default is /downloads; remap because we mount the
