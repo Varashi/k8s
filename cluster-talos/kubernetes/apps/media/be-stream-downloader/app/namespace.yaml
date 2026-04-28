@@ -7,3 +7,5 @@ metadata:
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/warn: baseline
     pod-security.kubernetes.io/audit: baseline
+    k10.kasten.io/backup: "true"
+    k10.kasten.io/storage-class: vsphere
