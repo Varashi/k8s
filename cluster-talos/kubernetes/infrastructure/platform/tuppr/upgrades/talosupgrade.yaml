@@ -5,15 +5,6 @@ metadata:
   name: talos
   namespace: system-upgrade
 spec:
-  # gpu-worker-1 temporarily excluded — auto-revert loop on Talos 1.13 boot,
-  # likely due to longhorn/cilium DS slow-start blocking boot watchdog.
-  # Try regular workers first to isolate root cause.
-  nodeSelector:
-    matchExpressions:
-      - key: kubernetes.io/hostname
-        operator: NotIn
-        values:
-          - k8s-talos-gpu-worker-1
   talos:
     # Per-node schematic hash comes from node annotation
     # `tuppr.home-operations.com/schematic` — CP/worker nodes get the CPU-only
