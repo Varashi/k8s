@@ -37,7 +37,7 @@ spec:
                   topologyKey: kubernetes.io/hostname
           containers:
             - name: fstrim
-              image: alpine:3.20
+              image: alpine:3.23
               securityContext:
                 privileged: true
               command:
