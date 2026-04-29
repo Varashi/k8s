@@ -46,7 +46,7 @@ spec:
           app:
             image:
               repository: ghcr.io/drakkan/sftpgo
-              tag: v2.6.6-alpine
+              tag: v2.7.1-alpine
             envFrom:
               - secretRef:
                   name: sftpgo-secrets

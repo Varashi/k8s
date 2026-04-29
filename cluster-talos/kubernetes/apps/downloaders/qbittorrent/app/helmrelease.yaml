@@ -48,7 +48,7 @@ spec:
           app:
             image:
               repository: ghcr.io/linuxserver/qbittorrent
-              tag: 5.1.4-r3-ls451
+              tag: 5.1.4-r3-ls452
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels

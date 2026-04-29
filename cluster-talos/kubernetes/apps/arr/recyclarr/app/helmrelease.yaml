@@ -50,7 +50,7 @@ spec:
           app:
             image:
               repository: ghcr.io/recyclarr/recyclarr
-              tag: 8.5.1
+              tag: 8.6.0
               pullPolicy: IfNotPresent
             env:
               COMPlus_EnableDiagnostics: "0"
