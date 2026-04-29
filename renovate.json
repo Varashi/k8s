@@ -45,6 +45,16 @@
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>[a-z-]+)\\s+depName=(?<depName>[^\\s]+)(?:\\s+versioning=(?<versioning>[a-z-]+))?\\s*\\nARG\\s+[A-Z0-9_]+=(?<currentValue>[^\\s\"]+)"
       ]
+    },
+    {
+      "customType": "regex",
+      "description": "Tuppr CR version pins (TalosUpgrade, KubernetesUpgrade)",
+      "managerFilePatterns": [
+        "/^cluster-talos/kubernetes/infrastructure/platform/tuppr/upgrades/.+\\.yaml$/"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>[a-z-]+)\\s+depName=(?<depName>[^\\s]+)(?:\\s+versioning=(?<versioning>[a-z-]+))?\\s*\\n\\s*version:\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ]
     }
   ],
   "packageRules": [
