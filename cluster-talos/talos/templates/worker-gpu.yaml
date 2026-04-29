@@ -48,13 +48,13 @@ machine:
           - bind
           - rshared
           - rw
-      - destination: /var/lib/kubelet/pods
-        type: bind
-        source: /var/lib/kubelet/pods
-        options:
-          - bind
-          - rshared
-          - rw
+      # /var/lib/kubelet/pods rshared self-bind removed 2026-04-29:
+      # the shared peer group on this path makes Talos's unmount phase 5
+      # (umount /var/lib/kubelet/pods) return EBUSY, blocking 1.12 → 1.13
+      # upgrades on GPU workers. Tested with gpu-worker-2: removing the bind
+      # lets the upgrade complete cleanly + Longhorn replicas stay healthy.
+      # Original justification (vSphere CSI globalmount-twice → stuck VA) no
+      # longer applies — vSAN-backed PVCs don't land on GPU workers anymore.
   network:
     nameservers:
       {{- range .Values.machine.nameservers }}
