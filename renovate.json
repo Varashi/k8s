@@ -67,7 +67,6 @@
       "matchDepNames": [
         "siderolabs/talos",
         "ghcr.io/siderolabs/installer",
-        "ghcr.io/siderolabs/kubelet",
         "cilium"
       ],
       "matchFileNames": ["cluster-talos/**"],
