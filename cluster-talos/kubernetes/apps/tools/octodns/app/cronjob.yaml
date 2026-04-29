@@ -19,7 +19,7 @@ spec:
           containers:
             - name: octodns
               # renovate: datasource=docker depName=ghcr.io/varashi/octodns versioning=docker
-              image: ghcr.io/varashi/octodns:latest@sha256:54ab5222e1aecef64ecb8175331c9e4a6ad8d6b4a08d79eab723e29d72776073
+              image: ghcr.io/varashi/octodns:latest@sha256:a40d61d74fd77b1e19b477716bcea9905003bfa89945a4f98f974f604a758d86
               imagePullPolicy: IfNotPresent
               args:
                 - octodns-sync-filtered
