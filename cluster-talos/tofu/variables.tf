@@ -156,7 +156,7 @@ variable "gpu_worker_count" {
 
 variable "gpu_worker_cpu" {
   type    = number
-  default = 2
+  default = 4
 }
 
 variable "gpu_worker_memory_mb" {
