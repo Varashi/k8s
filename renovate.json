@@ -64,7 +64,12 @@
       "automerge": false
     },
     {
-      "matchDepNames": ["siderolabs/talos", "cilium"],
+      "matchDepNames": [
+        "siderolabs/talos",
+        "ghcr.io/siderolabs/installer",
+        "ghcr.io/siderolabs/kubelet",
+        "cilium"
+      ],
       "matchFileNames": ["cluster-talos/**"],
       "groupName": "cluster-talos infra",
       "automerge": false
