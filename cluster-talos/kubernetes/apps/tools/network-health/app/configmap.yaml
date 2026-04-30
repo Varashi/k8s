@@ -69,33 +69,45 @@ data:
 
 
     def parse_mikrotik(text):
-        """Parse `/interface ethernet print stats` columnar output."""
-        ports, data = [], {}
-        for line in text.splitlines():
-            line = line.rstrip()
+        """Parse columnar `/interface ethernet print stats` output.
+
+        Mikrotik right-aligns each port column under its `sfp-sfpplus*` header
+        and uses spaces as thousand separators inside numbers. Slice each
+        stat line at the column-end positions taken from the header row.
+        """
+        lines = text.splitlines()
+        ports, port_ends = [], []
+        data = {}
+        for line in lines:
             if "name:" in line and "sfp" in line:
-                ports = [p for p in line.split() if p.startswith("sfp")]
-                for p in ports:
-                    data[p] = {}
+                # Locate every sfp-sfpplus* token in the header.
+                i = 0
+                while i < len(line):
+                    if line.startswith("sfp", i):
+                        j = i
+                        while j < len(line) and not line[j].isspace():
+                            j += 1
+                        ports.append(line[i:j])
+                        port_ends.append(j)
+                        data[line[i:j]] = {}
+                        i = j
+                    else:
+                        i += 1
                 continue
             if not ports:
                 continue
+            stripped = line.lstrip()
             for m in SW_METRICS:
-                if line.lstrip().startswith(m + ":"):
-                    raw = line.split(":", 1)[1]
-                    nums = [int(t) for t in raw.replace(" ", "_").split() if t.replace("_", "").isdigit()]
-                    # Mikrotik prints numbers space-separated; thousand separators are spaces too.
-                    # Re-parse using a column-anchored fallback if counts mismatch:
-                    if len(nums) != len(ports):
-                        nums = []
-                        rest = raw
-                        for tok in rest.split():
-                            try:
-                                nums.append(int(tok))
-                            except ValueError:
-                                pass
-                    for i, p in enumerate(ports):
-                        data[p][m] = nums[i] if i < len(nums) else 0
+                if stripped.startswith(m + ":"):
+                    prev_end = line.find(":") + 1
+                    for idx, port in enumerate(ports):
+                        end = port_ends[idx]
+                        seg = line[prev_end:end].replace(" ", "")
+                        try:
+                            data[port][m] = int(seg)
+                        except ValueError:
+                            data[port][m] = 0
+                        prev_end = end
                     break
         return data
 
