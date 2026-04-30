@@ -16,6 +16,9 @@ data:
     import json
     import os
     import smtplib
+    import ssl
+    import urllib.request
+    from base64 import b64encode
     from datetime import datetime, timezone
     from email.mime.text import MIMEText
     from pathlib import Path
@@ -31,6 +34,8 @@ data:
     SWITCHES = ["skw-switch10g1.boeye.net", "skw-switch10g2.boeye.net"]
     ESXI = ["skw-esxi4.boeye.net", "skw-esxi5.boeye.net", "skw-esxi6.boeye.net"]
     TRUENAS = "skw-truenas-data.boeye.net"
+    OPNSENSE = "skw-edgerouter.boeye.net"
+    OPNSENSE_IFACES = ("ix0", "ix1")
 
     SW_METRICS = (
         "rx-fcs-error", "rx-error-events", "rx-fragment",
@@ -144,6 +149,32 @@ data:
         return result
 
 
+    def collect_opnsense(host, key, secret):
+        """OPNsense diagnostics API. Internal CA, skip cert verify."""
+        url = f"https://{host}/api/diagnostics/interface/getInterfaceStatistics"
+        auth = b64encode(f"{key}:{secret}".encode()).decode()
+        req = urllib.request.Request(url, headers={"Authorization": f"Basic {auth}"})
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        with urllib.request.urlopen(req, context=ctx, timeout=15) as r:
+            data = json.loads(r.read())
+        out = {}
+        for label, row in (data.get("statistics") or {}).items():
+            net = row.get("network", "")
+            name = row.get("name")
+            # Only the link-layer rows have full counters; skip per-IP duplicates.
+            if name in OPNSENSE_IFACES and net.startswith("<Link#"):
+                out[name] = {
+                    "rx_packets": int(row.get("received-packets", 0)),
+                    "rx_errors": int(row.get("received-errors", 0)),
+                    "rx_dropped": int(row.get("dropped-packets", 0)),
+                    "tx_errors": int(row.get("send-errors", 0)),
+                    "collisions": int(row.get("collisions", 0)),
+                }
+        return out
+
+
     def collect_truenas(host, password):
         result = {}
         for nic in ("enp4s0f0", "enp4s0f1"):
@@ -196,6 +227,15 @@ data:
                 out.append(f"truenas {nic}: +{m['rx_brb_discard']:,} brb_discard (NIC RX overrun)")
             if (m.get("rx_discards") or 0) > 1000:
                 out.append(f"truenas {nic}: +{m['rx_discards']:,} rx_discards")
+        for nic, m in (deltas.get("opnsense") or {}).items():
+            if not isinstance(m, dict):
+                continue
+            if (m.get("rx_errors") or 0) > 1000:
+                out.append(f"opnsense {nic}: +{m['rx_errors']:,} RX errors")
+            if (m.get("rx_dropped") or 0) > 1000:
+                out.append(f"opnsense {nic}: +{m['rx_dropped']:,} RX drops")
+            if (m.get("tx_errors") or 0) > 100:
+                out.append(f"opnsense {nic}: +{m['tx_errors']:,} TX errors")
         return out
 
 
@@ -251,6 +291,19 @@ data:
                      f"{m.get('rx_brb_discard', '?'):,} | "
                      f"{m.get('rx_csum_offload_errors', '?'):,} |")
         L.append("")
+
+        L += ["## OPNsense interfaces (deltas)", "",
+              "| NIC | dRxErrors | dRxDropped | dTxErrors | dCollisions |",
+              "|---|---|---|---|---|"]
+        for nic, m in sorted((deltas.get("opnsense") or {}).items()):
+            if not isinstance(m, dict):
+                continue
+            L.append(f"| {nic} | "
+                     f"{m.get('rx_errors', '?'):,} | "
+                     f"{m.get('rx_dropped', '?'):,} | "
+                     f"{m.get('tx_errors', '?'):,} | "
+                     f"{m.get('collisions', '?'):,} |")
+        L.append("")
         return "\n".join(L)
 
 
@@ -267,6 +320,8 @@ data:
         esxi_pw = os.environ["ESXI_PASSWORD"]
         mikrotik_pw = os.environ["MIKROTIK_PASSWORD"]
         truenas_pw = os.environ.get("TRUENAS_PASSWORD") or esxi_pw
+        opnsense_key = os.environ["OPNSENSE_API_KEY"]
+        opnsense_secret = os.environ["OPNSENSE_API_SECRET"]
 
         BASELINE.parent.mkdir(parents=True, exist_ok=True)
 
@@ -275,6 +330,7 @@ data:
             "switches": {},
             "esxi": {},
             "truenas": {},
+            "opnsense": {},
         }
         for sw in SWITCHES:
             try:
@@ -290,6 +346,10 @@ data:
             current["truenas"] = collect_truenas(TRUENAS, truenas_pw)
         except Exception as e:
             current["truenas"] = {"error": str(e)}
+        try:
+            current["opnsense"] = collect_opnsense(OPNSENSE, opnsense_key, opnsense_secret)
+        except Exception as e:
+            current["opnsense"] = {"error": str(e)}
 
         if not BASELINE.exists():
             BASELINE.write_text(json.dumps(current, indent=2))
@@ -311,6 +371,8 @@ data:
                      for h in ESXI},
             "truenas": diff(current.get("truenas", {}),
                             baseline.get("truenas", {})),
+            "opnsense": diff(current.get("opnsense", {}),
+                             baseline.get("opnsense", {})),
         }
         alerts = alerts_for(deltas, current)
         body = render(current, deltas, alerts, baseline.get("timestamp", "unknown"))
