@@ -16,9 +16,17 @@ spec:
       template:
         spec:
           restartPolicy: OnFailure
-          # Longhorn is only on gpu-workers; pin pod there so PVC attaches.
-          nodeSelector:
-            longhorn: enabled
+          # vSAN PV attaches anywhere; keep this off gpu-workers to leave them
+          # for transcoding etc.
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: gpu
+                        operator: DoesNotExist
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
           securityContext:
             fsGroup: 1000
           initContainers:
