@@ -16,6 +16,9 @@ spec:
       template:
         spec:
           restartPolicy: OnFailure
+          # Longhorn is only on gpu-workers; pin pod there so PVC attaches.
+          nodeSelector:
+            longhorn: enabled
           securityContext:
             fsGroup: 1000
           initContainers:
