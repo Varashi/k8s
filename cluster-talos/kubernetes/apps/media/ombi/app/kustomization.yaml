@@ -3,5 +3,8 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - pvc.yaml
+  - cluster.yaml
+  - externalsecret.yaml
   - helmrelease.yaml
   - tunnelbinding.yaml
+  # migration-job.yaml is intentionally excluded — apply manually post-bootstrap.

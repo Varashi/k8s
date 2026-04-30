@@ -40,6 +40,8 @@ spec:
         runAsGroup: 0
     controllers:
       ombi:
+        annotations:
+          reloader.stakater.com/auto: "true"
         containers:
           app:
             image:
@@ -87,3 +89,10 @@ spec:
         existingClaim: ombi-config
         globalMounts:
           - path: /config
+      database-json:
+        type: secret
+        name: ombi-database-json
+        globalMounts:
+          - path: /config/database.json
+            subPath: database.json
+            readOnly: true

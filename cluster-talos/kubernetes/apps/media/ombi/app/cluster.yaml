@@ -1,0 +1,29 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ombi-pg
+  namespace: ombi
+spec:
+  instances: 2
+  storage:
+    size: 5Gi
+    storageClass: vsan
+  bootstrap:
+    initdb:
+      database: ombi
+      owner: ombi
+      secret:
+        name: ombi-db-credentials
+      postInitSQL:
+        - CREATE DATABASE ombi_settings OWNER ombi;
+        - CREATE DATABASE ombi_external OWNER ombi;
+  affinity:
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: intel.feature.node.kubernetes.io/gpu
+                operator: DoesNotExist
