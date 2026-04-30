@@ -40,7 +40,9 @@ data:
         ("/sqlite/OmbiExternal.db", "ombi_external"),
     ]
 
-    SKIP_TABLES = {"__EFMigrationsHistory"}
+    # Npgsql lowercases identifiers; sqlite uses PascalCase. Match case-insensitively
+    # both for tables and columns.
+    SKIP_TABLES_LC = {"__efmigrationshistory"}
 
 
     def list_sqlite_tables(sconn):
@@ -48,19 +50,21 @@ data:
             "SELECT name FROM sqlite_master WHERE type='table' "
             "AND name NOT LIKE 'sqlite_%'"
         ).fetchall()
-        return [r[0] for r in rows if r[0] not in SKIP_TABLES]
+        return [r[0] for r in rows if r[0].lower() not in SKIP_TABLES_LC]
 
 
-    def pg_table_set(pconn):
+    def pg_tables(pconn):
+        """Return dict: lowercase_name -> actual_name."""
         cur = pconn.cursor()
         cur.execute(
             "SELECT table_name FROM information_schema.tables "
             "WHERE table_schema='public'"
         )
-        return {r[0] for r in cur.fetchall()}
+        return {r[0].lower(): r[0] for r in cur.fetchall()}
 
 
     def pg_columns(pconn, table):
+        """Return dict: lowercase_name -> (actual_name, data_type)."""
         cur = pconn.cursor()
         cur.execute(
             "SELECT column_name, data_type FROM information_schema.columns "
@@ -68,7 +72,7 @@ data:
             "ORDER BY ordinal_position",
             (table,),
         )
-        return cur.fetchall()
+        return {r[0].lower(): (r[0], r[1]) for r in cur.fetchall()}
 
 
     def sqlite_columns(sconn, table):
@@ -84,23 +88,23 @@ data:
         return value
 
 
-    def reset_sequences(pconn, table):
+    def reset_sequences(pconn, pg_table):
         cur = pconn.cursor()
         cur.execute(
             "SELECT column_name FROM information_schema.columns "
             "WHERE table_schema='public' AND table_name=%s "
             "AND (column_default LIKE 'nextval%%' OR is_identity='YES')",
-            (table,),
+            (pg_table,),
         )
         for (col,) in cur.fetchall():
             try:
                 cur.execute(
                     'SELECT setval(pg_get_serial_sequence(%s, %s), '
-                    'COALESCE((SELECT MAX("' + col + '") FROM "' + table + '"), 1))',
-                    (table, col),
+                    'COALESCE((SELECT MAX("' + col + '") FROM "' + pg_table + '"), 1))',
+                    (pg_table, col),
                 )
             except Exception as e:
-                print(f"  seq reset skipped {table}.{col}: {e}")
+                print(f"  seq reset skipped {pg_table}.{col}: {e}")
 
 
     def migrate_one(sqlite_path, pg_db):
@@ -115,38 +119,46 @@ data:
         pconn.autocommit = False
         try:
             stables = list_sqlite_tables(sconn)
-            ptables = pg_table_set(pconn)
-            print(f"  sqlite tables: {len(stables)}, pg tables: {len(ptables)}")
+            ptables_map = pg_tables(pconn)
+            print(f"  sqlite tables: {len(stables)}, pg tables: {len(ptables_map)}")
             cur = pconn.cursor()
-            for t in stables:
-                if t not in ptables:
-                    print(f"  SKIP {t} (not in pg)")
+            migrated_pg_tables = []
+            for stable in stables:
+                ptable = ptables_map.get(stable.lower())
+                if not ptable:
+                    print(f"  SKIP {stable} (not in pg)")
                     continue
-                scols = sqlite_columns(sconn, t)
-                pcols = pg_columns(pconn, t)
-                ptypes = dict(pcols)
-                common = [c for c in scols if c in ptypes]
-                if not common:
-                    print(f"  SKIP {t} (no overlapping cols)")
+                scols = sqlite_columns(sconn, stable)
+                pcols_map = pg_columns(pconn, ptable)
+                # Build [(sqlite_col, pg_col, pg_type)] for columns present in both
+                col_pairs = []
+                for sc in scols:
+                    pc = pcols_map.get(sc.lower())
+                    if pc:
+                        col_pairs.append((sc, pc[0], pc[1]))
+                if not col_pairs:
+                    print(f"  SKIP {stable} (no overlapping cols)")
                     continue
-                cur.execute(f'TRUNCATE TABLE "{t}" RESTART IDENTITY CASCADE')
-                sel = ",".join(f'"{c}"' for c in common)
-                rows = sconn.execute(f"SELECT {sel} FROM \"{t}\"").fetchall()
+                cur.execute(f'TRUNCATE TABLE "{ptable}" RESTART IDENTITY CASCADE')
+                ssel = ",".join(f'"{c[0]}"' for c in col_pairs)
+                psel = ",".join(f'"{c[1]}"' for c in col_pairs)
+                rows = sconn.execute(f'SELECT {ssel} FROM "{stable}"').fetchall()
                 if rows:
+                    types = [c[2] for c in col_pairs]
                     adapted = [
-                        [adapt_value(v, ptypes[c]) for c, v in zip(common, row)]
+                        [adapt_value(v, t) for v, t in zip(row, types)]
                         for row in rows
                     ]
-                    placeholders = ",".join(["%s"] * len(common))
+                    placeholders = ",".join(["%s"] * len(col_pairs))
                     cur.executemany(
-                        f'INSERT INTO "{t}" ({sel}) VALUES ({placeholders})',
+                        f'INSERT INTO "{ptable}" ({psel}) VALUES ({placeholders})',
                         adapted,
                     )
-                print(f"  {t}: {len(rows)} rows")
+                migrated_pg_tables.append(ptable)
+                print(f"  {stable} -> {ptable}: {len(rows)} rows")
             pconn.commit()
-            for t in stables:
-                if t in ptables:
-                    reset_sequences(pconn, t)
+            for pt in migrated_pg_tables:
+                reset_sequences(pconn, pt)
             pconn.commit()
         except Exception:
             pconn.rollback()
