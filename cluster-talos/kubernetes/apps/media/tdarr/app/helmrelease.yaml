@@ -77,12 +77,12 @@ spec:
                 value: tapi_fBPCHpc0u
             resources:
               requests:
-                memory: 3072Mi
+                memory: 4096Mi
                 cpu: 1
               limits:
                 gpu.intel.com/i915: 1
                 cpu: 3
-                memory: 6144Mi
+                memory: 8192Mi
         pod:
           nodeSelector:
             intel.feature.node.kubernetes.io/gpu: "true"
