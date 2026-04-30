@@ -32,7 +32,7 @@ spec:
               PUID: "1000"
               PGID: "1000"
               UMASK_SET: "002"
-              auth: "true"
+              auth: "false"
             resources:
               requests:
                 cpu: 500m
