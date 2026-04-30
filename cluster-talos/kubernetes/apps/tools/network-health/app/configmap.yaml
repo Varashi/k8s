@@ -1,0 +1,325 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: network-health
+  namespace: monitoring
+data:
+  check.py: |
+    #!/usr/bin/env python3
+    """Daily network health check.
+
+    Collects RX/TX error counters from MikroTik core switches, ESXi pNICs, and
+    TrueNAS bnx2x NICs. Compares against a baseline stored on a PVC. Emails a
+    delta + alert summary via the internal smtp2graph relay.
+    """
+    import json
+    import os
+    import smtplib
+    from datetime import datetime, timezone
+    from email.mime.text import MIMEText
+    from pathlib import Path
+
+    import paramiko
+
+    BASELINE = Path("/state/baseline.json")
+    SMTP_HOST = "172.16.4.105"
+    SMTP_PORT = 25
+    EMAIL_FROM = "administrator@boeye.net"
+    EMAIL_TO = "frank@boeye.net"
+
+    SWITCHES = ["skw-switch10g1.boeye.net", "skw-switch10g2.boeye.net"]
+    ESXI = ["skw-esxi4.boeye.net", "skw-esxi5.boeye.net", "skw-esxi6.boeye.net"]
+    TRUENAS = "skw-truenas-data.boeye.net"
+
+    SW_METRICS = (
+        "rx-fcs-error", "rx-error-events", "rx-fragment",
+        "rx-pause", "tx-pause", "tx-drop-packet",
+    )
+    ESXI_METRICS = {
+        "Receive packets dropped": "rx_dropped",
+        "Total receive errors": "rx_errors",
+        "Packets received": "rx_packets",
+    }
+    TRUENAS_METRICS = (
+        "rx_discards", "rx_brb_discard",
+        "rx_csum_offload_errors", "rx_error_bytes",
+    )
+
+
+    def ssh_exec(host, user, password, command):
+        """Connect with password; paramiko falls through to keyboard-interactive
+        automatically (needed for ESXi 9, where only KBI is enabled)."""
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        try:
+            client.connect(
+                host, username=user, password=password,
+                look_for_keys=False, allow_agent=False, timeout=15,
+            )
+            _, stdout, stderr = client.exec_command(command, timeout=30)
+            return stdout.read().decode(), stderr.read().decode()
+        finally:
+            client.close()
+
+
+    def parse_mikrotik(text):
+        """Parse `/interface ethernet print stats` columnar output."""
+        ports, data = [], {}
+        for line in text.splitlines():
+            line = line.rstrip()
+            if "name:" in line and "sfp" in line:
+                ports = [p for p in line.split() if p.startswith("sfp")]
+                for p in ports:
+                    data[p] = {}
+                continue
+            if not ports:
+                continue
+            for m in SW_METRICS:
+                if line.lstrip().startswith(m + ":"):
+                    raw = line.split(":", 1)[1]
+                    nums = [int(t) for t in raw.replace(" ", "_").split() if t.replace("_", "").isdigit()]
+                    # Mikrotik prints numbers space-separated; thousand separators are spaces too.
+                    # Re-parse using a column-anchored fallback if counts mismatch:
+                    if len(nums) != len(ports):
+                        nums = []
+                        rest = raw
+                        for tok in rest.split():
+                            try:
+                                nums.append(int(tok))
+                            except ValueError:
+                                pass
+                    for i, p in enumerate(ports):
+                        data[p][m] = nums[i] if i < len(nums) else 0
+                    break
+        return data
+
+
+    def parse_esxi(text):
+        result = {}
+        for line in text.splitlines():
+            s = line.strip()
+            for k, v in ESXI_METRICS.items():
+                if s.startswith(k + ":"):
+                    try:
+                        result[v] = int(s.split(":", 1)[1].strip())
+                    except ValueError:
+                        pass
+                    break
+        return result
+
+
+    def parse_truenas(text):
+        """Skip per-queue lines like '[0]: rx_discards: ...' — keep only totals."""
+        result = {}
+        for raw in text.splitlines():
+            s = raw.strip()
+            if s.startswith("["):
+                continue
+            for k in TRUENAS_METRICS:
+                if s.startswith(k + ":"):
+                    try:
+                        result[k] = int(s.split(":", 1)[1].strip())
+                    except ValueError:
+                        pass
+                    break
+        return result
+
+
+    def collect_switch(host, password):
+        cmd = '/interface ethernet print stats without-paging where name~"sfp-sfpplus[4-7]"'
+        out, _ = ssh_exec(host, "admin", password, cmd)
+        return parse_mikrotik(out)
+
+
+    def collect_esxi(host, password):
+        result = {}
+        for nic in ("vmnic0", "vmnic1"):
+            try:
+                out, _ = ssh_exec(host, "root", password,
+                                  f"esxcli network nic stats get -n {nic}")
+                result[nic] = parse_esxi(out)
+            except Exception as e:
+                result[nic] = {"error": str(e)}
+        return result
+
+
+    def collect_truenas(host, password):
+        result = {}
+        for nic in ("enp4s0f0", "enp4s0f1"):
+            try:
+                out, _ = ssh_exec(host, "truenas_admin", password,
+                                  f"sudo -n ethtool -S {nic}")
+                result[nic] = parse_truenas(out)
+            except Exception as e:
+                result[nic] = {"error": str(e)}
+        return result
+
+
+    def diff(now, base):
+        if isinstance(now, dict):
+            return {k: diff(v, base.get(k, {}) if isinstance(base, dict) else {}) for k, v in now.items()}
+        if isinstance(now, int) and isinstance(base, int):
+            return now - base
+        return None
+
+
+    def alerts_for(deltas, current):
+        out = []
+        for sw, ports in (deltas.get("switches") or {}).items():
+            if not isinstance(ports, dict):
+                continue
+            for port, m in ports.items():
+                if not isinstance(m, dict):
+                    continue
+                if (m.get("rx-fcs-error") or 0) > 100:
+                    out.append(f"{sw} {port}: +{m['rx-fcs-error']:,} FCS errors (physical layer)")
+                if (m.get("tx-drop-packet") or 0) > 1000:
+                    out.append(f"{sw} {port}: +{m['tx-drop-packet']:,} TX drops")
+                cur_pause = current.get("switches", {}).get(sw, {}).get(port, {}).get("rx-pause") or 0
+                if (m.get("rx-pause") or 0) > 10000:
+                    out.append(f"{sw} {port}: +{m['rx-pause']:,} rx-pause (was {cur_pause - m['rx-pause']:,})")
+        for esxi, nics in (deltas.get("esxi") or {}).items():
+            if not isinstance(nics, dict):
+                continue
+            for nic, m in nics.items():
+                if not isinstance(m, dict):
+                    continue
+                if (m.get("rx_dropped") or 0) > 1000:
+                    out.append(f"{esxi} {nic}: +{m['rx_dropped']:,} RX drops")
+                if (m.get("rx_errors") or 0) > 100:
+                    out.append(f"{esxi} {nic}: +{m['rx_errors']:,} RX errors")
+        for nic, m in (deltas.get("truenas") or {}).items():
+            if not isinstance(m, dict):
+                continue
+            if (m.get("rx_brb_discard") or 0) > 0:
+                out.append(f"truenas {nic}: +{m['rx_brb_discard']:,} brb_discard (NIC RX overrun)")
+            if (m.get("rx_discards") or 0) > 1000:
+                out.append(f"truenas {nic}: +{m['rx_discards']:,} rx_discards")
+        return out
+
+
+    def render(current, deltas, alerts, since):
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        L = [f"# Network Health — {today}", "",
+             f"Compared against baseline from {since}.", ""]
+        if alerts:
+            L += ["## Alerts", ""] + [f"- {a}" for a in alerts] + [""]
+        else:
+            L += ["No alerts.", ""]
+
+        L += ["## Switch ports (deltas)", "",
+              "| Switch | Port | dFCS | dPauseRx | dPauseTx | dTxDrop |",
+              "|---|---|---|---|---|---|"]
+        for sw, ports in sorted((deltas.get("switches") or {}).items()):
+            if not isinstance(ports, dict):
+                L.append(f"| {sw} | (error) | — | — | — | — |")
+                continue
+            for port, m in sorted(ports.items()):
+                if not isinstance(m, dict):
+                    continue
+                L.append(f"| {sw.split('.')[0]} | {port} | "
+                         f"{m.get('rx-fcs-error', '?'):,} | "
+                         f"{m.get('rx-pause', '?'):,} | "
+                         f"{m.get('tx-pause', '?'):,} | "
+                         f"{m.get('tx-drop-packet', '?'):,} |")
+        L.append("")
+
+        L += ["## ESXi pNICs (deltas)", "",
+              "| Host | NIC | dRxDropped | dRxErrors | dRxPackets |",
+              "|---|---|---|---|---|"]
+        for esxi, nics in sorted((deltas.get("esxi") or {}).items()):
+            if not isinstance(nics, dict):
+                continue
+            for nic, m in sorted(nics.items()):
+                if not isinstance(m, dict):
+                    continue
+                L.append(f"| {esxi.split('.')[0]} | {nic} | "
+                         f"{m.get('rx_dropped', '?'):,} | "
+                         f"{m.get('rx_errors', '?'):,} | "
+                         f"{m.get('rx_packets', '?'):,} |")
+        L.append("")
+
+        L += ["## TrueNAS NICs (deltas)", "",
+              "| NIC | dRxDiscards | dBrbDiscard | dCsumErr |",
+              "|---|---|---|---|"]
+        for nic, m in sorted((deltas.get("truenas") or {}).items()):
+            if not isinstance(m, dict):
+                continue
+            L.append(f"| {nic} | "
+                     f"{m.get('rx_discards', '?'):,} | "
+                     f"{m.get('rx_brb_discard', '?'):,} | "
+                     f"{m.get('rx_csum_offload_errors', '?'):,} |")
+        L.append("")
+        return "\n".join(L)
+
+
+    def send_email(subject, body):
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = subject
+        msg["From"] = EMAIL_FROM
+        msg["To"] = EMAIL_TO
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as s:
+            s.send_message(msg)
+
+
+    def main():
+        esxi_pw = os.environ["ESXI_PASSWORD"]
+        mikrotik_pw = os.environ["MIKROTIK_PASSWORD"]
+        truenas_pw = os.environ.get("TRUENAS_PASSWORD") or esxi_pw
+
+        BASELINE.parent.mkdir(parents=True, exist_ok=True)
+
+        current = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "switches": {},
+            "esxi": {},
+            "truenas": {},
+        }
+        for sw in SWITCHES:
+            try:
+                current["switches"][sw] = collect_switch(sw, mikrotik_pw)
+            except Exception as e:
+                current["switches"][sw] = {"error": str(e)}
+        for h in ESXI:
+            try:
+                current["esxi"][h] = collect_esxi(h, esxi_pw)
+            except Exception as e:
+                current["esxi"][h] = {"error": str(e)}
+        try:
+            current["truenas"] = collect_truenas(TRUENAS, truenas_pw)
+        except Exception as e:
+            current["truenas"] = {"error": str(e)}
+
+        if not BASELINE.exists():
+            BASELINE.write_text(json.dumps(current, indent=2))
+            send_email(
+                "Network Health — baseline established",
+                "Baseline counters captured. Next daily run will report deltas.\n\n"
+                "Snapshot:\n```\n" +
+                json.dumps(current, indent=2)[:6000] + "\n```\n",
+            )
+            return
+
+        baseline = json.loads(BASELINE.read_text())
+        deltas = {
+            "switches": {sw: diff(current["switches"].get(sw, {}),
+                                  baseline.get("switches", {}).get(sw, {}))
+                         for sw in SWITCHES},
+            "esxi": {h: diff(current["esxi"].get(h, {}),
+                             baseline.get("esxi", {}).get(h, {}))
+                     for h in ESXI},
+            "truenas": diff(current.get("truenas", {}),
+                            baseline.get("truenas", {})),
+        }
+        alerts = alerts_for(deltas, current)
+        body = render(current, deltas, alerts, baseline.get("timestamp", "unknown"))
+        BASELINE.write_text(json.dumps(current, indent=2))
+
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        prefix = "[ALERT] " if alerts else ""
+        send_email(f"{prefix}Network Health — {today}", body)
+
+
+    if __name__ == "__main__":
+        main()

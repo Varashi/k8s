@@ -1,0 +1,77 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: network-health
+  namespace: monitoring
+spec:
+  schedule: "0 6 * * *"
+  timeZone: Europe/Brussels
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            fsGroup: 1000
+          initContainers:
+            - name: install-paramiko
+              # renovate: datasource=docker depName=python versioning=docker
+              image: python:3.13-slim
+              command: ["sh", "-c"]
+              args:
+                - pip install --target=/libs --no-cache-dir paramiko==3.5.0
+              volumeMounts:
+                - { name: libs, mountPath: /libs }
+              securityContext:
+                runAsUser: 1000
+                runAsGroup: 1000
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: [ALL] }
+                seccompProfile: { type: RuntimeDefault }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 256Mi }
+          containers:
+            - name: check
+              # renovate: datasource=docker depName=python versioning=docker
+              image: python:3.13-slim
+              imagePullPolicy: IfNotPresent
+              command: ["python3", "/scripts/check.py"]
+              env:
+                - name: PYTHONPATH
+                  value: /libs
+              envFrom:
+                - secretRef:
+                    name: network-health
+              volumeMounts:
+                - { name: scripts, mountPath: /scripts, readOnly: true }
+                - { name: libs, mountPath: /libs, readOnly: true }
+                - { name: state, mountPath: /state }
+              securityContext:
+                runAsUser: 1000
+                runAsGroup: 1000
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: [ALL] }
+                seccompProfile: { type: RuntimeDefault }
+              resources:
+                requests: { cpu: 50m, memory: 96Mi }
+                limits: { memory: 384Mi }
+          volumes:
+            - name: scripts
+              configMap:
+                name: network-health
+                defaultMode: 0555
+            - name: libs
+              emptyDir: {}
+            - name: state
+              persistentVolumeClaim:
+                claimName: network-health-state
