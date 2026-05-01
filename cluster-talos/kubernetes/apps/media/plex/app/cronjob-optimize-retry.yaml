@@ -6,13 +6,28 @@ metadata:
 data:
   retry.py: |
     #!/usr/bin/env python3
-    # Retries Plex optimize items stuck in 'disabled' or 'error' state.
+    # Retries Plex optimize items stuck in error/disabled state.
+    # Episodes: 'disabled' or 'error' (any context).
+    # Movies: only 'error/sourceFileUnavailable' (file replaced by arr upgrade —
+    #         reprocess re-binds to current Part). transcoderError /
+    #         sourceFileMetadataError are deterministic codec/probe failures and
+    #         loop forever; skip them. 'disabled/good' is completed-and-off.
     import os, re, sys, urllib.request, urllib.error, json
 
     PLEX_URL = os.environ.get("PLEX_URL", "http://plex:32400")
     JOB_ID = os.environ.get("OPTIMIZE_JOB_ID", "15792")
     PREFS = "/config/Library/Application Support/Plex Media Server/Preferences.xml"
     RETRY_STATES = {"disabled", "error"}
+
+    def is_retry_target(it):
+        # Movies: only retry 'error/sourceFileUnavailable' — file replaced by arr
+        # upgrade, reprocess re-binds to current Part. transcoderError /
+        # sourceFileMetadataError are deterministic and loop forever.
+        # Episodes: retry both 'disabled' and 'error' (legacy behavior).
+        st = it.get("processingState")
+        if it.get("type") == "movie":
+            return st == "error" and it.get("processingStateContext") == "sourceFileUnavailable"
+        return st in RETRY_STATES
 
     with open(PREFS) as f:
         m = re.search(r'PlexOnlineToken="([^"]+)"', f.read())
@@ -24,13 +39,12 @@ data:
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
     data = json.load(urllib.request.urlopen(req, timeout=30))["MediaContainer"]
     items = data.get("Metadata", [])
-    targets = [
-        it for it in items
-        if it.get("processingState") in RETRY_STATES
-        and it.get("type") != "movie"
-    ]
-    skipped_movies = sum(1 for it in items if it.get("type") == "movie" and it.get("processingState") in RETRY_STATES)
-    print(f"total={len(items)} retry_candidates={len(targets)} skipped_movies={skipped_movies}")
+    targets = [it for it in items if is_retry_target(it)]
+    skipped_movies_disabled = sum(
+        1 for it in items
+        if it.get("type") == "movie" and it.get("processingState") == "disabled"
+    )
+    print(f"total={len(items)} retry_candidates={len(targets)} skipped_movies_disabled={skipped_movies_disabled}")
 
     def fingerprint(it):
         # Pull source media details: codec/container/resolution/bitrate.
@@ -51,20 +65,21 @@ data:
     for it in targets:
         rk = it["ratingKey"]; title = it.get("title", "?")
         state = it.get("processingState")
+        ctx = it.get("processingStateContext") or "-"
         show = it.get("grandparentTitle", "")
         season_ep = ""
         if it.get("parentIndex") is not None and it.get("index") is not None:
             season_ep = f" S{it['parentIndex']:02d}E{it['index']:02d}"
         label = f"{show}{season_ep} - {title}".strip(" -")
-        print(f"ITEM  {state:8s} {rk} {label} | {fingerprint(it)}")
+        print(f"ITEM  {state:8s} {ctx:24s} {rk} {label} | {fingerprint(it)}")
         u = f"{PLEX_URL}/playlists/1066/items/{JOB_ID}/{rk}/reprocess?X-Plex-Token={token}"
         r = urllib.request.Request(u, method="PUT")
         try:
             urllib.request.urlopen(r, timeout=15)
-            print(f"RETRY {state:8s} {rk} {label}")
+            print(f"RETRY {state:8s} {ctx:24s} {rk} {label}")
             ok += 1
         except urllib.error.HTTPError as e:
-            print(f"FAIL  {state:8s} {rk} {label} http={e.code}")
+            print(f"FAIL  {state:8s} {ctx:24s} {rk} {label} http={e.code}")
             fail += 1
     print(f"done ok={ok} fail={fail}")
 ---
