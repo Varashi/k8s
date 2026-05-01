@@ -1,13 +1,16 @@
 ---
-# Periodic host-side fstrim for Talos node EPHEMERAL (/var) and Longhorn
-# data UserVolume (/var/mnt/longhorn). Talos VolumeConfig schema does not
-# expose mount options, so periodic FITRIM is the way to release deleted
-# blocks back to vSAN ESA. Without this, thin VMDKs accumulate stale
-# allocations and vSAN free space erodes even when guest fs usage is low.
+# Periodic host-side fstrim. Split into two CronJobs:
+#   - host-fstrim-var: all nodes, trims /var (Talos EPHEMERAL).
+#   - host-fstrim-longhorn: longhorn=enabled nodes only, trims the
+#     Longhorn data UserVolume at /var/mnt/longhorn.
+# Without this, thin VMDKs accumulate stale allocations on vSAN ESA
+# even when guest fs usage is low. Talos VolumeConfig schema does not
+# expose mount options, so periodic FITRIM is the way to release
+# deleted blocks back to vSAN.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: host-fstrim
+  name: host-fstrim-var
   namespace: longhorn-system
 spec:
   schedule: "30 3 * * *"
@@ -23,7 +26,7 @@ spec:
       template:
         metadata:
           labels:
-            app: host-fstrim
+            app: host-fstrim-var
         spec:
           restartPolicy: Never
           tolerations:
@@ -33,7 +36,7 @@ spec:
               requiredDuringSchedulingIgnoredDuringExecution:
                 - labelSelector:
                     matchLabels:
-                      app: host-fstrim
+                      app: host-fstrim-var
                   topologyKey: kubernetes.io/hostname
           containers:
             - name: fstrim
@@ -47,22 +50,67 @@ spec:
                   apk add --no-cache util-linux >/dev/null
                   echo "=== node $(hostname) ==="
                   fstrim -v /host/var || true
-                  if [ "$(stat -fc %i /host/var)" != "$(stat -fc %i /host/longhorn)" ]; then
-                    fstrim -v /host/longhorn || true
-                  fi
               volumeMounts:
                 - name: host-var
                   mountPath: /host/var
-                  mountPropagation: HostToContainer
-                - name: host-longhorn
-                  mountPath: /host/longhorn
                   mountPropagation: HostToContainer
           volumes:
             - name: host-var
               hostPath:
                 path: /var
                 type: Directory
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: host-fstrim-longhorn
+  namespace: longhorn-system
+spec:
+  schedule: "45 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      parallelism: 3
+      completions: 3
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app: host-fstrim-longhorn
+        spec:
+          restartPolicy: Never
+          nodeSelector:
+            longhorn: enabled
+          tolerations:
+            - operator: Exists
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app: host-fstrim-longhorn
+                  topologyKey: kubernetes.io/hostname
+          containers:
+            - name: fstrim
+              image: alpine:3.23
+              securityContext:
+                privileged: true
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add --no-cache util-linux >/dev/null
+                  echo "=== node $(hostname) ==="
+                  fstrim -v /host/longhorn || true
+              volumeMounts:
+                - name: host-longhorn
+                  mountPath: /host/longhorn
+                  mountPropagation: HostToContainer
+          volumes:
             - name: host-longhorn
               hostPath:
                 path: /var/mnt/longhorn
-                type: DirectoryOrCreate
+                type: Directory
