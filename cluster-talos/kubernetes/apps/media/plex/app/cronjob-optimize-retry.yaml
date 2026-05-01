@@ -24,21 +24,47 @@ data:
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
     data = json.load(urllib.request.urlopen(req, timeout=30))["MediaContainer"]
     items = data.get("Metadata", [])
-    targets = [it for it in items if it.get("processingState") in RETRY_STATES]
-    print(f"total={len(items)} retry_candidates={len(targets)}")
+    targets = [
+        it for it in items
+        if it.get("processingState") in RETRY_STATES
+        and it.get("type") != "movie"
+    ]
+    skipped_movies = sum(1 for it in items if it.get("type") == "movie" and it.get("processingState") in RETRY_STATES)
+    print(f"total={len(items)} retry_candidates={len(targets)} skipped_movies={skipped_movies}")
+
+    def fingerprint(it):
+        # Pull source media details: codec/container/resolution/bitrate.
+        # Plex API: 'error'/'disabled' items expose no reason field, so we log
+        # the source media shape to help spot patterns (e.g. AV1 always failing).
+        media = (it.get("Media") or [{}])[0]
+        parts = (media.get("Part") or [{}])[0]
+        return (
+            f"container={media.get('container','?')} "
+            f"vcodec={media.get('videoCodec','?')} "
+            f"acodec={media.get('audioCodec','?')} "
+            f"res={media.get('width','?')}x{media.get('height','?')} "
+            f"bitrate={media.get('bitrate','?')} "
+            f"file={parts.get('file','?')}"
+        )
 
     ok = fail = 0
     for it in targets:
         rk = it["ratingKey"]; title = it.get("title", "?")
         state = it.get("processingState")
+        show = it.get("grandparentTitle", "")
+        season_ep = ""
+        if it.get("parentIndex") is not None and it.get("index") is not None:
+            season_ep = f" S{it['parentIndex']:02d}E{it['index']:02d}"
+        label = f"{show}{season_ep} - {title}".strip(" -")
+        print(f"ITEM  {state:8s} {rk} {label} | {fingerprint(it)}")
         u = f"{PLEX_URL}/playlists/1066/items/{JOB_ID}/{rk}/reprocess?X-Plex-Token={token}"
         r = urllib.request.Request(u, method="PUT")
         try:
             urllib.request.urlopen(r, timeout=15)
-            print(f"RETRY {state:8s} {rk} {title}")
+            print(f"RETRY {state:8s} {rk} {label}")
             ok += 1
         except urllib.error.HTTPError as e:
-            print(f"FAIL  {state:8s} {rk} {title} http={e.code}")
+            print(f"FAIL  {state:8s} {rk} {label} http={e.code}")
             fail += 1
     print(f"done ok={ok} fail={fail}")
 ---
@@ -49,7 +75,7 @@ metadata:
   namespace: plex
 spec:
   schedule: "0 * * * *"
-  suspend: true
+  suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
