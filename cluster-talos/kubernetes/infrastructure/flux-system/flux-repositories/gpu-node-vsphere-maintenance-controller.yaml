@@ -8,7 +8,7 @@ spec:
   interval: 1h
   url: oci://ghcr.io/varashi/charts/gpu-node-vsphere-maintenance-controller
   ref:
-    tag: 0.4.3
+    tag: 0.4.4
   verify:
     provider: cosign
     matchOIDCIdentity:
