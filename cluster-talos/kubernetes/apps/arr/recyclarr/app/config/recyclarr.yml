@@ -242,6 +242,12 @@ sonarr:
           - name: SD to 4K
             score: -10000
       - trash_ids:
+          # No VC-1 codec
+          - 7470a681e6205243983c4410ee4c920f	#	VC-1
+        assign_scores_to:
+          - name: SD to 4K
+            score: -10000
+      - trash_ids:
           # Unwanted IDs
           - 85c61753df5da1fb2aab6f2a47426b09	#	BR-DISK
           - 9c11cd3f07101cdba90a2d81cf0e56b4	#	LQ
@@ -299,6 +305,12 @@ sonarr:
         assign_scores_to:
           - name: SD to 4K Dutch-Flemish
             score: 100
+      - trash_ids:
+          # No VC-1 codec
+          - 7470a681e6205243983c4410ee4c920f	#	VC-1
+        assign_scores_to:
+          - name: SD to 4K Dutch-Flemish
+            score: -10000
       - trash_ids:
           # HQ Source Groups
           - 949c16fe0a8147f50ba82cc2df9411c9	#	Anime BD Tier 01 (Top SeaDex Muxers)
@@ -381,6 +393,12 @@ sonarr:
         assign_scores_to:
           - name: SD to 4K Anime
             score: 100
+      - trash_ids:
+          # No VC-1 codec
+          - 7470a681e6205243983c4410ee4c920f	#	VC-1
+        assign_scores_to:
+          - name: SD to 4K Anime
+            score: -10000
 
   sonarr-nl:
     base_url: https://nlsonarr.${SECRET_DOMAIN}
@@ -482,6 +500,12 @@ sonarr:
         assign_scores_to:
           - name: SD to 4K Dutch-Flemish
             score: 100
+      - trash_ids:
+          # No VC-1 codec
+          - 7470a681e6205243983c4410ee4c920f	#	VC-1
+        assign_scores_to:
+          - name: SD to 4K Dutch-Flemish
+            score: -10000
 radarr:
   radarr:
     base_url: https://radarr.${SECRET_DOMAIN}
@@ -640,6 +664,12 @@ radarr:
           - name: SD to 4K
             score: 100
       - trash_ids:
+          # No VC-1 codec
+          - 11cd1db7165d6a7ad9a83bc97b8b1060	#	VC-1
+        assign_scores_to:
+          - name: SD to 4K
+            score: -10000
+      - trash_ids:
           # HQ Source Groups
           - fb3ccc5d5cc8f77c9055d4cb4561dded	#	Anime BD Tier 01 (Top SeaDex Muxers)
           - 66926c8fa9312bc74ab71bf69aae4f4a	#	Anime BD Tier 02 (SeaDex Muxers)
@@ -700,6 +730,12 @@ radarr:
         assign_scores_to:
           - name: SD to 4K Anime
             score: 100
+      - trash_ids:
+          # No VC-1 codec
+          - 11cd1db7165d6a7ad9a83bc97b8b1060	#	VC-1
+        assign_scores_to:
+          - name: SD to 4K Anime
+            score: -10000
 
   radarr-nl:
     base_url: https://nlradarr.${SECRET_DOMAIN}
@@ -816,3 +852,9 @@ radarr:
         assign_scores_to:
           - name: SD to 4K Dutch-Flemish
             score: 100
+      - trash_ids:
+          # No VC-1 codec
+          - 11cd1db7165d6a7ad9a83bc97b8b1060	#	VC-1
+        assign_scores_to:
+          - name: SD to 4K Dutch-Flemish
+            score: -10000
