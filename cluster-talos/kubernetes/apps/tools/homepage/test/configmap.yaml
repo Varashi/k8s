@@ -115,12 +115,14 @@ data:
               refreshInterval: 60000
               display: block
               mappings:
-                - field: used
+                - field: used_tib
                   label: Library
-                  format: bytes
-                - field: available
+                  format: float
+                  suffix: " TiB"
+                - field: available_tib
                   label: Free
-                  format: bytes
+                  format: float
+                  suffix: " TiB"
         - Sonarr:
             icon: sonarr.png
             description: TV shows
@@ -175,7 +177,7 @@ data:
                 - field: nvme_used_gib
                   label: NVMe used
                   format: float
-                  suffix: " GB"
+                  suffix: " GiB"
         - VM Host 2:
             icon: mdi-server
             widget:
@@ -199,7 +201,7 @@ data:
                 - field: nvme_used_gib
                   label: NVMe used
                   format: float
-                  suffix: " GB"
+                  suffix: " GiB"
         - VM Host 3:
             icon: mdi-server
             widget:
@@ -223,7 +225,7 @@ data:
                 - field: nvme_used_gib
                   label: NVMe used
                   format: float
-                  suffix: " GB"
+                  suffix: " GiB"
         - GPU Worker 1:
             icon: mdi-kubernetes
             description: k8s-talos-gpu-worker-1
@@ -354,18 +356,22 @@ data:
               refreshInterval: 60000
               display: block
               mappings:
-                - field: DATA.allocated
+                - field: DATA.allocated_tib
                   label: DATA Used
-                  format: bytes
-                - field: DATA.free
+                  format: float
+                  suffix: " TiB"
+                - field: DATA.free_tib
                   label: DATA Free
-                  format: bytes
-                - field: SSD.allocated
+                  format: float
+                  suffix: " TiB"
+                - field: SSD.allocated_tib
                   label: SSD Used
-                  format: bytes
-                - field: SSD.free
+                  format: float
+                  suffix: " TiB"
+                - field: SSD.free_tib
                   label: SSD Free
-                  format: bytes
+                  format: float
+                  suffix: " TiB"
         - vSAN:
             icon: mdi-database
             description: VM storage
@@ -375,15 +381,18 @@ data:
               refreshInterval: 60000
               display: block
               mappings:
-                - field: capacity
+                - field: capacity_tib
                   label: Capacity
-                  format: bytes
-                - field: used
+                  format: float
+                  suffix: " TiB"
+                - field: used_tib
                   label: Used
-                  format: bytes
-                - field: free
+                  format: float
+                  suffix: " TiB"
+                - field: free_tib
                   label: Free
-                  format: bytes
+                  format: float
+                  suffix: " TiB"
                 - field: used_pct
                   label: Used
                   format: float
@@ -401,9 +410,10 @@ data:
                   label: Volumes
                 - field: volumes_degraded
                   label: Degraded
-                - field: disk_used
+                - field: disk_used_gib
                   label: Used
-                  format: bytes
+                  format: float
+                  suffix: " GiB"
                 - field: used_pct
                   label: Used
                   format: float

@@ -39,7 +39,7 @@ data:
     _MEMTIER_TTL = 30.0
     _MEMTIER_FAIL_TTL = 300.0
     _memtier_lock = threading.Lock()
-    TDARR_URL = os.getenv("TDARR_URL", "http://tdarr.tdarr.svc:8265")
+    TDARR_URL = os.getenv("TDARR_URL", "http://tdarr-app.tdarr.svc:8265")
     TDARR_KEY = os.getenv("HOMEPAGE_VAR_TDARR", "")
     PROM_URL = os.getenv("PROM_URL", "http://prometheus-server.monitoring.svc")
     KASTEN_PROM_URL = os.getenv("KASTEN_PROM_URL", "http://prometheus-server.kasten-io.svc/k10/prometheus")
@@ -385,11 +385,18 @@ data:
         with urllib.request.urlopen(req, timeout=10, context=_insecure_ctx) as resp:
             pools = json.loads(resp.read())
         out = {}
+        TIB = 1024 ** 4
         for p in pools:
+            size = p.get("size") or 0
+            alloc = p.get("allocated") or 0
+            free = p.get("free") or 0
             out[p["name"]] = {
                 "size": p.get("size"),
                 "allocated": p.get("allocated"),
                 "free": p.get("free"),
+                "size_tib": round(size / TIB, 2),
+                "allocated_tib": round(alloc / TIB, 2),
+                "free_tib": round(free / TIB, 2),
                 "healthy": p.get("healthy"),
                 "status": p.get("status"),
             }
@@ -431,6 +438,10 @@ data:
             Disconnect(si)
         if out is None:
             out = {"capacity": 0, "free": 0, "used": 0, "used_pct": 0, "accessible": False}
+        TIB = 1024 ** 4
+        out["capacity_tib"] = round((out.get("capacity") or 0) / TIB, 2)
+        out["used_tib"] = round((out.get("used") or 0) / TIB, 2)
+        out["free_tib"] = round((out.get("free") or 0) / TIB, 2)
         _vsan_cache.update(ts=now, body=out)
         return out
 
@@ -453,12 +464,16 @@ data:
                 avail += int(d.get("storageAvailable") or 0)
                 sched += int(d.get("storageScheduled") or 0)
         used = cap - avail
+        GIB = 1024 ** 3
         out = {
             "volumes_total": vol_total,
             "volumes_degraded": vol_degraded,
             "disk_capacity": cap,
             "disk_used": used,
             "disk_scheduled": sched,
+            "disk_capacity_gib": round(cap / GIB, 1),
+            "disk_used_gib": round(used / GIB, 1),
+            "disk_scheduled_gib": round(sched / GIB, 1),
             "used_pct": round(100.0 * used / cap, 1) if cap else 0,
         }
         _longhorn_cache.update(ts=now, body=out)
@@ -500,9 +515,14 @@ data:
         )
         with urllib.request.urlopen(req, timeout=10, context=_insecure_ctx) as resp:
             d = json.loads(resp.read())
+        TIB = 1024 ** 4
+        used = d.get("used", {}).get("parsed") or 0
+        available = d.get("available", {}).get("parsed") or 0
         body = {
             "used": d.get("used", {}).get("parsed"),
             "available": d.get("available", {}).get("parsed"),
+            "used_tib": round(used / TIB, 2),
+            "available_tib": round(available / TIB, 2),
         }
         _disk_cache.update(ts=now, body=body)
         return body
