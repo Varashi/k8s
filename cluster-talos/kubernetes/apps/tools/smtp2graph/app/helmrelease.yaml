@@ -33,7 +33,7 @@ spec:
           app:
             image:
               repository: docker.io/smtp2graph/smtp2graph
-              tag: v1.1.4
+              tag: v1.1.5
             probes:
               liveness:
                 enabled: true
