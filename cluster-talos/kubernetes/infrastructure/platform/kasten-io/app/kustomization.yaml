@@ -10,8 +10,3 @@ resources:
   - vbr-integration.yaml
   - profile-backblaze.yaml
   - profile-vsphere.yaml
-  - policypreset-k8s-backup.yaml
-  - policy-k8s-backup.yaml
-  - policypreset-k8s-gpu-backup.yaml
-  - policy-k8s-gpu-backup.yaml
-  - policy-dr.yaml
