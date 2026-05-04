@@ -32,7 +32,7 @@ spec:
           initContainers:
             - name: install-paramiko
               # renovate: datasource=docker depName=python versioning=docker
-              image: python:3.13-slim
+              image: python:3.14-slim
               command: ["sh", "-c"]
               args:
                 - pip install --target=/libs --no-cache-dir paramiko==3.5.0
@@ -53,7 +53,7 @@ spec:
           containers:
             - name: check
               # renovate: datasource=docker depName=python versioning=docker
-              image: python:3.13-slim
+              image: python:3.14-slim
               imagePullPolicy: IfNotPresent
               command: ["python3", "/scripts/check.py"]
               env:
