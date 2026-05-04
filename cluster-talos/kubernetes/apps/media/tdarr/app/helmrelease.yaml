@@ -101,6 +101,16 @@ spec:
           server:
             protocol: TCP
             port: 8266
+      external:
+        controller: tdarr-main
+        type: LoadBalancer
+        annotations:
+          io.cilium/lb-ipam-ips: 172.16.4.109
+          external-dns.alpha.kubernetes.io/hostname: tdarr-svc.${SECRET_DOMAIN}
+        ports:
+          server:
+            protocol: TCP
+            port: 8266
 
     route:
       app:
