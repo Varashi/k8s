@@ -70,7 +70,7 @@ spec:
                   fieldRef:
                     fieldPath: spec.nodeName
               - name: serverIP
-                value: tdarr.tdarr.svc
+                value: tdarr-app.tdarr.svc
               - name: serverPort
                 value: "8266"
               - name: apiKey
@@ -123,7 +123,7 @@ spec:
           gethomepage.dev/icon: tdarr.png
           gethomepage.dev/href: https://tdarr.${SECRET_DOMAIN}
           gethomepage.dev/widget.type: tdarr
-          gethomepage.dev/widget.url: http://tdarr.tdarr.svc:8265
+          gethomepage.dev/widget.url: http://tdarr-app.tdarr.svc:8265
           gethomepage.dev/widget.key: "{{`{{HOMEPAGE_VAR_TDARR}}`}}"
         hostnames:
           - "tdarr.${SECRET_DOMAIN}"
