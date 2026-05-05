@@ -188,7 +188,7 @@ spec:
 
     serviceAccount:
       pms:
-        name: pms
+        forceRename: pms
 
     service:
       orchestrator:
