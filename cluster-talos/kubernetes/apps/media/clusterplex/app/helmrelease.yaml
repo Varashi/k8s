@@ -77,9 +77,10 @@ spec:
               LOCAL_RELAY_ENABLED: "1"
               LOCAL_RELAY_PORT: "32499"
               TRANSCODE_OPERATING_MODE: "remote"
-            resources:
-              limits:
-                gpu.intel.com/i915: 1
+            # No GPU on PMS: orchestrator's HW arg rewriter translates Plex's
+            # SW commands (libdav1d/libx264) into VAAPI on the way to workers.
+            # PMS pinned to GPU nodes only because Longhorn /config replicas
+            # live there (Longhorn CSI installed only on gpu-workers).
             # On every PMS start, force-roll the worker DaemonSet so workers
             # drop stale EAE state from the previous PMS UUID. Patches the DS
             # via the k8s API using the pod's SA token (no kubectl needed).
@@ -100,15 +101,11 @@ spec:
                         -d "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"clusterplex.boeye.net/restartedAt\":\"$(date -u +%FT%TZ)\"}}}}}" \
                         > /tmp/worker-restart.log 2>&1 || true
         pod:
+          # GPU nodes only — for Longhorn /config locality. No GPU resource
+          # claim, no /dev/dri. Taint is PreferNoSchedule (soft), no
+          # toleration needed.
           nodeSelector:
             intel.feature.node.kubernetes.io/gpu: "true"
-          tolerations:
-            - key: "intel.feature.node.kubernetes.io/gpu"
-              operator: "Equal"
-              value: "true"
-              effect: "NoSchedule"
-          securityContext:
-            supplementalGroups: [568]
 
       worker:
         type: daemonset
