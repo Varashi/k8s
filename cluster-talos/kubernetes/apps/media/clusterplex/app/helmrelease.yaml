@@ -28,13 +28,17 @@ spec:
       orchestrator:
         containers:
           app:
+            # Forked orchestrator with HW arg rewriter
+            # (https://github.com/Varashi/clusterplex/tree/rewriter-plan).
+            # Flag stays off until we validate the image as a no-op replacement.
             image:
-              repository: ghcr.io/pabloromeo/clusterplex_orchestrator
-              tag: 1.4.16
+              repository: ghcr.io/varashi/clusterplex_orchestrator
+              tag: rewriter-plan
             env:
               TZ: Europe/Brussels
               LISTENING_PORT: "3500"
               WORKER_SELECTION_STRATEGY: "LOAD_RANK"
+              HW_ARG_REWRITE_ENABLED: "false"
         pod:
           securityContext:
             runAsNonRoot: true
