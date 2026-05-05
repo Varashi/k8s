@@ -6,3 +6,6 @@ metadata:
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/warn: baseline
     pod-security.kubernetes.io/audit: baseline
+    # Kasten k8s-backup policy enrolment (selector matches "vsphere" by convention).
+    k10.kasten.io/backup: "true"
+    k10.kasten.io/storage-class: vsphere
