@@ -65,13 +65,13 @@ spec:
               UMASK_SET: "002"
               DOCKER_MODS: "ghcr.io/pabloromeo/clusterplex_dockermod:1.4.16"
               ORCHESTRATOR_URL: "http://clusterplex-orchestrator.clusterplex.svc:3500"
-              # /transcode is shared NFS between PMS and workers; relaying segments
-              # over HTTP back to PMS is pure overhead and delays first-frame.
-              # PMS_IP (not PMS_SERVICE) is required when LOCAL_RELAY_ENABLED=0.
-              # Pinned LB IP is stable and inside allowedNetworks (172.16.0.0/16).
-              LOCAL_RELAY_ENABLED: "0"
-              PMS_IP: "172.16.4.106"
+              PMS_SERVICE: "clusterplex-pms.clusterplex.svc"
               PMS_PORT: "32400"
+              # LOCAL_RELAY_ENABLED=0 was attempted but dockermod's off-path is
+              # buggy: nginx still configured, transcoder.js silently aborts.
+              # Keeping relay on — adds ~10s overhead but works reliably.
+              LOCAL_RELAY_ENABLED: "1"
+              LOCAL_RELAY_PORT: "32499"
               TRANSCODE_OPERATING_MODE: "remote"
             resources:
               limits:
