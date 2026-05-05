@@ -34,7 +34,9 @@ spec:
             env:
               TZ: Europe/Brussels
               LISTENING_PORT: "3500"
-              WORKER_SELECTION_STRATEGY: "LOAD_RANK"
+              # ROUND_ROBIN avoids the LOAD_RANK polling delay (~1.5s queue→run);
+              # all 3 GPU workers are equivalent so balanced rotation is fine.
+              WORKER_SELECTION_STRATEGY: "ROUND_ROBIN"
         pod:
           securityContext:
             runAsNonRoot: true
@@ -65,8 +67,9 @@ spec:
               ORCHESTRATOR_URL: "http://clusterplex-orchestrator.clusterplex.svc:3500"
               PMS_SERVICE: "clusterplex-pms.clusterplex.svc"
               PMS_PORT: "32400"
-              LOCAL_RELAY_ENABLED: "1"
-              LOCAL_RELAY_PORT: "32499"
+              # /transcode is shared NFS between PMS and workers; relaying segments
+              # over HTTP back to PMS is pure overhead and delays first-frame.
+              LOCAL_RELAY_ENABLED: "0"
               TRANSCODE_OPERATING_MODE: "remote"
             resources:
               limits:
