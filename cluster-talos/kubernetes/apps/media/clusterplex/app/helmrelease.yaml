@@ -34,7 +34,7 @@ spec:
             # alone doesn't refresh them.
             image:
               repository: ghcr.io/varashi/clusterplex_orchestrator
-              tag: sha-7523521
+              tag: sha-8cc985c
             env:
               TZ: Europe/Brussels
               LISTENING_PORT: "3500"
