@@ -30,10 +30,10 @@ spec:
           app:
             # Forked orchestrator with HW arg rewriter
             # (https://github.com/Varashi/clusterplex/tree/rewriter-plan).
-            # Flag stays off until we validate the image as a no-op replacement.
             image:
               repository: ghcr.io/varashi/clusterplex_orchestrator
               tag: rewriter-plan
+              pullPolicy: Always
             env:
               TZ: Europe/Brussels
               LISTENING_PORT: "3500"
