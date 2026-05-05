@@ -101,12 +101,7 @@ spec:
                         "https://kubernetes.default.svc/apis/apps/v1/namespaces/clusterplex/daemonsets/clusterplex-worker" \
                         -d "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"clusterplex.boeye.net/restartedAt\":\"$(date -u +%FT%TZ)\"}}}}}" \
                         > /tmp/worker-restart.log 2>&1 || true
-        pod:
-          # GPU nodes only — for Longhorn /config locality. No GPU resource
-          # claim, no /dev/dri. Taint is PreferNoSchedule (soft), no
-          # toleration needed.
-          nodeSelector:
-            intel.feature.node.kubernetes.io/gpu: "true"
+        pod: {}
 
       worker:
         type: daemonset
@@ -319,7 +314,7 @@ spec:
                 subPath: run
       config:
         type: persistentVolumeClaim
-        existingClaim: clusterplex-config
+        existingClaim: clusterplex-config-vsan
         advancedMounts:
           pms:
             app:

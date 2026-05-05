@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: clusterplex-config
+  name: clusterplex-config-vsan
   namespace: clusterplex
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: longhorn
+  storageClassName: vsan
   resources:
     requests:
       storage: 10Gi
