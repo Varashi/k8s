@@ -77,7 +77,8 @@ spec:
       worker:
         type: daemonset
         initContainers:
-          driver-fetch:
+          # Step 1: extract driver URL from PMS binary (lsio image has the binary).
+          driver-url:
             image:
               repository: ghcr.io/linuxserver/plex
               tag: 1.43.1.10611-1e34174b1-ls303
@@ -85,25 +86,37 @@ spec:
             args:
               - |
                 set -eu
-                DRIVERS_DIR=/drivers
                 PMS_BIN="/usr/lib/plexmediaserver/Plex Media Server"
                 URL=$(grep -aoE 'https://downloads\.plex\.tv/intel-media-driver/imd-[a-f0-9]+-linux-x86_64\.zip' "$PMS_BIN" | head -1)
                 if [ -z "$URL" ]; then
                   echo "ERROR: imd URL not found in PMS binary" >&2
                   exit 1
                 fi
-                HASH=$(echo "$URL" | grep -oE 'imd-[a-f0-9]+')
-                echo "Detected driver: $HASH"
+                echo "$URL" > /drivers/.url
+                echo "$URL" | grep -oE 'imd-[a-f0-9]+' > /drivers/.imd-hash-target
+                echo "URL: $URL"
+          # Step 2: fetch + extract. Alpine has fast apk; ubuntu's apt is too slow here.
+          driver-fetch:
+            image:
+              repository: alpine
+              tag: "3.20"
+            command: ["/bin/sh", "-c"]
+            args:
+              - |
+                set -eu
+                DRIVERS_DIR=/drivers
+                URL=$(cat "$DRIVERS_DIR/.url")
+                HASH=$(cat "$DRIVERS_DIR/.imd-hash-target")
                 if [ -f "$DRIVERS_DIR/.imd-hash" ] && [ "$(cat "$DRIVERS_DIR/.imd-hash")" = "$HASH" ] && [ -f "$DRIVERS_DIR/dri/iHD_drv_video.so" ]; then
-                  echo "Driver already present, skipping fetch"
+                  echo "Driver $HASH already present, skipping"
                   exit 0
                 fi
-                command -v unzip >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y -qq --no-install-recommends unzip; }
+                apk add --no-cache curl unzip
                 echo "Fetching $URL"
                 rm -rf "$DRIVERS_DIR/dri"
                 curl -fsSL "$URL" -o /tmp/imd.zip
                 unzip -o /tmp/imd.zip -d "$DRIVERS_DIR"
-                rm /tmp/imd.zip
+                rm /tmp/imd.zip "$DRIVERS_DIR/.url" "$DRIVERS_DIR/.imd-hash-target"
                 echo "$HASH" > "$DRIVERS_DIR/.imd-hash"
                 echo "Done: $DRIVERS_DIR/dri/iHD_drv_video.so"
         containers:
@@ -197,6 +210,8 @@ spec:
         type: emptyDir
         advancedMounts:
           worker:
+            driver-url:
+              - path: /drivers
             driver-fetch:
               - path: /drivers
             app:
