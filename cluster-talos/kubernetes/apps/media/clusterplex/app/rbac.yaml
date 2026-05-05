@@ -22,7 +22,8 @@ roleRef:
   kind: Role
   name: clusterplex-pms-worker-restart
 subjects:
-  # ServiceAccount "pms" is created by the HelmRelease (serviceAccount.pms).
+  # ServiceAccount "clusterplex" is created by the HelmRelease — bjw-s names
+  # it after the release, not the identifier.
   - kind: ServiceAccount
-    name: pms
+    name: clusterplex
     namespace: clusterplex
