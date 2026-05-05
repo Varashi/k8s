@@ -40,6 +40,11 @@ spec:
               LISTENING_PORT: "3500"
               WORKER_SELECTION_STRATEGY: "LOAD_RANK"
               HW_ARG_REWRITE_ENABLED: "true"
+              # Override Plex's libx264 → hevc_vaapi for ~30-50% better quality
+              # at the same bitrate. Note: still HEVC Main 8-bit; HDR sources
+              # are tonemapped to SDR (washed colors) until the Main10
+              # HDR-preserving path lands.
+              HW_PREFER_HEVC: "true"
         pod:
           securityContext:
             runAsNonRoot: true
