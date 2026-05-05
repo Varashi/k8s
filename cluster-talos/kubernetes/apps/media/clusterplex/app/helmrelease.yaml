@@ -116,6 +116,11 @@ spec:
             image:
               repository: ghcr.io/linuxserver/plex
               tag: 1.43.1.10611-1e34174b1-ls303
+            # Run as uid 1000 so NFS root_squash doesn't block writes to
+            # /drivers (dir owned 1000:1000 on TrueNAS).
+            securityContext:
+              runAsUser: 1000
+              runAsGroup: 1000
             command: ["/bin/sh", "-c"]
             args:
               - |
@@ -134,27 +139,34 @@ spec:
             image:
               repository: alpine
               tag: "3.20"
+            # apk install needs root, but NFS has root_squash so writes to
+            # /drivers (owned 1000:1000) must be done as uid 1000. Run as
+            # root, then su-exec into 1000 for the actual download/extract.
+            securityContext:
+              runAsUser: 0
             command: ["/bin/sh", "-c"]
             args:
               - |
                 set -eu
                 DRIVERS_DIR=/drivers
-                URL=$(cat "$DRIVERS_DIR/.url")
                 HASH=$(cat "$DRIVERS_DIR/.imd-hash-target")
-                if [ -f "$DRIVERS_DIR/.imd-hash" ] && [ "$(cat "$DRIVERS_DIR/.imd-hash")" = "$HASH" ] && [ -f "$DRIVERS_DIR/dri/iHD_drv_video.so" ]; then
+                if [ -f "$DRIVERS_DIR/.imd-hash" ] && [ "$(cat "$DRIVERS_DIR/.imd-hash")" = "$HASH" ] && [ -f "$DRIVERS_DIR/iHD_drv_video.so" ]; then
                   echo "Driver $HASH already present, skipping"
                   exit 0
                 fi
-                apk add --no-cache curl unzip
+                apk add --no-cache curl unzip su-exec
+                URL=$(cat "$DRIVERS_DIR/.url")
                 echo "Fetching $URL"
-                find "$DRIVERS_DIR" -maxdepth 1 -name "*.so" -delete
-                curl -fsSL "$URL" -o /tmp/imd.zip
-                # -j flattens path so iHD_drv_video.so lands at $DRIVERS_DIR root,
-                # matching the LIBVA_DRIVERS_PATH that PMS sends to the worker.
-                unzip -oj /tmp/imd.zip -d "$DRIVERS_DIR"
-                rm /tmp/imd.zip "$DRIVERS_DIR/.url" "$DRIVERS_DIR/.imd-hash-target"
-                echo "$HASH" > "$DRIVERS_DIR/.imd-hash"
-                echo "Done: $DRIVERS_DIR/dri/iHD_drv_video.so"
+                su-exec 1000:1000 sh -eu -c "
+                  find \"$DRIVERS_DIR\" -maxdepth 1 -name '*.so' -delete
+                  curl -fsSL '$URL' -o /tmp/imd.zip
+                  # -j flattens path so iHD_drv_video.so lands at \$DRIVERS_DIR root,
+                  # matching the LIBVA_DRIVERS_PATH that PMS sends to the worker.
+                  unzip -oj /tmp/imd.zip -d '$DRIVERS_DIR'
+                  rm /tmp/imd.zip '$DRIVERS_DIR/.url' '$DRIVERS_DIR/.imd-hash-target'
+                  echo '$HASH' > '$DRIVERS_DIR/.imd-hash'
+                  echo 'Done: $DRIVERS_DIR/iHD_drv_video.so'
+                "
         containers:
           app:
             image:
