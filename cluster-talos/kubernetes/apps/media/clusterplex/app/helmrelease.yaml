@@ -187,7 +187,8 @@ spec:
             supplementalGroups: [568]
 
     serviceAccount:
-      pms: {}
+      pms:
+        name: pms
 
     service:
       orchestrator:
