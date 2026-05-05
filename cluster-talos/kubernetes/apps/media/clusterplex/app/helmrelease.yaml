@@ -34,9 +34,7 @@ spec:
             env:
               TZ: Europe/Brussels
               LISTENING_PORT: "3500"
-              # ROUND_ROBIN avoids the LOAD_RANK polling delay (~1.5s queue→run);
-              # all 3 GPU workers are equivalent so balanced rotation is fine.
-              WORKER_SELECTION_STRATEGY: "ROUND_ROBIN"
+              WORKER_SELECTION_STRATEGY: "LOAD_RANK"
         pod:
           securityContext:
             runAsNonRoot: true
