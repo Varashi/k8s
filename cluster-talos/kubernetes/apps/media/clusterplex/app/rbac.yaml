@@ -1,10 +1,4 @@
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: clusterplex-pms
-  namespace: clusterplex
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -28,6 +22,7 @@ roleRef:
   kind: Role
   name: clusterplex-pms-worker-restart
 subjects:
+  # ServiceAccount "pms" is created by the HelmRelease (serviceAccount.pms).
   - kind: ServiceAccount
-    name: clusterplex-pms
+    name: pms
     namespace: clusterplex
