@@ -77,8 +77,10 @@ spec:
       worker:
         type: daemonset
         initContainers:
+          # bjw-s app-template orders initContainers alphabetically; the 1- / 2-
+          # prefixes preserve ordering. driver-1-url runs first, driver-2-fetch second.
           # Step 1: extract driver URL from PMS binary (lsio image has the binary).
-          driver-url:
+          driver-1-url:
             image:
               repository: ghcr.io/linuxserver/plex
               tag: 1.43.1.10611-1e34174b1-ls303
@@ -96,7 +98,7 @@ spec:
                 echo "$URL" | grep -oE 'imd-[a-f0-9]+' > /drivers/.imd-hash-target
                 echo "URL: $URL"
           # Step 2: fetch + extract. Alpine has fast apk; ubuntu's apt is too slow here.
-          driver-fetch:
+          driver-2-fetch:
             image:
               repository: alpine
               tag: "3.20"
@@ -213,9 +215,9 @@ spec:
         type: emptyDir
         advancedMounts:
           worker:
-            driver-url:
+            driver-1-url:
               - path: /drivers
-            driver-fetch:
+            driver-2-fetch:
               - path: /drivers
             app:
               # Mount at the LIBVA_DRIVERS_PATH that PMS injects per-task,
