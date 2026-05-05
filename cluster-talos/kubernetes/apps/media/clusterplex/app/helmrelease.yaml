@@ -38,7 +38,7 @@ spec:
               TZ: Europe/Brussels
               LISTENING_PORT: "3500"
               WORKER_SELECTION_STRATEGY: "LOAD_RANK"
-              HW_ARG_REWRITE_ENABLED: "false"
+              HW_ARG_REWRITE_ENABLED: "true"
         pod:
           securityContext:
             runAsNonRoot: true
