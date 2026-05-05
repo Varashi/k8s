@@ -76,6 +76,35 @@ spec:
 
       worker:
         type: daemonset
+        initContainers:
+          driver-fetch:
+            image:
+              repository: ghcr.io/linuxserver/plex
+              tag: 1.43.1.10611-1e34174b1-ls303
+            command: ["/bin/sh", "-c"]
+            args:
+              - |
+                set -eu
+                DRIVERS_DIR=/drivers
+                PMS_BIN="/usr/lib/plexmediaserver/Plex Media Server"
+                URL=$(grep -aoE 'https://downloads\.plex\.tv/intel-media-driver/imd-[a-f0-9]+-linux-x86_64\.zip' "$PMS_BIN" | head -1)
+                if [ -z "$URL" ]; then
+                  echo "ERROR: imd URL not found in PMS binary" >&2
+                  exit 1
+                fi
+                HASH=$(echo "$URL" | grep -oE 'imd-[a-f0-9]+')
+                echo "Detected driver: $HASH"
+                if [ -f "$DRIVERS_DIR/.imd-hash" ] && [ "$(cat "$DRIVERS_DIR/.imd-hash")" = "$HASH" ] && [ -f "$DRIVERS_DIR/dri/iHD_drv_video.so" ]; then
+                  echo "Driver already present, skipping fetch"
+                  exit 0
+                fi
+                echo "Fetching $URL"
+                rm -rf "$DRIVERS_DIR/dri"
+                curl -fsSL "$URL" -o /tmp/imd.zip
+                unzip -o /tmp/imd.zip -d "$DRIVERS_DIR"
+                rm /tmp/imd.zip
+                echo "$HASH" > "$DRIVERS_DIR/.imd-hash"
+                echo "Done: $DRIVERS_DIR/dri/iHD_drv_video.so"
         containers:
           app:
             image:
@@ -90,6 +119,8 @@ spec:
               DOCKER_MODS: "ghcr.io/pabloromeo/clusterplex_worker_dockermod:1.4.16"
               ORCHESTRATOR_URL: "http://clusterplex-orchestrator.clusterplex.svc:3500"
               LISTENING_PORT: "3501"
+              LIBVA_DRIVERS_PATH: "/drivers/dri"
+              LIBVA_DRIVER_NAME: "iHD"
             resources:
               limits:
                 gpu.intel.com/i915: 1
@@ -161,6 +192,15 @@ spec:
                 port: http
 
     persistence:
+      drivers:
+        type: emptyDir
+        advancedMounts:
+          worker:
+            driver-fetch:
+              - path: /drivers
+            app:
+              - path: /drivers
+                readOnly: true
       config:
         type: persistentVolumeClaim
         existingClaim: clusterplex-config
