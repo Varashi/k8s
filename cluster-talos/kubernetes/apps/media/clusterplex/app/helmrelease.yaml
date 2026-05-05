@@ -67,9 +67,11 @@ spec:
               ORCHESTRATOR_URL: "http://clusterplex-orchestrator.clusterplex.svc:3500"
               # /transcode is shared NFS between PMS and workers; relaying segments
               # over HTTP back to PMS is pure overhead and delays first-frame.
-              # PMS_SERVICE/PMS_PORT intentionally omitted — dockermod refuses to
-              # start if they're set without LOCAL_RELAY_ENABLED=1.
+              # PMS_IP (not PMS_SERVICE) is required when LOCAL_RELAY_ENABLED=0.
+              # Pinned LB IP is stable and inside allowedNetworks (172.16.0.0/16).
               LOCAL_RELAY_ENABLED: "0"
+              PMS_IP: "172.16.4.106"
+              PMS_PORT: "32400"
               TRANSCODE_OPERATING_MODE: "remote"
             resources:
               limits:
