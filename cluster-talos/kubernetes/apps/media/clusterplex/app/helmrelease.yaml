@@ -248,7 +248,12 @@ spec:
 
     persistence:
       drivers:
-        type: emptyDir
+        # Shared NFS cache so the iHD driver survives pod restarts cluster-wide.
+        # First worker to boot after a Plex version bump downloads it; others
+        # see .imd-hash matching and skip.
+        type: nfs
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
+        path: /mnt/SSD/mediapool/clusterplexcache/drivers
         advancedMounts:
           worker:
             driver-1-url:
@@ -261,6 +266,16 @@ spec:
               # the transcode env.
               - path: "/config/Library/Application Support/Plex Media Server/Cache/va-dri-linux-x86_64"
                 readOnly: true
+      codecs:
+        # Shared NFS cache for Plex codec/EAE downloads; saves the
+        # ~50-file wget loop on every cold worker boot.
+        type: nfs
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
+        path: /mnt/SSD/mediapool/clusterplexcache/codecs
+        advancedMounts:
+          worker:
+            app:
+              - path: /codecs
       config:
         type: persistentVolumeClaim
         existingClaim: clusterplex-config
