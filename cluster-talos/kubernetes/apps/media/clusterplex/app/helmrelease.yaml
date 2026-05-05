@@ -98,6 +98,7 @@ spec:
                   echo "Driver already present, skipping fetch"
                   exit 0
                 fi
+                command -v unzip >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y -qq --no-install-recommends unzip; }
                 echo "Fetching $URL"
                 rm -rf "$DRIVERS_DIR/dri"
                 curl -fsSL "$URL" -o /tmp/imd.zip
