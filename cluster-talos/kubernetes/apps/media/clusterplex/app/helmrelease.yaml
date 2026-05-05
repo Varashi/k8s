@@ -34,7 +34,7 @@ spec:
             # alone doesn't refresh them.
             image:
               repository: ghcr.io/varashi/clusterplex_orchestrator
-              tag: sha-aa57186
+              tag: sha-7523521
             env:
               TZ: Europe/Brussels
               LISTENING_PORT: "3500"
@@ -346,3 +346,9 @@ spec:
           worker:
             app:
               - path: /media
+          orchestrator:
+            app:
+              # Read-only — argRewriter uses fs.existsSync on derived sidecar
+              # SRT paths to decide whether overlay_vaapi rewrite is safe.
+              - path: /media
+                readOnly: true
