@@ -30,10 +30,11 @@ spec:
           app:
             # Forked orchestrator with HW arg rewriter
             # (https://github.com/Varashi/clusterplex/tree/rewriter-plan).
+            # Pin to short-sha — Spegel caches mutable tags, pullPolicy:Always
+            # alone doesn't refresh them.
             image:
               repository: ghcr.io/varashi/clusterplex_orchestrator
-              tag: rewriter-plan
-              pullPolicy: Always
+              tag: sha-7061493
             env:
               TZ: Europe/Brussels
               LISTENING_PORT: "3500"
