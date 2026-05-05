@@ -74,7 +74,27 @@ spec:
             resources:
               limits:
                 gpu.intel.com/i915: 1
+            # On every PMS start, force-roll the worker DaemonSet so workers
+            # drop stale EAE state from the previous PMS UUID. Patches the DS
+            # via the k8s API using the pod's SA token (no kubectl needed).
+            lifecycle:
+              postStart:
+                exec:
+                  command:
+                    - /bin/bash
+                    - -c
+                    - |
+                      TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+                      curl -fsSL --max-time 10 \
+                        --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+                        -H "Authorization: Bearer $TOKEN" \
+                        -H "Content-Type: application/strategic-merge-patch+json" \
+                        -X PATCH \
+                        "https://kubernetes.default.svc/apis/apps/v1/namespaces/clusterplex/daemonsets/clusterplex-worker" \
+                        -d "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"clusterplex.boeye.net/restartedAt\":\"$(date -u +%FT%TZ)\"}}}}}" \
+                        > /tmp/worker-restart.log 2>&1 || true
         pod:
+          serviceAccountName: clusterplex-pms
           nodeSelector:
             intel.feature.node.kubernetes.io/gpu: "true"
           tolerations:
