@@ -113,9 +113,11 @@ spec:
                 fi
                 apk add --no-cache curl unzip
                 echo "Fetching $URL"
-                rm -rf "$DRIVERS_DIR/dri"
+                find "$DRIVERS_DIR" -maxdepth 1 -name "*.so" -delete
                 curl -fsSL "$URL" -o /tmp/imd.zip
-                unzip -o /tmp/imd.zip -d "$DRIVERS_DIR"
+                # -j flattens path so iHD_drv_video.so lands at $DRIVERS_DIR root,
+                # matching the LIBVA_DRIVERS_PATH that PMS sends to the worker.
+                unzip -oj /tmp/imd.zip -d "$DRIVERS_DIR"
                 rm /tmp/imd.zip "$DRIVERS_DIR/.url" "$DRIVERS_DIR/.imd-hash-target"
                 echo "$HASH" > "$DRIVERS_DIR/.imd-hash"
                 echo "Done: $DRIVERS_DIR/dri/iHD_drv_video.so"
@@ -133,8 +135,9 @@ spec:
               DOCKER_MODS: "ghcr.io/pabloromeo/clusterplex_worker_dockermod:1.4.16"
               ORCHESTRATOR_URL: "http://clusterplex-orchestrator.clusterplex.svc:3500"
               LISTENING_PORT: "3501"
-              LIBVA_DRIVERS_PATH: "/drivers/dri"
-              LIBVA_DRIVER_NAME: "iHD"
+              # LIBVA env intentionally absent on the worker container:
+              # PMS injects LIBVA_DRIVERS_PATH per-transcode pointing at its own
+              # /config path. The worker mount below makes that path resolve.
             resources:
               limits:
                 gpu.intel.com/i915: 1
@@ -215,7 +218,10 @@ spec:
             driver-fetch:
               - path: /drivers
             app:
-              - path: /drivers
+              # Mount at the LIBVA_DRIVERS_PATH that PMS injects per-task,
+              # so worker's libva finds iHD_drv_video.so when PMS forwards
+              # the transcode env.
+              - path: "/config/Library/Application Support/Plex Media Server/Cache/va-dri-linux-x86_64"
                 readOnly: true
       config:
         type: persistentVolumeClaim
