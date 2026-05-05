@@ -202,6 +202,20 @@ spec:
       pms:
         forceRename: pms
 
+    configMaps:
+      worker-setup-codecs-fix:
+        forceRename: clusterplex-worker-setup-codecs-fix
+        data:
+          run: |
+            #!/usr/bin/with-contenv bash
+            echo "**** Setting up codecs directory (NFS-aware) ****"
+            mkdir -p /codecs
+            # /codecs is an NFS share already owned 1000:1000; chown as root
+            # fails under root_squash but the result is already correct, so
+            # ignore failure and let the s6 chain proceed.
+            chown abc:abc /codecs 2>/dev/null || echo "skip chown — NFS already 1000:1000"
+            exit 0
+
     service:
       orchestrator:
         controller: orchestrator
@@ -288,6 +302,19 @@ spec:
           worker:
             app:
               - path: /codecs
+      setup-codecs-fix:
+        # Override clusterplex_worker_dockermod's s6 setup-codecs-dir script:
+        # original chown'd /codecs and exited 1 on NFS (root_squash), blocking
+        # init-mods-end → svc-plex. Replacement skips the chown since /codecs
+        # is already owned correctly on NFS.
+        type: configMap
+        name: clusterplex-worker-setup-codecs-fix
+        defaultMode: 0755
+        advancedMounts:
+          worker:
+            app:
+              - path: /etc/s6-overlay/s6-rc.d/4-setup-codecs-dir/run
+                subPath: run
       config:
         type: persistentVolumeClaim
         existingClaim: clusterplex-config
