@@ -139,17 +139,13 @@ spec:
               tag: sha-3085449
             env:
               TZ: Europe/Brussels
-              # Override Plex's libx264 → hevc_vaapi for ~30% better
-              # quality at the same bitrate. Same trade-off
-              # clusterplex documented (older clients without HEVC
-              # support may struggle; modern clients including Plex
-              # Web/Chrome handle it). Verified on plex.boeye.net
-              # 2026-05-06: Plex's own bundled transcoder picks HEVC
-              # by default for HDR sources on this hardware.
-              HW_PREFER_HEVC: "true"
-              # All other knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
+              # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
               # HW_FONTS_DIR, WORKER_MAX_SESSIONS,
               # HW_QP_HDR_SUB_BOOST) default sensibly.
+              # HW_PREFER_HEVC was tried and reverted 2026-05-07 —
+              # codec mismatch with Plex's DASH manifest causes
+              # Chrome s3015 errors. Don't re-enable without also
+              # rewriting the manifest's codec_string.
             probes:
               liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 10, failureThreshold: 3 } }
               readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3501 }, periodSeconds: 2, failureThreshold: 60 } }
