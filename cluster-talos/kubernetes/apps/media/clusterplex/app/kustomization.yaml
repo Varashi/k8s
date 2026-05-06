@@ -3,5 +3,4 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - pvc.yaml
-  - rbac.yaml
   - helmrelease.yaml

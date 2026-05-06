@@ -1,4 +1,31 @@
 ---
+# clusterplex namespace, scaleplex internals.
+#
+# Phase 7 (2026-05-06): retired pabloromeo/clusterplex's bundled
+# orchestrator + lsio-based workers + LOCAL_RELAY nginx in favour of
+# Varashi/scaleplex (stock jellyfin-ffmpeg7 + iHD VAAPI workers + thin
+# Go orchestrator + s6-rc relay sidecar via DOCKER_MOD). Helm release
+# stays named "clusterplex" so the public hostname, LoadBalancer IP,
+# NetBox tag, and PVC names don't churn.
+#
+# What scaleplex changes vs. the old clusterplex chart:
+#  - worker image swapped to scaleplex_worker (Ubuntu 24.04 +
+#    jellyfin-ffmpeg7, iHD baked in)
+#  - orchestrator image swapped to scaleplex_orchestrator (Go, no
+#    socket.io, DNS-discovers workers, picks least-loaded)
+#  - PMS DOCKER_MODS swapped to scaleplex_pms_dockermod (drops in
+#    scaleplex-shim as Plex Transcoder + scaleplex-relay as s6-rc
+#    longrun on PMS pod)
+#  - Init containers for iHD driver fetch dropped (scaleplex bakes
+#    iHD into the worker image)
+#  - /codecs and /drivers NFS caches dropped (scaleplex doesn't
+#    download Plex codecs; jellyfin-ffmpeg7 ships them all)
+#  - PMS postStart hook for worker-restart dropped (no EAE state;
+#    workers don't pin to a PMS UUID)
+#  - rbac.yaml deleted (postStart hook gone)
+#
+# See ~/git/scaleplex/docs/ARCHITECTURE.md and SEEK.md for the full
+# story on what each component does and why the old setup got retired.
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -28,36 +55,39 @@ spec:
       orchestrator:
         containers:
           app:
-            # Forked orchestrator with HW arg rewriter
-            # (https://github.com/Varashi/clusterplex/tree/rewriter-plan).
-            # Pin to short-sha — Spegel caches mutable tags, pullPolicy:Always
-            # alone doesn't refresh them.
+            # scaleplex orchestrator. Slim Go HTTP server: DNS-discovers
+            # workers via the headless `clusterplex-worker` Service,
+            # forwards POSTs from PMS-side shim verbatim, picks
+            # least-loaded.
             image:
-              repository: ghcr.io/varashi/clusterplex_orchestrator
-              tag: sha-c0e7a1c
+              repository: ghcr.io/varashi/scaleplex_orchestrator
+              tag: sha-f0594c7
             env:
               TZ: Europe/Brussels
-              LISTENING_PORT: "3500"
-              WORKER_SELECTION_STRATEGY: "LOAD_RANK"
-              HW_ARG_REWRITE_ENABLED: "true"
-              # Override Plex's libx264 → hevc_vaapi for ~30-50% better quality
-              # at the same bitrate. Note: still HEVC Main 8-bit; HDR sources
-              # are tonemapped to SDR (washed colors) until the Main10
-              # HDR-preserving path lands.
-              HW_PREFER_HEVC: "true"
+              LISTEN_ADDR: ":3500"
+              WORKERS_DNS: clusterplex-worker.clusterplex.svc.cluster.local
+              WORKER_PORT: "3501"
+              WORKERS_REFRESH_SECONDS: "5"
+              WORKERS_PROBE_SECONDS: "5"
+            probes:
+              liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3500 }, periodSeconds: 10 } }
+              readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3500 }, periodSeconds: 2, failureThreshold: 30 } }
+            resources:
+              requests: { cpu: 50m, memory: 64Mi }
+              limits: { memory: 128Mi }
         pod:
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
             runAsGroup: 1000
-            supplementalGroups: [568]
             seccompProfile:
               type: RuntimeDefault
-          tolerations:
-            - key: intel.feature.node.kubernetes.io/gpu
-              operator: Equal
-              value: "true"
-              effect: NoSchedule
+          # No GPU on orchestrator; runs on any node.
+          tolerations: []
+          annotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "3500"
+            prometheus.io/path: /metrics
 
       pms:
         serviceAccount:
@@ -73,150 +103,80 @@ spec:
               PUID: "1000"
               PGID: "1000"
               UMASK_SET: "002"
-              DOCKER_MODS: "ghcr.io/pabloromeo/clusterplex_dockermod:1.4.16"
-              ORCHESTRATOR_URL: "http://clusterplex-orchestrator.clusterplex.svc:3500"
-              PMS_SERVICE: "clusterplex-pms.clusterplex.svc"
-              PMS_PORT: "32400"
-              # LOCAL_RELAY_ENABLED=0 was attempted but dockermod's off-path is
-              # buggy: nginx still configured, transcoder.js silently aborts.
-              # Keeping relay on — adds ~10s overhead but works reliably.
+              # scaleplex DOCKER_MOD — lays down scaleplex-shim as
+              # /usr/lib/plexmediaserver/Plex Transcoder + runs
+              # scaleplex-relay as an s6-rc.d longrun. Replaces
+              # clusterplex_dockermod (which set up nginx LOCAL_RELAY
+              # + transcoder.js worker dispatcher).
+              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-64ae74b
+              # Both LOCAL_RELAY_* are read by scaleplex-relay (and by
+              # the shim's collectEnv() to derive SCALEPLEX_PMS_BASE_URL
+              # for the rewriter's URL substitutions).
               LOCAL_RELAY_ENABLED: "1"
               LOCAL_RELAY_PORT: "32499"
-              TRANSCODE_OPERATING_MODE: "remote"
-            # No GPU on PMS: orchestrator's HW arg rewriter translates Plex's
-            # SW commands (libdav1d/libx264) into VAAPI on the way to workers.
-            # PMS pinned to GPU nodes only because Longhorn /config replicas
-            # live there (Longhorn CSI installed only on gpu-workers).
-            # On every PMS start, force-roll the worker DaemonSet so workers
-            # drop stale EAE state from the previous PMS UUID. Patches the DS
-            # via the k8s API using the pod's SA token (no kubectl needed).
-            lifecycle:
-              postStart:
-                exec:
-                  command:
-                    - /bin/bash
-                    - -c
-                    - |
-                      TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-                      curl -fsSL --max-time 10 \
-                        --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
-                        -H "Authorization: Bearer $TOKEN" \
-                        -H "Content-Type: application/strategic-merge-patch+json" \
-                        -X PATCH \
-                        "https://kubernetes.default.svc/apis/apps/v1/namespaces/clusterplex/daemonsets/clusterplex-worker" \
-                        -d "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"clusterplex.boeye.net/restartedAt\":\"$(date -u +%FT%TZ)\"}}}}}" \
-                        > /tmp/worker-restart.log 2>&1 || true
+              PMS_SERVICE: clusterplex-pms.clusterplex.svc
+              PMS_PORT: "32400"
+              # scaleplex-shim reads SCALEPLEX_ORCHESTRATOR_URL and
+              # POSTs the task envelope there. Keep ORCHESTRATOR_URL
+              # set as well — clusterplex_dockermod still inspects it
+              # at extract time, harmless to leave.
+              SCALEPLEX_ORCHESTRATOR_URL: http://clusterplex-orchestrator.clusterplex.svc:3500
+              ORCHESTRATOR_URL: http://clusterplex-orchestrator.clusterplex.svc:3500
+              TRANSCODE_OPERATING_MODE: remote
         pod: {}
 
       worker:
         type: daemonset
-        initContainers:
-          # bjw-s app-template orders initContainers alphabetically; the 1- / 2-
-          # prefixes preserve ordering. driver-1-url runs first, driver-2-fetch second.
-          # Step 1: extract driver URL from PMS binary (lsio image has the binary).
-          driver-1-url:
-            image:
-              repository: ghcr.io/linuxserver/plex
-              tag: 1.43.1.10611-1e34174b1-ls303
-            # Run as uid 1000 so NFS root_squash doesn't block writes to
-            # /drivers (dir owned 1000:1000 on TrueNAS).
-            securityContext:
-              runAsUser: 1000
-              runAsGroup: 1000
-            command: ["/bin/sh", "-c"]
-            args:
-              - |
-                set -eu
-                PMS_BIN="/usr/lib/plexmediaserver/Plex Media Server"
-                URL=$(grep -aoE 'https://downloads\.plex\.tv/intel-media-driver/imd-[a-f0-9]+-linux-x86_64\.zip' "$PMS_BIN" | head -1)
-                if [ -z "$URL" ]; then
-                  echo "ERROR: imd URL not found in PMS binary" >&2
-                  exit 1
-                fi
-                echo "$URL" > /drivers/.url
-                echo "$URL" | grep -oE 'imd-[a-f0-9]+' > /drivers/.imd-hash-target
-                echo "URL: $URL"
-          # Step 2: fetch + extract. Alpine has fast apk; ubuntu's apt is too slow here.
-          driver-2-fetch:
-            image:
-              repository: alpine
-              tag: "3.20"
-            # apk install needs root, but NFS has root_squash so writes to
-            # /drivers (owned 1000:1000) must be done as uid 1000. Run as
-            # root, then su-exec into 1000 for the actual download/extract.
-            securityContext:
-              runAsUser: 0
-            command: ["/bin/sh", "-c"]
-            args:
-              - |
-                set -eu
-                DRIVERS_DIR=/drivers
-                HASH=$(cat "$DRIVERS_DIR/.imd-hash-target")
-                if [ -f "$DRIVERS_DIR/.imd-hash" ] && [ "$(cat "$DRIVERS_DIR/.imd-hash")" = "$HASH" ] && [ -f "$DRIVERS_DIR/iHD_drv_video.so" ]; then
-                  echo "Driver $HASH already present, skipping"
-                  exit 0
-                fi
-                apk add --no-cache curl unzip su-exec
-                URL=$(cat "$DRIVERS_DIR/.url")
-                echo "Fetching $URL"
-                su-exec 1000:1000 sh -eu -c "
-                  find \"$DRIVERS_DIR\" -maxdepth 1 -name '*.so' -delete
-                  curl -fsSL '$URL' -o /tmp/imd.zip
-                  # -j flattens path so iHD_drv_video.so lands at \$DRIVERS_DIR root,
-                  # matching the LIBVA_DRIVERS_PATH that PMS sends to the worker.
-                  unzip -oj /tmp/imd.zip -d '$DRIVERS_DIR'
-                  rm /tmp/imd.zip '$DRIVERS_DIR/.url' '$DRIVERS_DIR/.imd-hash-target'
-                  echo '$HASH' > '$DRIVERS_DIR/.imd-hash'
-                  echo 'Done: $DRIVERS_DIR/iHD_drv_video.so'
-                "
         containers:
           app:
+            # scaleplex worker. Stock jellyfin-ffmpeg7 + iHD baked into
+            # the image. Pre-warms VAAPI on startup; readiness flips
+            # only after pre-warm completes so kubelet doesn't kill
+            # mid-warm and Service endpoints don't see traffic until
+            # the worker is hot.
             image:
-              repository: ghcr.io/linuxserver/plex
-              tag: 1.43.1.10611-1e34174b1-ls303
+              repository: ghcr.io/varashi/scaleplex_worker
+              tag: sha-64ae74b
             env:
               TZ: Europe/Brussels
-              VERSION: docker
-              PUID: "1000"
-              PGID: "1000"
-              UMASK_SET: "002"
-              DOCKER_MODS: "ghcr.io/pabloromeo/clusterplex_worker_dockermod:1.4.16"
-              ORCHESTRATOR_URL: "http://clusterplex-orchestrator.clusterplex.svc:3500"
-              LISTENING_PORT: "3501"
-              # LIBVA env intentionally absent on the worker container:
-              # PMS injects LIBVA_DRIVERS_PATH per-transcode pointing at its own
-              # /config path. The worker mount below makes that path resolve.
+              # All other knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
+              # HW_FONTS_DIR, WORKER_MAX_SESSIONS) default sensibly.
+            probes:
+              liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 10, failureThreshold: 3 } }
+              readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3501 }, periodSeconds: 2, failureThreshold: 60 } }
+              startup: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 1, failureThreshold: 30 } }
             resources:
+              requests:
+                cpu: 200m
+                memory: 256Mi
+                gpu.intel.com/i915: 1
               limits:
                 gpu.intel.com/i915: 1
         pod:
           nodeSelector:
             intel.feature.node.kubernetes.io/gpu: "true"
           tolerations:
-            - key: "intel.feature.node.kubernetes.io/gpu"
-              operator: "Equal"
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: Equal
               value: "true"
-              effect: "NoSchedule"
+              effect: NoSchedule
+          # uid 1000 / gid 100 (`users`) match the worker Dockerfile's
+          # `useradd -u 1000 -g users`. supplementalGroups: 44=video,
+          # 568=render — both needed for /dev/dri/renderD128 access via
+          # the Intel device plugin.
           securityContext:
-            supplementalGroups: [568]
+            runAsUser: 1000
+            runAsGroup: 100
+            supplementalGroups: [44, 568]
+          annotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "3501"
+            prometheus.io/path: /metrics
+          terminationGracePeriodSeconds: 30
 
     serviceAccount:
       pms:
         forceRename: pms
-
-    configMaps:
-      worker-setup-codecs-fix:
-        forceRename: clusterplex-worker-setup-codecs-fix
-        data:
-          run: |
-            #!/usr/bin/with-contenv bash
-            echo "**** Setting up codecs directory (NFS-aware) ****"
-            mkdir -p /codecs
-            # /codecs is an NFS share already owned 1000:1000; chown as root
-            # fails under root_squash but the result is already correct, so
-            # ignore failure and let the s6 chain proceed.
-            chown abc:abc /codecs 2>/dev/null || echo "skip chown — NFS already 1000:1000"
-            exit 0
 
     service:
       orchestrator:
@@ -229,6 +189,11 @@ spec:
         ports:
           http:
             port: 32400
+          # scaleplex-relay listens here. Workers POST progress /
+          # manifest / segment_list updates to clusterplex-pms:32499;
+          # relay forwards to 127.0.0.1:32400 so PMS sees a loopback
+          # source address (which is what its session endpoints
+          # require for accepting non-public callbacks).
           relay:
             port: 32499
       pms-lb:
@@ -242,7 +207,12 @@ spec:
           http:
             port: 32400
       worker:
+        # Headless Service — orchestrator does DNS lookup and gets a
+        # list of pod IPs back. ClusterIP would mask the per-pod
+        # addresses behind a single VIP and break per-worker /capability
+        # polling.
         controller: worker
+        clusterIP: None
         ports:
           http:
             port: 3501
@@ -275,48 +245,6 @@ spec:
                 port: http
 
     persistence:
-      drivers:
-        # Shared NFS cache so the iHD driver survives pod restarts cluster-wide.
-        # First worker to boot after a Plex version bump downloads it; others
-        # see .imd-hash matching and skip.
-        type: nfs
-        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
-        path: /mnt/SSD/mediapool/clusterplexcache/drivers
-        advancedMounts:
-          worker:
-            driver-1-url:
-              - path: /drivers
-            driver-2-fetch:
-              - path: /drivers
-            app:
-              # Mount at the LIBVA_DRIVERS_PATH that PMS injects per-task,
-              # so worker's libva finds iHD_drv_video.so when PMS forwards
-              # the transcode env.
-              - path: "/config/Library/Application Support/Plex Media Server/Cache/va-dri-linux-x86_64"
-                readOnly: true
-      codecs:
-        # Shared NFS cache for Plex codec/EAE downloads; saves the
-        # ~50-file wget loop on every cold worker boot.
-        type: nfs
-        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
-        path: /mnt/SSD/mediapool/clusterplexcache/codecs
-        advancedMounts:
-          worker:
-            app:
-              - path: /codecs
-      setup-codecs-fix:
-        # Override clusterplex_worker_dockermod's s6 setup-codecs-dir script:
-        # original chown'd /codecs and exited 1 on NFS (root_squash), blocking
-        # init-mods-end → svc-plex. Replacement skips the chown since /codecs
-        # is already owned correctly on NFS.
-        type: configMap
-        name: clusterplex-worker-setup-codecs-fix
-        defaultMode: 0755
-        advancedMounts:
-          worker:
-            app:
-              - path: /etc/s6-overlay/s6-rc.d/4-setup-codecs-dir/run
-                subPath: run
       config:
         type: persistentVolumeClaim
         existingClaim: clusterplex-config-vsan
@@ -325,6 +253,9 @@ spec:
             app:
               - path: /config
       transcode:
+        # Shared between PMS (serves segments) and worker (writes
+        # segments). scaleplex-agent writes segments at the same paths
+        # PMS expects, no LOCAL_RELAY HTTP hop.
         type: nfs
         server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/SSD/mediapool/clusterplextranscode
@@ -344,11 +275,9 @@ spec:
             app:
               - path: /media
           worker:
+            # Worker reads source media + probes for sidecar SRT/ASS
+            # files (rewriter's hybrid-inlineass mode looks for
+            # <basename>.srt etc. next to the source).
             app:
-              - path: /media
-          orchestrator:
-            app:
-              # Read-only — argRewriter uses fs.existsSync on derived sidecar
-              # SRT paths to decide whether overlay_vaapi rewrite is safe.
               - path: /media
                 readOnly: true
