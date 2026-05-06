@@ -136,7 +136,7 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              tag: sha-9f0d3c1
+              tag: sha-6389cd3
             env:
               TZ: Europe/Brussels
               # All other knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
