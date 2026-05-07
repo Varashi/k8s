@@ -101,6 +101,8 @@ spec:
                   allowVolumeExpansion: true
                   reclaimPolicy: "Retain"
                   volumeBindingMode: Immediate
+                  mountOptions:
+                    - discard
                   parameters:
                     numberOfReplicas: "3"
                     staleReplicaTimeout: "30"

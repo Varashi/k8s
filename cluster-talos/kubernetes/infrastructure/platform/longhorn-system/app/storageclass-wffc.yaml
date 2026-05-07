@@ -12,6 +12,8 @@ provisioner: driver.longhorn.io
 allowVolumeExpansion: true
 reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
+mountOptions:
+  - discard
 parameters:
   numberOfReplicas: "3"
   staleReplicaTimeout: "30"

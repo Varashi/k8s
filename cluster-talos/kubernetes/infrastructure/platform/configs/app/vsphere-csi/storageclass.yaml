@@ -8,5 +8,7 @@ provisioner: csi.vsphere.vmware.com
 reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
+mountOptions:
+  - discard
 parameters:
   storagepolicyname: "SKW-VSAN-Stripe"
