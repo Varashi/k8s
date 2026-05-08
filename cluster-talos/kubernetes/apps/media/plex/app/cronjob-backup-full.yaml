@@ -43,7 +43,7 @@ spec:
                   topologyKey: kubernetes.io/hostname
           containers:
             - name: rsync
-              image: instrumentisto/rsync-ssh:1.2.0
+              image: instrumentisto/rsync-ssh:alpine3.23-r3
               command:
                 - /bin/sh
                 - -c
