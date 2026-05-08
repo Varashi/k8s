@@ -123,7 +123,21 @@ spec:
               SCALEPLEX_ORCHESTRATOR_URL: http://clusterplex-orchestrator.clusterplex.svc:3500
               ORCHESTRATOR_URL: http://clusterplex-orchestrator.clusterplex.svc:3500
               TRANSCODE_OPERATING_MODE: remote
-        pod: {}
+            resources:
+              requests:
+                memory: 4Gi
+              limits:
+                gpu.intel.com/i915: 1
+        pod:
+          nodeSelector:
+            intel.feature.node.kubernetes.io/gpu: "true"
+          tolerations:
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
+          securityContext:
+            supplementalGroups: [568]
 
       worker:
         type: daemonset
