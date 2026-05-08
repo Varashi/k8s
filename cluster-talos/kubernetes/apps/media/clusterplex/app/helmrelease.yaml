@@ -150,7 +150,7 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              tag: sha-6a31ef1
+              tag: sha-c93034d
             env:
               TZ: Europe/Brussels
               # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
@@ -159,12 +159,10 @@ spec:
               # (h264_vaapi vs hevc_vaapi) is driven by PMS argv —
               # Plex picks libx264/libx265 per session from server
               # prefs + client caps, worker maps 1:1 to the VAAPI
-              # variant. No worker-side override.
-              # Temporary: dump full PMS argv to log to capture the
-              # HW-decode argv shape so the rewriter can be extended.
-              # Remove once rewriter handles -hwaccel vaapi + short
-              # codec name.
-              WORKER_DUMP_ARGV: "1"
+              # variant. No worker-side override. Rewriter also
+              # accepts PMS's HW-decode argv shape (short codec name
+              # + -hwaccel:0 vaapi) so HardwareAcceleratedCodecs=1
+              # works without re-shaping the argv.
             probes:
               liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 10, failureThreshold: 3 } }
               readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3501 }, periodSeconds: 2, failureThreshold: 60 } }
