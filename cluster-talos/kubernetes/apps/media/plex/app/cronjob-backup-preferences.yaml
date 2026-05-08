@@ -60,7 +60,7 @@ spec:
           volumes:
             - name: config-pms
               persistentVolumeClaim:
-                claimName: plex-config-pms
+                claimName: plex-config-pms-vsan
             - name: backup
               nfs:
                 server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}

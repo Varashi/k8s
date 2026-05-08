@@ -134,7 +134,7 @@ spec:
           volumes:
             - name: config-pms
               persistentVolumeClaim:
-                claimName: plex-config-pms
+                claimName: plex-config-pms-vsan
             - name: script
               configMap:
                 name: plex-optimize-retry-script
