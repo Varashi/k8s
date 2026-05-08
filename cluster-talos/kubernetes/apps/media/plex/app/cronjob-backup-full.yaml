@@ -1,13 +1,14 @@
 ---
-# Full Plex /config tarball, daily.
-# Excludes regenerable caches/logs and live SQLite DB files (live DBs are
-# captured separately by Butler -> /backup/db). Restoring a tarball gives
-# you everything except the DB; pair with the latest /backup/db dump.
+# Daily Plex /config snapshot via rsync + --link-dest (rsnapshot pattern).
+# Each daily directory under /backup/full/<YYYY-MM-DD>/ is a complete,
+# browseable copy of /config; unchanged files are hardlinked to the previous
+# day's inode, so 14 daily snapshots cost roughly base + sum(deltas) on disk.
+# Excludes regenerable caches/logs and live SQLite DB files (those are
+# captured separately by Butler -> /backup/db).
 #
-# Restore: stop plex, wipe PVC, untar config-DATE.tar.gz into /config,
-# drop matching dated DB dumps from /backup/db into
-#   /config/Library/Application Support/Plex Media Server/Plug-in Support/Databases/
-# renamed to com.plexapp.plugins.library.db and .blobs.db, start plex.
+# Restore: stop plex, rsync -a /backup/full/<DATE>/ /config/, drop matching
+# dated DB dumps from /backup/db into Plug-in Support/Databases/ renamed to
+# com.plexapp.plugins.library.db / .blobs.db, start plex.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -41,37 +42,47 @@ spec:
                       app.kubernetes.io/name: plex
                   topologyKey: kubernetes.io/hostname
           containers:
-            - name: tar
-              image: alpine:3.19
+            - name: rsync
+              image: instrumentisto/rsync-ssh:1.2.0
               command:
                 - /bin/sh
                 - -c
                 - |
                   set -eu
                   DATE=$$(date +%Y-%m-%d)
-                  mkdir -p /backup/full
-                  PMS="Library/Application Support/Plex Media Server"
-                  OUT="/backup/full/config-$${DATE}.tar.gz"
-                  TMP="$${OUT}.partial"
+                  DEST=/backup/full/$$DATE
+                  mkdir -p "$$DEST"
 
-                  tar -czf "$$TMP" -C /config \
-                    --exclude="$$PMS/Cache" \
-                    --exclude="$$PMS/Crash Reports" \
-                    --exclude="$$PMS/Diagnostics" \
-                    --exclude="$$PMS/Logs" \
-                    --exclude="$$PMS/Plug-in Support/Caches" \
+                  # Pick most-recent existing snapshot dir (lex-sorted == date-sorted)
+                  LATEST=$$(ls -1d /backup/full/20[0-9][0-9]-[01][0-9]-[0-9][0-9] 2>/dev/null \
+                            | grep -v "/$$DATE\$$" | sort | tail -n1 || true)
+                  LINK_OPT=""
+                  if [ -n "$$LATEST" ]; then
+                    LINK_OPT="--link-dest=$$LATEST"
+                    echo "linking against: $$LATEST"
+                  else
+                    echo "no prior snapshot; full copy"
+                  fi
+
+                  PMS="Library/Application Support/Plex Media Server"
+                  rsync -a --delete --stats $$LINK_OPT \
+                    --exclude="$$PMS/Cache/" \
+                    --exclude="$$PMS/Crash Reports/" \
+                    --exclude="$$PMS/Diagnostics/" \
+                    --exclude="$$PMS/Logs/" \
+                    --exclude="$$PMS/Plug-in Support/Caches/" \
                     --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.db" \
                     --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.db-shm" \
                     --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.db-wal" \
                     --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.blobs.db" \
                     --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.blobs.db-shm" \
                     --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.blobs.db-wal" \
-                    .
-                  mv "$$TMP" "$$OUT"
-                  ls -lh "$$OUT"
+                    /config/ "$$DEST/"
 
-                  # Retention: keep last 14
-                  ls -t /backup/full/config-*.tar.gz | tail -n +15 | xargs -r rm -v
+                  # Retention: delete dated dirs older than 14 days
+                  find /backup/full -maxdepth 1 -type d \
+                    -name '20[0-9][0-9]-[01][0-9]-[0-9][0-9]' \
+                    -mtime +14 -print -exec rm -rf {} +
               volumeMounts:
                 - name: config-pms
                   mountPath: /config
