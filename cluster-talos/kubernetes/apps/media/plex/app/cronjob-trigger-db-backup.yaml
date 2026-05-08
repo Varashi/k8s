@@ -42,13 +42,12 @@ spec:
                   topologyKey: kubernetes.io/hostname
           containers:
             - name: trigger
-              image: alpine:3.19
+              image: alpine/curl:8.10.1
               command:
                 - /bin/sh
                 - -c
                 - |
                   set -eu
-                  apk add --no-cache curl >/dev/null
                   PREFS="/config/Library/Application Support/Plex Media Server/Preferences.xml"
                   TOKEN=$$(grep -oE 'PlexOnlineToken="[^"]*"' "$$PREFS" | cut -d'"' -f2)
                   if [ -z "$$TOKEN" ]; then echo "no PlexOnlineToken"; exit 1; fi
