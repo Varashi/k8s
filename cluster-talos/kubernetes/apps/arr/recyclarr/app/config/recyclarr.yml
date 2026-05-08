@@ -219,7 +219,6 @@ sonarr:
           # Language
           - ae575f95ab639ba5d15f663bf019e3e8  # Original Only
           # Series Versions
-          - 3a4127d8aa781b44120d907f2cd62627  # Hybrid
           - b735f09d3c025cbb7d75a5d38325b73b  # Remaster
         assign_scores_to:
           - name: SD to 4K
@@ -301,7 +300,6 @@ sonarr:
           - 505d871304820ba7106b693be6fe4a9e	#	HDR
           - 0c4b99df9206d2cfac3c05ab897dd62a	#	HDR10+ Boost
           # Series Versions
-          - 3a4127d8aa781b44120d907f2cd62627  # Hybrid
           - b735f09d3c025cbb7d75a5d38325b73b  # Remaster
         assign_scores_to:
           - name: SD to 4K Dutch-Flemish
@@ -502,7 +500,6 @@ sonarr:
           - 505d871304820ba7106b693be6fe4a9e	#	HDR
           - 0c4b99df9206d2cfac3c05ab897dd62a	#	HDR10+ Boost
           # Series Versions
-          - 3a4127d8aa781b44120d907f2cd62627  # Hybrid
           - b735f09d3c025cbb7d75a5d38325b73b  # Remaster
         assign_scores_to:
           - name: SD to 4K Dutch-Flemish
