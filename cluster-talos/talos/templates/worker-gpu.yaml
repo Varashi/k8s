@@ -23,6 +23,9 @@ machine:
       rotate-server-certificates: "true"
       cloud-provider: external
       register-with-taints: "intel.feature.node.kubernetes.io/gpu=true:PreferNoSchedule"
+    extraConfig:
+      shutdownGracePeriod: 60s
+      shutdownGracePeriodCriticalPods: 20s
     nodeIP:
       validSubnets:
         {{- range .Values.machine.kubelet.nodeIPSubnets }}

@@ -7,6 +7,9 @@ machine:
     extraArgs:
       rotate-server-certificates: "true"
       cloud-provider: external
+    extraConfig:
+      shutdownGracePeriod: 60s
+      shutdownGracePeriodCriticalPods: 20s
     nodeIP:
       validSubnets:
         {{- range .Values.machine.kubelet.nodeIPSubnets }}

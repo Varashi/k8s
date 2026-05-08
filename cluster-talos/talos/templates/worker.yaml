@@ -25,6 +25,9 @@ machine:
       {{- if .Values.node.registerWithTaints }}
       register-with-taints: {{ .Values.node.registerWithTaints | quote }}
       {{- end }}
+    extraConfig:
+      shutdownGracePeriod: 60s
+      shutdownGracePeriodCriticalPods: 20s
     nodeIP:
       validSubnets:
         {{- range .Values.machine.kubelet.nodeIPSubnets }}
