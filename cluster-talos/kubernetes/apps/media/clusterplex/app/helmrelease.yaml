@@ -163,6 +163,10 @@ spec:
               # accepts PMS's HW-decode argv shape (short codec name
               # + -hwaccel:0 vaapi) and the HW-decode + sub-burn
               # variant (inlineass swapped for stock subtitles=).
+              # Temporary: capture PMS argv corpus across the
+              # play/seek × sub-burn × HW-decode matrix to seed test
+              # fixtures.
+              WORKER_DUMP_ARGV: "1"
             probes:
               liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 10, failureThreshold: 3 } }
               readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3501 }, periodSeconds: 2, failureThreshold: 60 } }
