@@ -222,12 +222,18 @@ spec:
         type: LoadBalancer
         annotations:
           io.cilium/lb-ipam-ips: "172.16.4.106"
-          external-dns.alpha.kubernetes.io/hostname: "clusterplex-pms.${SECRET_DOMAIN}"
+          external-dns.alpha.kubernetes.io/hostname: "clusterplex-pms.${SECRET_DOMAIN},clusterplex-svc.${SECRET_DOMAIN}"
         externalTrafficPolicy: Local
         controller: pms
         ports:
           http:
             port: 32400
+          # 32401 mirrors WAN port-fwd. Single customConnections URL
+          # (https://clusterplex-svc.boeye.net:32401) works LAN + WAN —
+          # avoids split-DNS port mismatch with the legacy plex on 32400.
+          external:
+            port: 32401
+            targetPort: 32400
       worker:
         # Headless Service — orchestrator does DNS lookup and gets a
         # list of pod IPs back. ClusterIP would mask the per-pod
@@ -243,7 +249,7 @@ spec:
         type: ExternalName
         externalName: skw.wan.${SECRET_DOMAIN}
         annotations:
-          external-dns.alpha.kubernetes.io/hostname: clusterplex.${SECRET_DOMAIN}
+          external-dns.alpha.kubernetes.io/hostname: clusterplex.${SECRET_DOMAIN},clusterplex-svc.${SECRET_DOMAIN}
           external-dns.alpha.kubernetes.io/public: "true"
         ports:
           http:
