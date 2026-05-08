@@ -163,6 +163,10 @@ spec:
               # accepts PMS's HW-decode argv shape (short codec name
               # + -hwaccel:0 vaapi) so HardwareAcceleratedCodecs=1
               # works without re-shaping the argv.
+              # Temporary: capture PMS argv for sub-burn sessions
+              # (HW-decode + map_inlineass + HDR overlay-vaapi). Off
+              # again once handling is in place.
+              WORKER_DUMP_ARGV: "1"
             probes:
               liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 10, failureThreshold: 3 } }
               readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3501 }, periodSeconds: 2, failureThreshold: 60 } }
