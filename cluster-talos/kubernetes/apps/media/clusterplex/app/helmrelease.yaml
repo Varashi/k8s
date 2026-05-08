@@ -108,7 +108,7 @@ spec:
               # scaleplex-relay as an s6-rc.d longrun. Replaces
               # clusterplex_dockermod (which set up nginx LOCAL_RELAY
               # + transcoder.js worker dispatcher).
-              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-64ae74b
+              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-8b0e076
               # Both LOCAL_RELAY_* are read by scaleplex-relay (and by
               # the shim's collectEnv() to derive SCALEPLEX_PMS_BASE_URL
               # for the rewriter's URL substitutions).
@@ -123,6 +123,13 @@ spec:
               SCALEPLEX_ORCHESTRATOR_URL: http://clusterplex-orchestrator.clusterplex.svc:3500
               ORCHESTRATOR_URL: http://clusterplex-orchestrator.clusterplex.svc:3500
               TRANSCODE_OPERATING_MODE: remote
+              # Dump full PMS argv to PMS log for durable argv-corpus
+              # capture. PMS log lives on PMS's persistent vSphere
+              # volume (weeks of retention) vs worker pod logs which
+              # are ephemeral and ~3-4h max in practice. Pairs with
+              # WORKER_DUMP_ARGV on the worker DS for the live JSON
+              # corpus written to /transcode/_argv-corpus.
+              SCALEPLEX_DUMP_ARGV: "1"
             resources:
               requests:
                 memory: 4Gi
@@ -150,7 +157,7 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              tag: sha-7169224
+              tag: sha-8b0e076
             env:
               TZ: Europe/Brussels
               # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
