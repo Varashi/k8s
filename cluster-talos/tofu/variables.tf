@@ -169,12 +169,6 @@ variable "gpu_worker_disk_size_gb" {
   default = 100
 }
 
-variable "gpu_worker_longhorn_disk_gb" {
-  description = "Secondary VMDK for Longhorn local storage (thin, SKW-VSAN). Mounted at /dev/sdb inside the VM."
-  type        = number
-  default     = 200
-}
-
 variable "gpu_worker_storage_nic" {
   description = <<-EOT
     Add storage NIC (NIC2, dv-SKW-Storage) to GPU workers.

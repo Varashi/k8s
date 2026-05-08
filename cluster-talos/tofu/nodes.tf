@@ -121,13 +121,6 @@ resource "vsphere_virtual_machine" "gpu_worker" {
     thin_provisioned = true
   }
 
-  disk {
-    label            = "disk1"
-    size             = var.gpu_worker_longhorn_disk_gb
-    thin_provisioned = true
-    unit_number      = 1
-  }
-
   pci_device_id = var.gpu_pci_enabled ? [var.gpu_worker_hosts[each.key].pci_bdf] : []
 
   clone {
