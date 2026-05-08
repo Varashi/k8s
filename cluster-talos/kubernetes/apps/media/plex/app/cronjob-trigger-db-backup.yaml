@@ -42,7 +42,7 @@ spec:
                   topologyKey: kubernetes.io/hostname
           containers:
             - name: trigger
-              image: alpine/curl:8.10.1
+              image: alpine:3.19
               command:
                 - /bin/sh
                 - -c
@@ -53,9 +53,8 @@ spec:
                   if [ -z "$$TOKEN" ]; then echo "no PlexOnlineToken"; exit 1; fi
 
                   echo "Triggering Butler BackupDatabase..."
-                  curl -fsS -X POST \
-                    "http://plex.plex.svc:32400/butler/BackupDatabase?X-Plex-Token=$$TOKEN" \
-                    -o /dev/null -w "HTTP %{http_code}\n"
+                  wget --post-data="" -q -S -O /dev/null \
+                    "http://plex.plex.svc:32400/butler/BackupDatabase?X-Plex-Token=$$TOKEN" 2>&1 | head -5
 
                   # Retention: prune dumps older than 14 days from /backup/db
                   find /backup/db -maxdepth 1 -type f \
