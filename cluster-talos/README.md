@@ -16,7 +16,7 @@ See **[BOOTSTRAP.md](BOOTSTRAP.md)** for the full lifecycle guide (provision, bo
 | Internal PKI | cert-manager (self-signed CA) | TLS certs for internal cluster services |
 | Public TLS | cert-manager + Let's Encrypt (Cloudflare DNS-01) | TLS certs for internet-facing services |
 | Public DNS | external-dns (Cloudflare + RFC2136/AD) | HTTPRoute hostnames → DNS records |
-| Storage (RWO) | vSphere CSI + Longhorn (GPU workers) | `vsan` SC on all workers, `longhorn` SC on gpu-worker-* for Kasten |
+| Storage (RWO) | vSphere CSI | `vsan` SC default on all workers (FTT=1) |
 | Backup | Kasten K10 + `talos-backup` CronJob | App-level restore; daily age-encrypted etcd snapshot to B2 |
 | Observability | Prometheus (lean) + metrics-server | Freelens Helm provider; VCF Ops 9 external collector via HTTPRoute + basic auth |
 | Log forwarding | Fluent-Bit DaemonSet | Ships `/var/log/containers/*.log` as syslog rfc5424 → VCF Operations for Logs (Tanzu Kubernetes content pack on the ingest side) |
@@ -110,7 +110,6 @@ cluster-talos/
     │       ├── cloudflare-operator-system/
     │       │   ├── cloudflare-operator/ # ClusterTunnel CRD + operator
     │       │   └── cloudflare-tunnel/   # ClusterTunnel instance + default TunnelBinding
-    │       ├── longhorn-system/         # RWO storage on GPU workers (Kasten backup source)
     │       ├── tanzu-system-logging/    # Fluent-Bit DaemonSet → VCF Operations for Logs (syslog rfc5424)
     │       ├── kasten-io/               # Kasten K10 (LDAPS to AD)
     │       ├── spegel/                  # P2P containerd image cache
@@ -208,26 +207,12 @@ that references them (Cilium Gateway resources in `platform/configs`, etc.) reco
 networking. Installed via `make bootstrap-cilium` (helm upgrade --install with pinned flags).
 Flux's HelmRelease then reconciles against the already-installed release.
 
-**Longhorn extraMounts scoped to GPU workers** — `machine.kubelet.extraMounts` (self-binds
-on `/var/lib/kubelet/plugins{,_registry}` + `/pods` with `rshared`) is gated on
-`.Values.longhorn.enabled` in `templates/worker.yaml`, and only `nodes/values/gpu-worker-*.yaml`
-set it. Non-GPU workers omit the binds entirely. Reason: `rshared` places the bind in `/var`'s
-shared peer group, so every vSphere CSI globalmount under `/var/lib/kubelet/plugins`
-propagates to both mount points and appears twice in `/proc/mounts`. vSphere CSI's
-`isBlockVolumeMounted` rejects "mounted in multiple places", NodeUnstage fails, and
-VolumeAttachments orphan permanently on the vSAN StorageClass. GPU workers tolerate the
-extraMounts because they run Longhorn-only workloads (no vSphere CSI PVCs).
-
 **GPU worker taint = soft + per-app anti-affinity** — `templates/worker-gpu.yaml` taints
-gpu-workers `intel.feature.node.kubernetes.io/gpu=true:PreferNoSchedule` (soft, not the
-original NoSchedule). Reason: Kasten's block-mode-upload pods carry no tolerations, so a
-hard taint stranded every Longhorn-PVC backup. Soft taint lets them land. To prevent
-vSphere CSI workloads spilling onto gpu-workers under regular-worker pressure (which would
-trigger the rshared VA deadlock above), every vsan-backed app's HelmRelease pins
-`defaultPodOptions.affinity.nodeAffinity` with `intel.feature.node.kubernetes.io/gpu
-DoesNotExist` as a *required* rule. Update path: `talm apply` strips `nodeTaints` (see
-memory `feedback_talm_apply_strips_fields.md`); push via `talosctl apply-config -f
-nodes/bootstrap/gpu-worker-X.yaml --mode auto`.
+gpu-workers `intel.feature.node.kubernetes.io/gpu=true:PreferNoSchedule` (soft, not
+NoSchedule), so non-tolerating workloads can still land here when nothing else fits.
+GPU-only apps (Plex, ClusterPlex workers, intel-gpu-exporter) explicitly tolerate the
+taint and pin `nodeSelector: intel.feature.node.kubernetes.io/gpu=true`. Update path:
+`make apply NODE=nodes/gpu-worker-X.yaml` (talm re-renders + applies online).
 
 **Two-stage Talos config** — tofu injects a minimal bootstrap machine config
 (`talos/nodes/bootstrap/*.yaml`) via guestinfo: hostname + primary NIC static IP + install image,

@@ -161,7 +161,7 @@ variable "gpu_worker_cpu" {
 
 variable "gpu_worker_memory_mb" {
   type    = number
-  default = 12288
+  default = 16384
 }
 
 variable "gpu_worker_disk_size_gb" {

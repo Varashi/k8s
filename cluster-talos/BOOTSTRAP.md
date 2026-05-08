@@ -473,7 +473,7 @@ infrastructure-core         (aggregator → Gateway API CRDs, Cilium, cert-manag
                              vsphere-csi, intel-gpu[-config], gpu-node-maint, etcd-backup)
     └── infrastructure-platform (aggregator → metrics-server, reloader, descheduler,
                                  cnpg, monitoring, configs, external-dns[-cloudflare],
-                                 cloudflare-operator[+tunnel], longhorn, tanzu-logging,
+                                 cloudflare-operator[+tunnel], tanzu-logging,
                                  kasten-io, spegel, renovate)
             ├── apps          (aggregator → per-app Flux KSs under apps/<category>/<app>/)
             └── forwarders    (aggregator → per-app Flux KSs under forwarders/<app>/)
@@ -523,7 +523,7 @@ kubectl create secret generic cloudflare-api-token \
   --from-literal=api-token=<cloudflare-token>
 
 # Cluster variables — used by Flux postBuild substituteFrom for variable substitution
-# across child Kustomizations in platform/ (configs, external-dns, monitoring, longhorn,
+# across child Kustomizations in platform/ (configs, external-dns, monitoring,
 # renovate, kasten, cloudflare-tunnel, tanzu-logging), apps/, and forwarders/.
 # Add more keys here as new manifests require ${VARIABLE} substitution.
 kubectl create secret generic cluster-vars \
