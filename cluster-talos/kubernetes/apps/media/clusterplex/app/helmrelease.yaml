@@ -150,7 +150,7 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              tag: sha-c93034d
+              tag: sha-e6e44f2
             env:
               TZ: Europe/Brussels
               # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
@@ -161,12 +161,8 @@ spec:
               # prefs + client caps, worker maps 1:1 to the VAAPI
               # variant. No worker-side override. Rewriter also
               # accepts PMS's HW-decode argv shape (short codec name
-              # + -hwaccel:0 vaapi) so HardwareAcceleratedCodecs=1
-              # works without re-shaping the argv.
-              # Temporary: capture PMS argv for sub-burn sessions
-              # (HW-decode + map_inlineass + HDR overlay-vaapi). Off
-              # again once handling is in place.
-              WORKER_DUMP_ARGV: "1"
+              # + -hwaccel:0 vaapi) and the HW-decode + sub-burn
+              # variant (inlineass swapped for stock subtitles=).
             probes:
               liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 10, failureThreshold: 3 } }
               readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3501 }, periodSeconds: 2, failureThreshold: 60 } }
