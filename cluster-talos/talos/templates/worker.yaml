@@ -3,9 +3,7 @@ debug: false
 persist: true
 machine:
   type: worker
-  # Class: standard worker (no GPU, no Longhorn disk, no register-with-taints).
-  # Longhorn CSI plugins on these nodes mount volumes only; no /var/mnt/longhorn
-  # UserVolume and no rshared extraMounts (that's the GPU-worker class).
+  # Class: standard worker (no GPU, no register-with-taints).
   {{- if .Values.node.labels }}
   nodeLabels:
     {{- range $k, $v := .Values.node.labels }}

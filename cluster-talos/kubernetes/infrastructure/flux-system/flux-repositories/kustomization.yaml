@@ -17,7 +17,6 @@ resources:
   - netbox.yaml
   - node-feature-discovery.yaml
   - intel-device-plugins.yaml
-  - longhorn.yaml
   - prometheus-community.yaml
   - descheduler.yaml
   - stakater.yaml

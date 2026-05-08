@@ -397,27 +397,6 @@ data:
                   label: Used
                   format: float
                   suffix: "%"
-        - Longhorn:
-            icon: mdi-harddisk-plus
-            description: GPU pod storage
-            widget:
-              type: customapi
-              url: http://127.0.0.1:8088/longhorn
-              refreshInterval: 30000
-              display: block
-              mappings:
-                - field: volumes_total
-                  label: Volumes
-                - field: volumes_degraded
-                  label: Degraded
-                - field: disk_used_gib
-                  label: Used
-                  format: float
-                  suffix: " GiB"
-                - field: used_pct
-                  label: Used
-                  format: float
-                  suffix: "%"
         - Kasten:
             icon: mdi-backup-restore
             description: K8s backup

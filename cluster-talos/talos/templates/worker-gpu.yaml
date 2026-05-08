@@ -3,19 +3,16 @@ debug: false
 persist: true
 machine:
   type: worker
-  # Class: GPU worker. Longhorn + Intel Arc labels/taints/install image baked
-  # in unconditionally — no .Values gating. Per-node values (ip/hostname) still
+  # Class: GPU worker. Intel Arc labels/taints/install image baked in
+  # unconditionally — no .Values gating. Per-node values (ip/hostname) still
   # apply for offline bootstrap render; day-2 apply uses live discovery.
   nodeLabels:
     gpu: intel-arc
-    longhorn: "enabled"
-    node.longhorn.io/create-default-disk: "true"
   # NodeApplyController reconciles this. Must match kubelet register-with-taints
   # exactly, otherwise the controller issues a PATCH which NodeRestriction
   # forbids kubelets from doing (self-taint modification blocked).
-  # PreferNoSchedule (not NoSchedule) so Kasten block-mode-upload pods —
-  # which have no tolerations — can land here for Longhorn-backed PVCs.
-  # vSAN-backed apps stay off via per-app nodeAntiAffinity on `gpu` label.
+  # PreferNoSchedule (not NoSchedule) keeps the door open for non-tolerating
+  # workloads to land here when nothing else fits.
   nodeTaints:
     intel.feature.node.kubernetes.io/gpu: "true:PreferNoSchedule"
   kubelet:
@@ -31,33 +28,6 @@ machine:
         {{- range .Values.machine.kubelet.nodeIPSubnets }}
         - {{ . }}
         {{- end }}
-    # rshared self-binds required by Longhorn for propagating volume mounts out
-    # of the longhorn-csi-plugin container. Scoped to Longhorn nodes only because
-    # they put /var/lib/kubelet/plugins in /var's shared peer group, which makes
-    # every vSphere CSI globalmount appear twice in /proc/mounts and triggers
-    # isBlockVolumeMounted "mounted in multiple places" → stuck VolumeAttachment.
-    extraMounts:
-      - destination: /var/lib/kubelet/plugins_registry
-        type: bind
-        source: /var/lib/kubelet/plugins_registry
-        options:
-          - bind
-          - rshared
-          - rw
-      - destination: /var/lib/kubelet/plugins
-        type: bind
-        source: /var/lib/kubelet/plugins
-        options:
-          - bind
-          - rshared
-          - rw
-      # /var/lib/kubelet/pods rshared self-bind removed 2026-04-29:
-      # the shared peer group on this path makes Talos's unmount phase 5
-      # (umount /var/lib/kubelet/pods) return EBUSY, blocking 1.12 → 1.13
-      # upgrades on GPU workers. Tested with gpu-worker-2: removing the bind
-      # lets the upgrade complete cleanly + Longhorn replicas stay healthy.
-      # Original justification (vSphere CSI globalmount-twice → stuck VA) no
-      # longer applies — vSAN-backed PVCs don't land on GPU workers anymore.
   network:
     nameservers:
       {{- range .Values.machine.nameservers }}
@@ -107,20 +77,6 @@ cluster:
 apiVersion: v1alpha1
 kind: HostnameConfig
 hostname: {{ if .Values.hostname }}{{ .Values.hostname }}{{ else }}{{ include "talm.discovered.hostname" . }}{{ end }}
----
-# Longhorn data disk. Selects non-system disk >50 GiB on vmw_pvscsi.
-# Mounted automatically by Talos at /var/mnt/longhorn.
-apiVersion: v1alpha1
-kind: UserVolumeConfig
-name: longhorn
-provisioning:
-  diskSelector:
-    match: '!system_disk && disk.transport == "vmw_pvscsi" && disk.size > 50u * GiB'
-  minSize: 150GiB
-  maxSize: 300GiB  # headroom for future disk bumps; actual size capped by VMDK
-  grow: true       # expand existing partition to fill available disk
-filesystem:
-  type: ext4
 ---
 # vmxnet3 RX ring max'd to prevent drops at high NNTP stream counts (150+).
 # Ship a doc per plausible NIC name; Talos only applies to interfaces present.
