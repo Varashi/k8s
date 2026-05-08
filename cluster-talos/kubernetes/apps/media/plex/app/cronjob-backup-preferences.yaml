@@ -39,19 +39,20 @@ spec:
                 - |
                   set -eu
                   DATE=$$(date +%Y-%m-%d)
+                  mkdir -p /backup/prefs
 
                   # Back up Preferences.xml
                   cp "/config/Library/Application Support/Plex Media Server/Preferences.xml" \
-                     "/backup/Preferences.xml-$${DATE}"
-                  echo "Backed up Preferences.xml as Preferences.xml-$${DATE}"
-                  ls -t /backup/Preferences.xml-* | tail -n +8 | xargs -r rm -v
+                     "/backup/prefs/Preferences.xml-$${DATE}"
+                  echo "Backed up Preferences.xml as prefs/Preferences.xml-$${DATE}"
+                  ls -t /backup/prefs/Preferences.xml-* | tail -n +15 | xargs -r rm -v
 
                   # Back up agent preferences (Plug-in Support/Preferences/)
-                  tar -czf "/backup/PluginPreferences-$${DATE}.tar.gz" \
+                  tar -czf "/backup/prefs/PluginPreferences-$${DATE}.tar.gz" \
                     -C "/config/Library/Application Support/Plex Media Server/Plug-in Support" \
                     Preferences
-                  echo "Backed up Plug-in Support/Preferences as PluginPreferences-$${DATE}.tar.gz"
-                  ls -t /backup/PluginPreferences-*.tar.gz | tail -n +8 | xargs -r rm -v
+                  echo "Backed up Plug-in Support/Preferences as prefs/PluginPreferences-$${DATE}.tar.gz"
+                  ls -t /backup/prefs/PluginPreferences-*.tar.gz | tail -n +15 | xargs -r rm -v
               volumeMounts:
                 - name: config-pms
                   mountPath: /config

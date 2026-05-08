@@ -1,0 +1,89 @@
+---
+# Full Plex /config tarball, daily.
+# Excludes regenerable caches/logs and live SQLite DB files (live DBs are
+# captured separately by Butler -> /backup/db). Restoring a tarball gives
+# you everything except the DB; pair with the latest /backup/db dump.
+#
+# Restore: stop plex, wipe PVC, untar config-DATE.tar.gz into /config,
+# drop matching dated DB dumps from /backup/db into
+#   /config/Library/Application Support/Plex Media Server/Plug-in Support/Databases/
+# renamed to com.plexapp.plugins.library.db and .blobs.db, start plex.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: plex-backup-full
+  namespace: plex
+spec:
+  schedule: "30 6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          nodeSelector:
+            intel.feature.node.kubernetes.io/gpu: "true"
+          tolerations:
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: plex
+                  topologyKey: kubernetes.io/hostname
+          containers:
+            - name: tar
+              image: alpine:3.19
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  DATE=$$(date +%Y-%m-%d)
+                  mkdir -p /backup/full
+                  PMS="Library/Application Support/Plex Media Server"
+                  OUT="/backup/full/config-$${DATE}.tar.gz"
+                  TMP="$${OUT}.partial"
+
+                  tar -czf "$$TMP" -C /config \
+                    --exclude="$$PMS/Cache" \
+                    --exclude="$$PMS/Crash Reports" \
+                    --exclude="$$PMS/Diagnostics" \
+                    --exclude="$$PMS/Logs" \
+                    --exclude="$$PMS/Plug-in Support/Caches" \
+                    --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.db" \
+                    --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.db-shm" \
+                    --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.db-wal" \
+                    --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.blobs.db" \
+                    --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.blobs.db-shm" \
+                    --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.blobs.db-wal" \
+                    .
+                  mv "$$TMP" "$$OUT"
+                  ls -lh "$$OUT"
+
+                  # Retention: keep last 14
+                  ls -t /backup/full/config-*.tar.gz | tail -n +15 | xargs -r rm -v
+              volumeMounts:
+                - name: config-pms
+                  mountPath: /config
+                  readOnly: true
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: config-pms
+              persistentVolumeClaim:
+                claimName: plex-config-pms-vsan
+                readOnly: true
+            - name: backup
+              nfs:
+                server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
+                path: /mnt/DATA/backup/plex

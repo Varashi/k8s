@@ -1,0 +1,80 @@
+---
+# Daily trigger of Plex Butler "Backup database" task.
+# Plex's internal Butler scheduler runs the backup every ~3 days; this cron
+# forces it daily by hitting the API. Backups land in ButlerDatabaseBackupPath
+# (/backup/db, set via Plex API). Token is read from Preferences.xml on the
+# RWO config PVC, so no separate secret is needed.
+#
+# Restore: drop a dated dump from /backup/db over
+#   /config/Library/Application Support/Plex Media Server/Plug-in Support/Databases/
+# (rename to com.plexapp.plugins.library.db / .blobs.db) while Plex is stopped.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: plex-trigger-db-backup
+  namespace: plex
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          nodeSelector:
+            intel.feature.node.kubernetes.io/gpu: "true"
+          tolerations:
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: plex
+                  topologyKey: kubernetes.io/hostname
+          containers:
+            - name: trigger
+              image: alpine:3.19
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  apk add --no-cache curl >/dev/null
+                  PREFS="/config/Library/Application Support/Plex Media Server/Preferences.xml"
+                  TOKEN=$$(grep -oE 'PlexOnlineToken="[^"]*"' "$$PREFS" | cut -d'"' -f2)
+                  if [ -z "$$TOKEN" ]; then echo "no PlexOnlineToken"; exit 1; fi
+
+                  echo "Triggering Butler BackupDatabase..."
+                  curl -fsS -X POST \
+                    "http://plex.plex.svc:32400/butler/BackupDatabase?X-Plex-Token=$$TOKEN" \
+                    -o /dev/null -w "HTTP %{http_code}\n"
+
+                  # Retention: prune dumps older than 14 days from /backup/db
+                  find /backup/db -maxdepth 1 -type f \
+                    \( -name 'com.plexapp.plugins.library.db-*' \
+                    -o -name 'com.plexapp.plugins.library.blobs.db-*' \) \
+                    -mtime +14 -print -delete
+              volumeMounts:
+                - name: config-pms
+                  mountPath: /config
+                  readOnly: true
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: config-pms
+              persistentVolumeClaim:
+                claimName: plex-config-pms-vsan
+                readOnly: true
+            - name: backup
+              nfs:
+                server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
+                path: /mnt/DATA/backup/plex
