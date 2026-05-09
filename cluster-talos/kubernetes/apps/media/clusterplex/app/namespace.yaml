@@ -6,6 +6,8 @@ metadata:
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/warn: baseline
     pod-security.kubernetes.io/audit: baseline
-    # Kasten k8s-backup policy enrolment (selector matches "vsphere" by convention).
-    k10.kasten.io/backup: "true"
-    k10.kasten.io/storage-class: vsphere
+    # Kasten backup intentionally OFF for clusterplex — this is a test
+    # PMS instance that gets rebuilt frequently, and the in-cluster
+    # CSI snapshot Kasten takes blocks PVC expansion (vSphere CSI
+    # rejects `resize volume with existing snapshots`). Production
+    # plex is unaffected and remains backed up.
