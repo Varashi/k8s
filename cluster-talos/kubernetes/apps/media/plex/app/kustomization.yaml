@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - pvc.yaml
+  - configmap-argv-tee.yaml
   - helmrelease.yaml
   - cronjob-backup-preferences.yaml
   - cronjob-trigger-db-backup.yaml
