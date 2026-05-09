@@ -39,12 +39,19 @@ data:
     #!/bin/bash
     # Best-effort argv tee. Any logging failure falls through to exec.
     LOG_DIR="$${PMS_ARGV_LOG_DIR:-/transcode/_argv-corpus}"
+    # SID = <session_uuid>-<job_uuid>. PMS reuses session UUID across
+    # initial-play / quality-change / sub-toggle / seek under one Plex
+    # session — each gets a different job UUID. Capturing both means
+    # we get one file per transcoder invocation, not one per session.
     SID=""
     for a in "$$@"; do
       case "$$a" in
         *transcode/session/*)
-          SID="$${a##*transcode/session/}"
-          SID="$${SID%%/*}"
+          rest="$${a##*transcode/session/}"
+          SESSION="$${rest%%/*}"
+          rest="$${rest#*/}"
+          JOB="$${rest%%/*}"
+          SID="$${SESSION}-$${JOB}"
           break
           ;;
       esac
