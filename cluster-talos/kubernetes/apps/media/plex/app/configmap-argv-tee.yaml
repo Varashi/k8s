@@ -58,6 +58,7 @@ data:
     done
     [ -z "$${SID}" ] && SID="anon-$$(date +%s 2>/dev/null)-$$$$"
 
+    out=""
     {
       mkdir -p "$${LOG_DIR}"
       out="$${LOG_DIR}/$${SID}.argv"
@@ -67,6 +68,15 @@ data:
         if [ -n "$${tmp}" ]; then
           {
             date -u '+%Y-%m-%dT%H:%M:%SZ'
+            # Client identification — Plex Transcoder inherits the
+            # X_PLEX_* vars from PMS; logging them here lets corpus
+            # analysis cluster bugs by client class (PS4 vs LG WebOS
+            # vs Android vs Apple TV vs Plex Web). CLIENT: prefix so
+            # argv-extract can split the header lines off.
+            for v in PRODUCT DEVICE_NAME PLATFORM VERSION USERNAME; do
+              eval "val=\$${X_PLEX_$${v}}"
+              [ -n "$${val}" ] && printf 'CLIENT:%s=%s\n' "$${v}" "$${val}"
+            done
             printf '%s\0' "$$@"
           } >"$${tmp}"
           mv "$${tmp}" "$${out}"
@@ -74,7 +84,31 @@ data:
       fi
     } 2>/dev/null || true
 
-    exec "/usr/lib/plexmediaserver/Plex Transcoder.real" "$$@"
+    # Run-then-stamp instead of exec so we can record the outcome.
+    # Microsecond fork overhead is negligible vs Plex Transcoder's
+    # multi-second segment work. Stamps {exit_status, duration_ms,
+    # segments_created, ended_at} as an OUTCOME: footer the sweep
+    # picks up alongside the argv body. Stderr capture is skipped
+    # here — would require a tee redirect that PMS sees and could
+    # mask transcoder issues for the live session.
+    SPAWN_AT="$$(date +%s%3N 2>/dev/null || echo 0)"
+    "/usr/lib/plexmediaserver/Plex Transcoder.real" "$$@"
+    rc=$$?
+    {
+      [ -n "$${out}" ] && [ -e "$${out}" ] || exit 0
+      end_at="$$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null)"
+      end_ms="$$(date +%s%3N 2>/dev/null || echo 0)"
+      dur=0
+      [ "$${SPAWN_AT}" != 0 ] && [ "$${end_ms}" != 0 ] && dur=$$((end_ms - SPAWN_AT))
+      segs=0
+      cwd_dir="$${LOG_DIR%/_argv-corpus}/Transcode/Sessions/plex-transcode-$${SID}"
+      if [ -d "$${cwd_dir}" ]; then
+        segs=$$(find "$${cwd_dir}" -maxdepth 1 \( -name '*.ts' -o -name '*.m4s' \) 2>/dev/null | wc -l)
+      fi
+      printf 'OUTCOME:exit_status=%s duration_ms=%s segments_created=%s ended_at=%s\n' \
+        "$${rc}" "$${dur}" "$${segs}" "$${end_at}" >>"$${out}"
+    } 2>/dev/null || true
+    exit $$rc
     WRAPPER
       chmod +x "$${PT}" || exit 0
     fi
