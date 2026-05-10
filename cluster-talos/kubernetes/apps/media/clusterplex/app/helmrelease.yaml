@@ -333,7 +333,12 @@ spec:
           worker:
             # Worker reads source media + probes for sidecar SRT/ASS
             # files (rewriter's hybrid-inlineass mode looks for
-            # <basename>.srt etc. next to the source).
+            # <basename>.srt etc. next to the source). Writable for
+            # Plex Optimize jobs, which output the optimized MP4 +
+            # subtitle sidecars under <library>/Plex Versions/Optimized
+            # for TV/.../*.mp4 — that path lives inside /media, not
+            # /transcode. Live streaming still writes only under
+            # /transcode; the rewriter never targets /media for
+            # session output.
             app:
               - path: /media
-                readOnly: true
