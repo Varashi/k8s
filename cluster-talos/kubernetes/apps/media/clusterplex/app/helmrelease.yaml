@@ -157,7 +157,7 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              tag: sha-cd57e91
+              tag: sha-4a6741b
             env:
               TZ: Europe/Brussels
               # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
@@ -185,6 +185,23 @@ spec:
                 gpu.intel.com/i915: 1
               limits:
                 gpu.intel.com/i915: 1
+            # CAP_PERFMON lets the worker open i915 PMU events via
+            # perf_event_open(2). Required only on kernels that have
+            # dropped the per-engine sysfs busy file (Arc on i915 ≥ 6.5,
+            # xe driver). Older Intel iGPUs use the sysfs reader and
+            # don't need the cap; granting it harms nothing because
+            # PERFMON is strictly narrower than the legacy SYS_ADMIN
+            # path it replaced (kernel 5.8+).
+            #
+            # allowPrivilegeEscalation MUST be true: the worker binary
+            # carries cap_perfmon=ep (file capability set in the
+            # Dockerfile) so a non-root (uid 1000) process gets the cap
+            # bits on exec. With allowPrivilegeEscalation:false the
+            # kernel sets no_new_privs which forbids that bit promotion.
+            securityContext:
+              allowPrivilegeEscalation: true
+              capabilities:
+                add: ["PERFMON"]
         pod:
           nodeSelector:
             intel.feature.node.kubernetes.io/gpu: "true"
