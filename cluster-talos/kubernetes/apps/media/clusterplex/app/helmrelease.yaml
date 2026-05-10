@@ -61,7 +61,7 @@ spec:
             # least-loaded.
             image:
               repository: ghcr.io/varashi/scaleplex_orchestrator
-              tag: sha-f0594c7
+              tag: sha-cd57e91
             env:
               TZ: Europe/Brussels
               LISTEN_ADDR: ":3500"
@@ -157,7 +157,7 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              tag: sha-4565a52
+              tag: sha-cd57e91
             env:
               TZ: Europe/Brussels
               # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
