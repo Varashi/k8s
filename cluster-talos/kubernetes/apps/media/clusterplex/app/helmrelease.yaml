@@ -61,7 +61,7 @@ spec:
             # least-loaded.
             image:
               repository: ghcr.io/varashi/scaleplex_orchestrator
-              tag: sha-cd57e91
+              tag: sha-5daef39
             env:
               TZ: Europe/Brussels
               LISTEN_ADDR: ":3500"
