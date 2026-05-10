@@ -3,9 +3,17 @@ kind: Namespace
 metadata:
   name: clusterplex
   labels:
-    pod-security.kubernetes.io/enforce: baseline
-    pod-security.kubernetes.io/warn: baseline
-    pod-security.kubernetes.io/audit: baseline
+    # PSA bumped to `privileged` so the scaleplex worker can carry
+    # CAP_PERFMON (perf_event_open against the i915 hardware PMU for
+    # multi-engine GPU busy% telemetry). PERFMON is on the
+    # `privileged`-only allowlist; baseline rejects it. The cap is
+    # narrow — strictly bounded to perf_event_open, ftrace, and a few
+    # tracing surfaces (kernel 5.8+ split it out of SYS_ADMIN). Worker
+    # uses cap_perfmon=ep file capability so only the agent binary gets
+    # the bits, not the whole container.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: privileged
+    pod-security.kubernetes.io/audit: privileged
     # Kasten backup intentionally OFF for clusterplex — this is a test
     # PMS instance that gets rebuilt frequently, and the in-cluster
     # CSI snapshot Kasten takes blocks PVC expansion (vSphere CSI
