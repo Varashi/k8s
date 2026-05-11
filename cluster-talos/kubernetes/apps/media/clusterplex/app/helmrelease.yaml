@@ -108,7 +108,7 @@ spec:
               # scaleplex-relay as an s6-rc.d longrun. Replaces
               # clusterplex_dockermod (which set up nginx LOCAL_RELAY
               # + transcoder.js worker dispatcher).
-              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-dc86a2a
+              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-dff8ba8
               # Both LOCAL_RELAY_* are read by scaleplex-relay (and by
               # the shim's collectEnv() to derive SCALEPLEX_PMS_BASE_URL
               # for the rewriter's URL substitutions).
