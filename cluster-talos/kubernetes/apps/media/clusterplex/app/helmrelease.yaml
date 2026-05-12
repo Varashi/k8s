@@ -157,7 +157,7 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              tag: sha-03b2cd0
+              tag: sha-171e202
             env:
               TZ: Europe/Brussels
               # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
@@ -166,25 +166,15 @@ spec:
               # (h264_vaapi vs hevc_vaapi) is driven by PMS argv —
               # Plex picks libx264/libx265 per session from server
               # prefs + client caps, worker maps 1:1 to the VAAPI
-              # variant. No worker-side override. Rewriter also
-              # accepts PMS's HW-decode argv shape (short codec name
-              # + -hwaccel:0 vaapi) and the HW-decode + sub-burn
-              # variant (inlineass swapped for stock subtitles=).
-              # Temporary: capture PMS argv corpus across the
-              # play/seek × sub-burn × HW-decode matrix to seed test
-              # fixtures.
+              # variant. No worker-side override. Sub burn-in is
+              # fork-native (Phase 2c hardcoded since sha-171e202):
+              # rewriter keeps Plex's -map_inlineass + sidecar -i +
+              # inlineass= filter (strips 4 Plex-only AVOption keys),
+              # scaleplex-ffmpeg7's scaleplex_inlineass binding
+              # consumes the sub stream via side-channel, vf_inlineass
+              # renders via libass under a process-wide mutex with a
+              # pre-graph chunk buffer (Phase 2b).
               WORKER_DUMP_ARGV: "1"
-              # Fork-native sub burn-in (Phase 2c, image >= sha-371b42f).
-              # Rewriter keeps Plex's -map_inlineass + sidecar -i +
-              # inlineass= filter (strips 4 Plex-only AVOption keys)
-              # instead of swapping to subtitles=filename=. The
-              # scaleplex-ffmpeg7 fork's scaleplex_inlineass binding
-              # consumes the sub stream via side-channel; vf_inlineass
-              # renders via libass under a process-wide mutex (Phase 2)
-              # with a pre-graph chunk buffer for the sidecar-input
-              # race (Phase 2b). Off-default flag in the binary; soak
-              # via this env override before flipping the default.
-              SCALEPLEX_INLINEASS_PASSTHROUGH: "true"
             probes:
               liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 10, failureThreshold: 3 } }
               readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3501 }, periodSeconds: 2, failureThreshold: 60 } }
