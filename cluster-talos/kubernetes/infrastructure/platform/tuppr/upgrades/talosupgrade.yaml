@@ -11,6 +11,6 @@ spec:
     # schematic (vmtoolsd-guest-agent), GPU workers get the i915/iscsi-tools
     # schematic. Annotations applied out-of-band.
     # renovate: datasource=docker depName=ghcr.io/siderolabs/installer
-    version: v1.13.0
+    version: v1.13.2
   policy:
     rebootMode: default
