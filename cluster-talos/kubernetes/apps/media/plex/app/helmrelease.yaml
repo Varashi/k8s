@@ -176,6 +176,11 @@ spec:
           http:
             port: 32400
       plex-public:
+        # controller required: app-template can no longer auto-detect
+        # it once the HR has multiple controllers (plex + orchestrator
+        # + worker). ExternalName Services have no real backing pod;
+        # plex is the nominal owner.
+        controller: plex
         type: ExternalName
         externalName: skw.wan.${SECRET_DOMAIN}
         annotations:
