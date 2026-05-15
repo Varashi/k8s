@@ -2,11 +2,11 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: clusterplex
+  name: plex-test
   namespace: flux-system
 spec:
   interval: 1h
-  path: ./cluster-talos/kubernetes/apps/media/clusterplex/app
+  path: ./cluster-talos/kubernetes/apps/media/plex-test/app
   prune: false
   sourceRef:
     kind: GitRepository

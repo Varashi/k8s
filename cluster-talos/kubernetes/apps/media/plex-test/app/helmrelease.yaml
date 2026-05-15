@@ -1,14 +1,14 @@
 ---
-# clusterplex namespace, scaleplex internals.
+# plex-test namespace, scaleplex internals.
 #
-# Phase 7 (2026-05-06): retired pabloromeo/clusterplex's bundled
+# Phase 7 (2026-05-06): retired pabloromeo/plex-test's bundled
 # orchestrator + lsio-based workers + LOCAL_RELAY nginx in favour of
 # Varashi/scaleplex (stock jellyfin-ffmpeg7 + iHD VAAPI workers + thin
 # Go orchestrator + s6-rc relay sidecar via DOCKER_MOD). Helm release
-# stays named "clusterplex" so the public hostname, LoadBalancer IP,
+# stays named "plex-test" so the public hostname, LoadBalancer IP,
 # NetBox tag, and PVC names don't churn.
 #
-# What scaleplex changes vs. the old clusterplex chart:
+# What scaleplex changes vs. the old plex-test chart:
 #  - worker image swapped to scaleplex_worker (Ubuntu 24.04 +
 #    jellyfin-ffmpeg7, iHD baked in)
 #  - orchestrator image swapped to scaleplex_orchestrator (Go, no
@@ -29,8 +29,8 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: clusterplex
-  namespace: clusterplex
+  name: plex-test
+  namespace: plex-test
 spec:
   interval: 30m
   chart:
@@ -56,7 +56,7 @@ spec:
         containers:
           app:
             # scaleplex orchestrator. Slim Go HTTP server: DNS-discovers
-            # workers via the headless `clusterplex-worker` Service,
+            # workers via the headless `plex-test-worker` Service,
             # forwards POSTs from PMS-side shim verbatim, picks
             # least-loaded.
             image:
@@ -65,7 +65,7 @@ spec:
             env:
               TZ: Europe/Brussels
               LISTEN_ADDR: ":3500"
-              WORKERS_DNS: clusterplex-worker.clusterplex.svc.cluster.local
+              WORKERS_DNS: plex-test-worker.plex-test.svc.cluster.local
               WORKER_PORT: "3501"
               WORKERS_REFRESH_SECONDS: "5"
               WORKERS_PROBE_SECONDS: "5"
@@ -106,7 +106,7 @@ spec:
               # scaleplex DOCKER_MOD — lays down scaleplex-shim as
               # /usr/lib/plexmediaserver/Plex Transcoder + runs
               # scaleplex-relay as an s6-rc.d longrun. Replaces
-              # clusterplex_dockermod (which set up nginx LOCAL_RELAY
+              # plex-test_dockermod (which set up nginx LOCAL_RELAY
               # + transcoder.js worker dispatcher).
               DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-f28bf17
               # Both LOCAL_RELAY_* are read by scaleplex-relay (and by
@@ -114,14 +114,14 @@ spec:
               # for the rewriter's URL substitutions).
               LOCAL_RELAY_ENABLED: "1"
               LOCAL_RELAY_PORT: "32499"
-              PMS_SERVICE: clusterplex-pms.clusterplex.svc
+              PMS_SERVICE: plex-test-pms.plex-test.svc
               PMS_PORT: "32400"
               # scaleplex-shim reads SCALEPLEX_ORCHESTRATOR_URL and
               # POSTs the task envelope there. Keep ORCHESTRATOR_URL
-              # set as well — clusterplex_dockermod still inspects it
+              # set as well — plex-test_dockermod still inspects it
               # at extract time, harmless to leave.
-              SCALEPLEX_ORCHESTRATOR_URL: http://clusterplex-orchestrator.clusterplex.svc:3500
-              ORCHESTRATOR_URL: http://clusterplex-orchestrator.clusterplex.svc:3500
+              SCALEPLEX_ORCHESTRATOR_URL: http://plex-test-orchestrator.plex-test.svc:3500
+              ORCHESTRATOR_URL: http://plex-test-orchestrator.plex-test.svc:3500
               TRANSCODE_OPERATING_MODE: remote
               # Dump full PMS argv to PMS log for durable argv-corpus
               # capture. PMS log lives on PMS's persistent vSphere
@@ -241,7 +241,7 @@ spec:
           http:
             port: 32400
           # scaleplex-relay listens here. Workers POST progress /
-          # manifest / segment_list updates to clusterplex-pms:32499;
+          # manifest / segment_list updates to plex-test-pms:32499;
           # relay forwards to 127.0.0.1:32400 so PMS sees a loopback
           # source address (which is what its session endpoints
           # require for accepting non-public callbacks).
@@ -251,14 +251,14 @@ spec:
         type: LoadBalancer
         annotations:
           io.cilium/lb-ipam-ips: "172.16.4.106"
-          external-dns.alpha.kubernetes.io/hostname: "clusterplex-pms.${SECRET_DOMAIN},clusterplex-svc.${SECRET_DOMAIN}"
+          external-dns.alpha.kubernetes.io/hostname: "plex-test-pms.${SECRET_DOMAIN},plex-test-svc.${SECRET_DOMAIN}"
         externalTrafficPolicy: Local
         controller: pms
         ports:
           http:
             port: 32400
           # 32401 mirrors WAN port-fwd. Single customConnections URL
-          # (https://clusterplex-svc.boeye.net:32401) works LAN + WAN —
+          # (https://plex-test-svc.boeye.net:32401) works LAN + WAN —
           # avoids split-DNS port mismatch with the legacy plex on 32400.
           external:
             port: 32401
@@ -273,12 +273,12 @@ spec:
         ports:
           http:
             port: 3501
-      clusterplex-public:
+      plex-test-public:
         controller: pms
         type: ExternalName
         externalName: skw.wan.${SECRET_DOMAIN}
         annotations:
-          external-dns.alpha.kubernetes.io/hostname: clusterplex.${SECRET_DOMAIN},clusterplex-svc.${SECRET_DOMAIN}
+          external-dns.alpha.kubernetes.io/hostname: plex-test.${SECRET_DOMAIN},plex-test-svc.${SECRET_DOMAIN}
           external-dns.alpha.kubernetes.io/public: "true"
         ports:
           http:
@@ -287,7 +287,7 @@ spec:
     route:
       app:
         hostnames:
-          - "clusterplex.${SECRET_DOMAIN}"
+          - "plex-test.${SECRET_DOMAIN}"
         parentRefs:
           - name: main
             namespace: cilium
@@ -304,7 +304,7 @@ spec:
     persistence:
       config:
         type: persistentVolumeClaim
-        existingClaim: clusterplex-config-vsan
+        existingClaim: plex-test-config-vsan
         advancedMounts:
           pms:
             app:
@@ -315,7 +315,7 @@ spec:
         # PMS expects, no LOCAL_RELAY HTTP hop.
         type: nfs
         server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
-        path: /mnt/SSD/mediapool/clusterplextranscode
+        path: /mnt/SSD/mediapool/plex-test-transcode
         advancedMounts:
           pms:
             app:

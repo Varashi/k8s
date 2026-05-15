@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: clusterplex-config-vsan
-  namespace: clusterplex
+  name: plex-test-config-vsan
+  namespace: plex-test
 spec:
   accessModes:
     - ReadWriteOnce
