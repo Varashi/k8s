@@ -20,6 +20,11 @@ spec:
       plex:
         replicas: 1
         pod:
+          # Restart the PMS pod whenever plex-tvos-profile changes —
+          # subPath mounts don't auto-refresh inside the running PMS
+          # process, so Reloader (cluster-wide watcher) bounces us.
+          annotations:
+            configmap.reloader.stakater.com/reload: plex-tvos-profile
           nodeSelector:
             intel.feature.node.kubernetes.io/gpu: "true"
           tolerations:
@@ -290,3 +295,19 @@ spec:
           plex:
             app:
               - path: /backup
+      # Apple TV client profile override — works around the Plex tvOS
+      # 8.45 MKV-segmented HLS bug (stalls in preplay because Apple's
+      # HLS player rejects MKV; segments arrive but playback never
+      # starts). Drops the BTerell tvOS.xml at the stock path. Replace
+      # this with the stock file from a fresh PMS image when the App
+      # Store finally ships a tvOS client past 8.45 (iOS got the fix
+      # in 2025.31.1).
+      tvos-profile:
+        type: configMap
+        name: plex-tvos-profile
+        advancedMounts:
+          plex:
+            app:
+              - path: /usr/lib/plexmediaserver/Resources/Profiles/tvOS.xml
+                subPath: tvOS.xml
+                readOnly: true
