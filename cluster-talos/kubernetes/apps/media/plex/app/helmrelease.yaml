@@ -46,12 +46,125 @@ spec:
               limits:
                 gpu.intel.com/i915: 1
 
+      # scaleplex orchestrator — slim Go HTTP server: DNS-discovers
+      # workers via the headless plex-worker Service, forwards the
+      # PMS-side shim's task POSTs, picks the least-loaded worker.
+      orchestrator:
+        containers:
+          app:
+            image:
+              repository: ghcr.io/varashi/scaleplex_orchestrator
+              tag: sha-5daef39
+            env:
+              TZ: Europe/Brussels
+              LISTEN_ADDR: ":3500"
+              WORKERS_DNS: plex-worker.plex.svc.cluster.local
+              WORKER_PORT: "3501"
+              WORKERS_REFRESH_SECONDS: "5"
+              WORKERS_PROBE_SECONDS: "5"
+            probes:
+              liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3500 }, periodSeconds: 10 } }
+              readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3500 }, periodSeconds: 2, failureThreshold: 30 } }
+            resources:
+              requests: { cpu: 50m, memory: 64Mi }
+              limits: { memory: 128Mi }
+        pod:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          # No GPU on orchestrator; runs on any node.
+          tolerations: []
+          annotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "3500"
+            prometheus.io/path: /metrics
+
+      worker:
+        type: daemonset
+        containers:
+          app:
+            # scaleplex worker. Stock jellyfin-ffmpeg7 + iHD baked into
+            # the image. Pre-warms VAAPI on startup; readiness flips
+            # only after pre-warm completes so kubelet doesn't kill
+            # mid-warm and Service endpoints don't see traffic until
+            # the worker is hot.
+            image:
+              repository: ghcr.io/varashi/scaleplex_worker
+              tag: sha-6a30636
+            env:
+              TZ: Europe/Brussels
+              # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
+              # HW_FONTS_DIR, WORKER_MAX_SESSIONS) default sensibly.
+              # Encoder choice (h264_vaapi vs hevc_vaapi) is driven by
+              # PMS argv — Plex picks libx264/libx265 per session, the
+              # worker maps 1:1 to the VAAPI variant.
+              WORKER_DUMP_ARGV: "1"
+            probes:
+              liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 10, failureThreshold: 3 } }
+              readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3501 }, periodSeconds: 2, failureThreshold: 60 } }
+              startup: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 1, failureThreshold: 30 } }
+            resources:
+              requests:
+                cpu: 200m
+                memory: 256Mi
+                gpu.intel.com/i915: 1
+              limits:
+                gpu.intel.com/i915: 1
+            # CAP_PERFMON lets the worker open i915 PMU events via
+            # perf_event_open(2) — the GPU-busy telemetry source on Arc
+            # (no sysfs busy file). allowPrivilegeEscalation MUST be
+            # true: the worker binary carries cap_perfmon=ep (file
+            # capability) so a non-root uid 1000 process gets the cap
+            # bits on exec; allowPrivilegeEscalation:false sets
+            # no_new_privs which forbids that promotion.
+            securityContext:
+              allowPrivilegeEscalation: true
+              capabilities:
+                add: ["PERFMON"]
+        pod:
+          nodeSelector:
+            intel.feature.node.kubernetes.io/gpu: "true"
+          tolerations:
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
+          # uid 1000 / gid 100 (`users`) match the worker Dockerfile's
+          # `useradd -u 1000 -g users`. supplementalGroups: 44=video,
+          # 568=render — both needed for /dev/dri/renderD128 access.
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 100
+            supplementalGroups: [44, 568]
+          annotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "3501"
+            prometheus.io/path: /metrics
+          terminationGracePeriodSeconds: 30
+
     service:
       plex:
         controller: plex
         ports:
           http:
             port: 32400
+      orchestrator:
+        controller: orchestrator
+        ports:
+          http:
+            port: 3500
+      worker:
+        # Headless — the orchestrator DNS-resolves this to per-pod IPs.
+        # ClusterIP would mask the per-pod addresses behind one VIP and
+        # break per-worker /capability polling.
+        controller: worker
+        clusterIP: None
+        ports:
+          http:
+            port: 3501
       plex-lb:
         type: LoadBalancer
         controller: plex
@@ -117,11 +230,17 @@ spec:
             app:
               - path: /config/Library/Application Support/Plex Media Server/Cache
       transcode:
+        # Shared between the PMS (serves segments) and the scaleplex
+        # worker (writes segments) — same NFS export, so the worker
+        # writes exactly where the PMS reads, no path drift possible.
         type: nfs
         server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/SSD/mediapool/plextranscode
         advancedMounts:
           plex:
+            app:
+              - path: /transcode
+          worker:
             app:
               - path: /transcode
       media:
@@ -130,6 +249,9 @@ spec:
         path: /mnt/DATA/mediapool/media
         advancedMounts:
           plex:
+            app:
+              - path: /media
+          worker:
             app:
               - path: /media
       backup:

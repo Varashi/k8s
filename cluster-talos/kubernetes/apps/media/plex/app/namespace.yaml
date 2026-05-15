@@ -3,6 +3,14 @@ kind: Namespace
 metadata:
   name: plex
   labels:
-    pod-security.kubernetes.io/enforce: baseline
-    pod-security.kubernetes.io/warn: baseline
-    pod-security.kubernetes.io/audit: baseline
+    # PSA `privileged` so the scaleplex worker (folded into this
+    # namespace) can carry CAP_PERFMON — perf_event_open against the
+    # i915 hardware PMU for multi-engine GPU busy% telemetry. PERFMON is
+    # on the `privileged`-only allowlist; `baseline` rejects it. The cap
+    # is narrow (kernel 5.8+ split it out of SYS_ADMIN) and the worker
+    # uses a cap_perfmon=ep file capability so only the agent binary
+    # gets the bits, not the whole container. The PMS pod keeps its own
+    # restrictive securityContext regardless.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: privileged
+    pod-security.kubernetes.io/audit: privileged
