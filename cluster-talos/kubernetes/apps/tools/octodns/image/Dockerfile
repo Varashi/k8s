@@ -3,7 +3,7 @@ ARG PYTHON_VERSION=3.14-slim
 FROM docker.io/library/python:${PYTHON_VERSION}
 
 # renovate: datasource=pypi depName=octodns
-ARG OCTODNS_VERSION=1.16.0
+ARG OCTODNS_VERSION=1.17.0
 # renovate: datasource=pypi depName=octodns-bind
 ARG OCTODNS_BIND_VERSION=1.1.0
 # renovate: datasource=pypi depName=octodns-netbox-dns
