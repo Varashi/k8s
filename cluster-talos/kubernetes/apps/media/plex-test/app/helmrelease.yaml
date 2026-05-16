@@ -157,7 +157,7 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              tag: sha-d96822e
+              tag: sha-cb464a8
             env:
               TZ: Europe/Brussels
               # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
@@ -251,7 +251,7 @@ spec:
         type: LoadBalancer
         annotations:
           io.cilium/lb-ipam-ips: "172.16.4.106"
-          external-dns.alpha.kubernetes.io/hostname: "plex-test-pms.${SECRET_DOMAIN},plex-test-svc.${SECRET_DOMAIN}"
+          external-dns.alpha.kubernetes.io/hostname: "plex-test-svc.${SECRET_DOMAIN}"
         externalTrafficPolicy: Local
         controller: pms
         ports:
