@@ -199,7 +199,7 @@ spec:
         externalTrafficPolicy: Local
         annotations:
           io.cilium/lb-ipam-ips: "172.16.4.104"
-          external-dns.alpha.kubernetes.io/hostname: "plex-web.${SECRET_DOMAIN},plex-svc.${SECRET_DOMAIN}"
+          external-dns.alpha.kubernetes.io/hostname: "plex-svc.${SECRET_DOMAIN}"
         ports:
           http:
             port: 32400
