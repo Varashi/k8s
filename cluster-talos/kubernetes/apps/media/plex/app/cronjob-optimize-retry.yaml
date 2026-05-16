@@ -90,12 +90,7 @@ metadata:
   namespace: plex
 spec:
   schedule: "0 * * * *"
-  # Suspended 2026-05-15: Plex Optimize is being wound down now that
-  # scaleplex handles live transcoding. The Tautulli-driven optimize
-  # notifier is disabled; this retry cron has nothing left to retry.
-  # Kept (suspended, not deleted) for easy revert during the scaleplex
-  # soak — remove the manifest once Optimize is fully retired.
-  suspend: true
+  suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
