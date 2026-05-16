@@ -108,7 +108,7 @@ spec:
               # scaleplex-relay as an s6-rc.d longrun. Replaces
               # plex-test_dockermod (which set up nginx LOCAL_RELAY
               # + transcoder.js worker dispatcher).
-              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-f28bf17
+              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-4c275cb
               # Both LOCAL_RELAY_* are read by scaleplex-relay (and by
               # the shim's collectEnv() to derive SCALEPLEX_PMS_BASE_URL
               # for the rewriter's URL substitutions).
@@ -157,7 +157,7 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              tag: sha-1ae4da3
+              tag: sha-4c275cb
             env:
               TZ: Europe/Brussels
               # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
