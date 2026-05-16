@@ -202,7 +202,7 @@ spec:
             securityContext:
               allowPrivilegeEscalation: true
               capabilities:
-                add: ["PERFMON", "SYS_PTRACE"]
+                add: ["PERFMON"]
         pod:
           nodeSelector:
             intel.feature.node.kubernetes.io/gpu: "true"
