@@ -160,6 +160,11 @@ spec:
               tag: sha-4c275cb
             env:
               TZ: Europe/Brussels
+              # OpenCL tonemap (tonemap_opencl) fails when ffmpeg is
+              # agent-spawned — "Failed to get number of OpenCL
+              # platforms: -1001" — pending an env fix. vaapi forces
+              # the fixed-curve tonemap_vaapi, which always works.
+              SCALEPLEX_TONEMAP: vaapi
               # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
               # HW_FONTS_DIR, WORKER_MAX_SESSIONS) default sensibly.
               # Encoder choice
