@@ -105,13 +105,14 @@ spec:
             - key: intel.feature.node.kubernetes.io/gpu
               operator: Equal
               value: "true"
-              effect: NoSchedule
+              effect: PreferNoSchedule
           affinity:
             podAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:
                 - labelSelector:
                     matchLabels:
                       app.kubernetes.io/name: plex
+                      app.kubernetes.io/controller: plex
                   topologyKey: kubernetes.io/hostname
           securityContext:
             runAsUser: 0

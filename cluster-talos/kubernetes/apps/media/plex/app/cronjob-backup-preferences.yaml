@@ -19,7 +19,7 @@ spec:
             - key: intel.feature.node.kubernetes.io/gpu
               operator: Equal
               value: "true"
-              effect: NoSchedule
+              effect: PreferNoSchedule
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -29,6 +29,7 @@ spec:
                 - labelSelector:
                     matchLabels:
                       app.kubernetes.io/name: plex
+                      app.kubernetes.io/controller: plex
                   topologyKey: kubernetes.io/hostname
           containers:
             - name: backup
