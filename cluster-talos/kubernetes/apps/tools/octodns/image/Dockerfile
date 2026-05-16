@@ -7,7 +7,7 @@ ARG OCTODNS_VERSION=1.16.0
 # renovate: datasource=pypi depName=octodns-bind
 ARG OCTODNS_BIND_VERSION=1.1.0
 # renovate: datasource=pypi depName=octodns-netbox-dns
-ARG OCTODNS_NETBOX_DNS_VERSION=0.3.16
+ARG OCTODNS_NETBOX_DNS_VERSION=0.3.17
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends tini ca-certificates \
