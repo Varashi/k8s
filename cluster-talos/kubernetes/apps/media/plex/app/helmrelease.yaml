@@ -40,24 +40,6 @@ spec:
               PUID: "1000"
               PGID: "1000"
               UMASK_SET: "002"
-              # scaleplex DOCKER_MOD — lays down scaleplex-shim as
-              # /usr/lib/plexmediaserver/Plex Transcoder and runs
-              # scaleplex-relay as an s6-rc.d longrun. Transcoding is
-              # delegated to the in-namespace orchestrator + worker
-              # fleet; the PMS no longer transcodes locally.
-              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-f28bf17
-              # scaleplex-relay listens here; the shim's collectEnv()
-              # also reads LOCAL_RELAY_PORT + PMS_SERVICE to derive the
-              # per-session SCALEPLEX_PMS_BASE_URL for worker callbacks.
-              LOCAL_RELAY_ENABLED: "1"
-              LOCAL_RELAY_PORT: "32499"
-              PMS_SERVICE: plex.plex.svc
-              PMS_PORT: "32400"
-              SCALEPLEX_ORCHESTRATOR_URL: http://plex-orchestrator.plex.svc:3500
-              TRANSCODE_OPERATING_MODE: remote
-              # Dump full PMS argv to the PMS log for durable
-              # argv-corpus capture (replaces the old argv-tee wrapper).
-              SCALEPLEX_DUMP_ARGV: "1"
             resources:
               requests:
                 memory: 4Gi
@@ -282,3 +264,16 @@ spec:
           plex:
             app:
               - path: /backup
+      # argv-tee wrapper, mounted via linuxserver/plex's
+      # custom-cont-init.d hook. Captures one argv file per transcoder
+      # invocation into /transcode/_argv-corpus/<sid>.argv.
+      argv-tee:
+        type: configMap
+        name: plex-argv-tee
+        defaultMode: 0o755
+        advancedMounts:
+          plex:
+            app:
+              - path: /custom-cont-init.d/99-argv-tee
+                subPath: 99-argv-tee
+                readOnly: true
