@@ -1,0 +1,74 @@
+---
+# Override of PMS's bundled HTML TV App client profile.
+#
+# Why this exists:
+#   The shipped /usr/lib/plexmediaserver/Resources/Profiles/HTML TV App.xml
+#   lists `audioCodec="aac"` first for HLS+mpegts. PMS 1.43.x ignores the
+#   v2 Plex Web client's `X-Plex-Client-Profile-Extra` augmentation
+#   block (`add-transcode-target-audio-codec audioCodec=ac3 replace=true`),
+#   so the decision goes out as AAC even though the v2 client only
+#   accepts AC3 for HLS. The v2 player then errors out 23 s after
+#   receiving the decision, with H4 on screen, before ever requesting
+#   the manifest. (Reproduces with subtitles on AND off, source codec
+#   irrelevant, scaleplex bypassed — confirmed PMS-side regression.)
+#
+# Fix:
+#   Promote AC3 ahead of AAC for the HLS target. PMS picks the first
+#   compatible audio codec, so this changes the chosen encoder from aac
+#   to ac3 without removing AAC support. Affected client population:
+#   anything that advertises `X-Plex-Client-Profile-Name: HTML TV App`
+#   — currently both LG TVs in the household:
+#     - LG 49UF640V-ZA (webOS 2.1.0, Plex for LG 4.29.9, tv-v2-webos)
+#     - LG 49SJ800V-ZB (webOS 3.9.0, Plex for LG 5.94.1, tv-v5-webos)
+#   Both LG TVs natively decode AC3, so the v5-webos client should be
+#   unaffected by the codec swap.
+#
+# Plex picks up overrides from
+# `/config/Library/Application Support/Plex Media Server/Profiles/`
+# at server start; mounted via subPath so PMS treats it as a normal
+# file. ConfigMap data keys can't contain spaces, hence the
+# underscored key + subPath mapping in helmrelease.yaml.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plex-html-tv-app-profile
+  namespace: plex
+data:
+  HTML_TV_App.xml: |
+    <?xml version="1.0" encoding="utf-8"?>
+    <Client name="HTML TV App">
+      <!--
+       Author: Plex Inc. (original) + Frank (AC3-first patch)
+       History:
+        0.9.12.0:  First release. Included HLS and DASH MusicProfile with videoCodec.
+        0.9.12.2:  HTTP protocol support added for VideoProfile and MusicProfile with videoCodec.
+        2026-05-17: Promote ac3 over aac for HLS+mpegts to work around
+                    PMS 1.43.x ignoring the v2 web client's
+                    add-transcode-target-audio-codec augmentation.
+      -->
+      <TranscodeTargets>
+        <VideoProfile protocol="hls" container="mpegts" videoCodec="h264" audioCodec="ac3" context="streaming">
+          <Setting name="BreakNonKeyframes" value="true" />
+        </VideoProfile>
+        <VideoProfile protocol="hls" container="mpegts" videoCodec="h264" audioCodec="aac" context="streaming">
+          <Setting name="BreakNonKeyframes" value="true" />
+        </VideoProfile>
+        <VideoProfile protocol="dash" container="mp4" videoCodec="h264" audioCodec="aac" context="streaming" />
+        <VideoProfile protocol="http" container="mkv" codec="h264" audioCodec="aac" context="streaming" />
+
+        <MusicProfile protocol="hls" container="mpegts" videoCodec="h264" audioCodec="aac" context="streaming" />
+        <MusicProfile protocol="dash" container="mp4" videoCodec="h264" audioCodec="aac" context="streaming" />
+        <MusicProfile protocol="http" container="mkv" videoCodec="h264" audioCodec="aac" context="streaming" />
+
+        <PhotoProfile container="jpeg" />
+      </TranscodeTargets>
+      <CodecProfiles>
+        <VideoCodec name="*">
+          <Limitations>
+            <UpperBound name="video.width" value="1920" isRequired="true" />
+            <UpperBound name="video.height" value="1080" isRequired="true" />
+            <UpperBound name="video.bitDepth" value="8" />
+          </Limitations>
+        </VideoCodec>
+      </CodecProfiles>
+    </Client>

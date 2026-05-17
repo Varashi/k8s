@@ -282,3 +282,17 @@ spec:
           plex:
             app:
               - path: /backup
+      # Override PMS's bundled HTML TV App client profile with an
+      # AC3-first version — works around a PMS 1.43.x regression where
+      # the v2 webOS Plex Web client's audio-codec augmentation is
+      # ignored, leaving the LG TV in an H4 error loop. See the
+      # configmap for the full rationale.
+      html-tv-app-profile:
+        type: configMap
+        name: plex-html-tv-app-profile
+        advancedMounts:
+          plex:
+            app:
+              - path: "/config/Library/Application Support/Plex Media Server/Profiles/HTML TV App.xml"
+                subPath: HTML_TV_App.xml
+                readOnly: true
