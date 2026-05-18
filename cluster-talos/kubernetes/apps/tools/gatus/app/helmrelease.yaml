@@ -278,6 +278,9 @@ spec:
             - identifier: gatus
 
     defaultPodOptions:
+      # app-template v5 defaults automountServiceAccountToken to false;
+      # gatus needs the SA token to auto-discover k8s services/routes.
+      automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

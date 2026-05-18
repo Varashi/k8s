@@ -232,6 +232,9 @@ spec:
             - identifier: homepage
 
     defaultPodOptions:
+      # app-template v5 defaults automountServiceAccountToken to false;
+      # homepage needs the SA token for k8s service discovery + widget.
+      automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
