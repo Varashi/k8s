@@ -164,6 +164,15 @@
       "automerge": false
     },
     {
+      "description": "Plex (LSIO): re-enable automerge for container-only rebuilds (the -lsNNN suffix) within the current PMS version. Must sit after the plex/plex-test rules above so this automerge wins. allowedVersions pins the PMS prefix - a real Plex version bump is blocked on purpose; bump the prefix manually after a scaleplex compatibility check.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/linuxserver/plex"],
+      "allowedVersions": "/^1\\.43\\.1\\.10611-1e34174b1-ls\\d+$/",
+      "automerge": true,
+      "automergeType": "pr",
+      "minimumReleaseAge": "3 days"
+    },
+    {
       "description": "Auto-merge GitHub Actions with 3-day cooldown",
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
