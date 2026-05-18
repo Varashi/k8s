@@ -53,6 +53,37 @@ automatically.
 Bisect history (and how to recognise the same pattern on a different
 client) is in memory `reference_pms_html_tv_app_ac3_override.md`.
 
+## PMS file log → stdout → vcflogs
+
+`configmap-plex-log-tail.yaml` registers an s6-overlay v3 longrun named
+`plex-log-tail` inside the plex container. It tails the file Plex writes
+to (`/config/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log`)
+into the container's stdout. The cluster's fluent-bit DaemonSet
+(`tanzu-system-logging`) picks it up along with the rest of `/var/log/
+containers/*.log` and ships everything to `skw-vcflogs.boeye.net:514`
+via syslog RFC5424.
+
+The longrun layout mirrors how `scaleplex_pms_dockermod` already wires
+`scaleplex-relay` — three files mounted under `/etc/s6-overlay/s6-rc.d/`:
+`plex-log-tail/type`, `plex-log-tail/run`, and
+`user/contents.d/plex-log-tail` (marker). `tail -F` follows by filename,
+so Plex's 10 MB internal rotation is transparent.
+
+Useful to know:
+- vcflogs lumps these under the same `PROCID=app` as the linuxserver
+  init banner and the `relay forward done POST ...` chatter — filter by
+  message content, not PROCID. (Dedicated sidecar was the alternative
+  considered; rejected to stay single-container.)
+- `Plex Media Server.log` on the config PVC is unchanged. In-pod
+  `kubectl exec` + grep on the 60 MB rolling buffer is still the
+  fastest path for live bisects.
+- `PUT /:/prefs?LogVerbose=1` makes the tail very chatty; the in-pod
+  buffer narrows to ~10-30 min while vcflogs retention picks up the
+  slack. Remember to flip it back off after a debugging window.
+
+The plex-test HR ships the same ConfigMap + mount in its `plex-test/app/`
+directory.
+
 ## Other notes
 
 - **DOCKER_MODS** — `ghcr.io/varashi/scaleplex_pms_dockermod:<tag>` replaces
