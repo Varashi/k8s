@@ -10,8 +10,16 @@ Each show gets:
   - adding an ep to the playlist makes the optimize job pick it up on
     its next scheduled re-evaluation
 
-Script arguments (Tautulli notifier subject):
-    {media_type} {rating_key} {grandparent_rating_key}
+Script arguments (Tautulli notifier subject) — two forms:
+    play:        {media_type} {rating_key} {grandparent_rating_key}
+    newly_added: newly_added {media_type} {rating_key}
+
+play (on_play/on_resume/on_change):
+    session-state gate + current ep + LOOKAHEAD next eps
+newly_added (on_created / Recently Added):
+    queue freshly-added eps for already-tracked shows. {media_type} may be
+    episode, or season/show when Tautulli groups a batch of additions — all
+    resolve to a flat episode list.
 
 Env vars (set by Tautulli):
     PLEX_URL, PLEX_TOKEN
@@ -30,6 +38,9 @@ OPTIMIZE_TARGET_TAG = 'optimized for tv'
 LOOKAHEAD = 2  # current ep + next 2 = 3 total
 SESSION_LOOKUP_RETRIES = 6   # ~6s max — Tautulli on_play fires before /status/sessions populates
 SESSION_LOOKUP_DELAY = 1.0
+# newly_added: a grouped season/show notification expands to ALL episodes;
+# only those added this recently are actually new — the rest is back catalog.
+NEW_EPISODE_MAX_AGE_HOURS = 24
 
 
 def log(msg):
@@ -129,24 +140,83 @@ def get_or_create_optimize_job(plex, playlist, show_title, tv_tag_id):
     raise RuntimeError(f"optimize job {job_title!r} not found after creation")
 
 
-def main():
-    if len(sys.argv) < 4:
-        log(f"ERROR: expected 3 args, got {len(sys.argv) - 1}: {sys.argv}")
-        sys.exit(1)
+def _queue_new_episode(plex, ep, playlists_by_title, tags):
+    """Queue one freshly-added episode, if its show is tracked and the ep is a
+    4K original not already optimized / already queued."""
+    show_title = ep.grandparentTitle
+    label = f"{show_title} {_se(ep)} {ep.title}"
+    has_4k = any(
+        (getattr(m, 'videoResolution', '') or '').lower() in ('4k', '2160')
+        and not getattr(m, 'isOptimizedVersion', False)
+        for m in ep.media
+    )
+    if not has_4k:
+        log(f"SKIP (no 4K original): {label}")
+        return
 
-    media_type, rating_key, grandparent_rating_key = sys.argv[1:4]
-    if media_type != 'episode':
-        sys.exit(0)
+    playlist = playlists_by_title.get(_playlist_title(show_title))
+    if playlist is None:
+        log(f"SKIP (show not tracked): {label}")
+        return
+    if any(getattr(m, 'isOptimizedVersion', False) for m in ep.media):
+        log(f"SKIP (already optimized): {label}")
+        return
+    if str(ep.ratingKey) in {str(it.ratingKey) for it in playlist.items()}:
+        log(f"SKIP (already in playlist): {label}")
+        return
 
-    plex_url = os.environ.get('PLEX_URL', '').rstrip('/')
-    plex_token = os.environ.get('PLEX_TOKEN', '')
-    if not plex_url or not plex_token:
-        log("ERROR: PLEX_URL or PLEX_TOKEN not set")
-        sys.exit(1)
+    # playlist exists → optimize job should too; recreate defensively if not
+    get_or_create_optimize_job(plex, playlist, show_title, tags[OPTIMIZE_TARGET_TAG])
+    playlist.addItems([ep])
+    log(f"QUEUE (new episode): {label}")
 
-    from plexapi.server import PlexServer
-    plex = PlexServer(plex_url, plex_token)
 
+def _is_recent(ep):
+    """True if the episode was added within NEW_EPISODE_MAX_AGE_HOURS — used to
+    keep back catalog out when a grouped season/show notification is expanded."""
+    added = getattr(ep, 'addedAt', None)
+    if not added:
+        return False
+    return datetime.datetime.now() - added <= datetime.timedelta(hours=NEW_EPISODE_MAX_AGE_HOURS)
+
+
+def handle_new_episode(plex, item_type, rating_key):
+    """Recently-added trigger. Tautulli groups a batch of additions: a single
+    new episode arrives as 'episode', several eps of one season as 'season',
+    several seasons (or a whole new show) as 'show'. fetchItem on a season/show
+    yields ALL its episodes, not just the new ones — so filter to eps added in
+    the last NEW_EPISODE_MAX_AGE_HOURS before queuing.
+
+    Queue only for shows already tracked by an 'Optimize - <Show>' playlist
+    (someone watches them in 4K); untracked shows are skipped so a brand-new
+    series doesn't drag the whole library into the optimize queue.
+
+    No session gate, no lookahead — these eps ARE the new frontier."""
+    item = plex.fetchItem(int(rating_key))
+    if item.type == 'episode':
+        candidates = [item]
+    elif item.type in ('season', 'show'):
+        candidates = item.episodes()
+    else:
+        log(f"SKIP (unsupported type {item.type!r}): ratingKey {rating_key}")
+        return
+
+    eps = [e for e in candidates if _is_recent(e)]
+    if item.type != 'episode' or len(eps) != len(candidates):
+        log(f"{item.type} ratingKey {rating_key} ({item.title!r}): {len(candidates)} "
+            f"ep(s), {len(eps)} added in last {NEW_EPISODE_MAX_AGE_HOURS}h")
+    if not eps:
+        log(f"SKIP (no newly-added eps): {item.type} {item.title!r}")
+        return
+
+    playlists_by_title = {pl.title: pl for pl in plex.playlists()}
+    tags = {t.tag.lower(): t.id for t in plex.library.tags('mediaProcessingTarget')}
+    for ep in eps:
+        ep.reload()
+        _queue_new_episode(plex, ep, playlists_by_title, tags)
+
+
+def handle_play(plex, rating_key, grandparent_rating_key):
     reason = session_skip_reason(plex, rating_key)
     if reason:
         ep = plex.fetchItem(int(rating_key))
@@ -199,6 +269,42 @@ def main():
         log(f"added {len(to_add)} ep(s) to playlist {playlist.title!r}")
     else:
         log(f"no new eps for {show.title!r}")
+
+
+def main():
+    args = sys.argv[1:]
+
+    # newly_added subject: "newly_added {media_type} {rating_key}"
+    # play subject:        "{media_type} {rating_key} {grandparent_rating_key}"
+    if args and args[0] == 'newly_added':
+        if len(args) < 3:
+            log(f"ERROR: newly_added expected 3 args, got {len(args)}: {sys.argv}")
+            sys.exit(1)
+        mode, item_type, rating_key = 'newly_added', args[1], args[2]
+        if item_type not in ('episode', 'season', 'show'):
+            sys.exit(0)
+    else:
+        if len(args) < 3:
+            log(f"ERROR: play expected 3 args, got {len(args)}: {sys.argv}")
+            sys.exit(1)
+        mode = 'play'
+        media_type, rating_key, grandparent_rating_key = args[:3]
+        if media_type != 'episode':
+            sys.exit(0)
+
+    plex_url = os.environ.get('PLEX_URL', '').rstrip('/')
+    plex_token = os.environ.get('PLEX_TOKEN', '')
+    if not plex_url or not plex_token:
+        log("ERROR: PLEX_URL or PLEX_TOKEN not set")
+        sys.exit(1)
+
+    from plexapi.server import PlexServer
+    plex = PlexServer(plex_url, plex_token)
+
+    if mode == 'newly_added':
+        handle_new_episode(plex, item_type, rating_key)
+    else:
+        handle_play(plex, rating_key, grandparent_rating_key)
 
 
 if __name__ == '__main__':
