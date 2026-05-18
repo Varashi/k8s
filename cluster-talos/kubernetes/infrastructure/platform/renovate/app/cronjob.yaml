@@ -15,7 +15,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: renovate
-              image: ghcr.io/renovatebot/renovate:43.160.7
+              image: ghcr.io/renovatebot/renovate:43.183.1
               env:
                 - name: RENOVATE_TOKEN
                   valueFrom:
