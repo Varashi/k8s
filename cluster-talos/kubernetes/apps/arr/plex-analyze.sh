@@ -30,11 +30,20 @@ SCAN_WAIT=15   # seconds to let the folder scan settle before analyze
 
 EV="${radarr_eventtype:-${sonarr_eventtype:-}}"
 FOLDER="${radarr_movie_path:-${sonarr_series_path:-}}"
+# Fallback: a Tdarr in-place rebuild fires MovieFileDelete/EpisodeFileDelete
+# (the old file vanishes) — derive the folder from the file path if the
+# movie/series path isn't in the env.
+if [ -z "$FOLDER" ]; then
+  FF="${radarr_moviefile_path:-${sonarr_episodefile_path:-}}"
+  [ -z "$FF" ] && FF="${radarr_moviefile_sourcepath:-${sonarr_episodefile_sourcepath:-}}"
+  [ -n "$FF" ] && FOLDER=$(dirname "$FF")
+fi
 log "=== event=${EV:-?} folder=${FOLDER:-?} ==="
 
 # arr fires the script with eventtype=Test when the connection is saved
 [ "$EV" = "Test" ] && { log "test event — ok"; exit 0; }
-[ "$EV" = "Rename" ] || { log "event is not Rename — skip"; exit 0; }
+# Runs on any real event that yields a folder (Rename, MovieFileDelete,
+# EpisodeFileDelete, Upgrade, ...); analyzing the folder is idempotent.
 [ -n "$FOLDER" ] || { log "no folder path in env — skip"; exit 0; }
 
 # translate arr path -> plex path
