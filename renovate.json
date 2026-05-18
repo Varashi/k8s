@@ -59,6 +59,11 @@
   ],
   "packageRules": [
     {
+      "description": "Group all .mise.toml toolchain bumps into one PR to avoid intra-file conflicts",
+      "matchFileNames": [".mise.toml"],
+      "groupName": "mise toolchain"
+    },
+    {
       "matchManagers": ["flux"],
       "groupName": "helm charts",
       "automerge": false
