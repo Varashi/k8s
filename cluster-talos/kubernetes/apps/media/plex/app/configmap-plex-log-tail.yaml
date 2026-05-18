@@ -1,0 +1,34 @@
+---
+# s6-overlay longrun that streams PMS's file-based log to the plex
+# container's stdout. PMS writes to
+# `/config/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log`
+# (no exposed knob to redirect that to stdout); without this service
+# the verbose request/decision lines never reach kubectl/Freelens or
+# the tanzu-system-logging fluent-bit DaemonSet that ships container
+# stdout to skw-vcflogs.boeye.net:514.
+#
+# Pattern mirrors the scaleplex_pms_dockermod's `scaleplex-relay`
+# longrun (same s6-overlay v3 layout — three files per service:
+# type, run, and a marker under user/contents.d/). Drops to abc
+# (uid 1000) for read access to /config; `tail -F` follows by name
+# so PMS's internal 10 MB log rotation is transparent.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plex-log-tail
+  namespace: plex
+data:
+  type: |
+    longrun
+  run: |
+    #!/command/with-contenv bash
+    # `tail -F` (capital F) re-opens by filename — Plex rotates the
+    # log file atomically every ~10 MB, lowercase -f would die on
+    # the first rotation. -n0 starts from EOF so we don't replay
+    # historical content on every pod restart.
+    exec s6-setuidgid abc \
+      tail -n0 -F "/config/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log"
+  # Marker file content for /etc/s6-overlay/s6-rc.d/user/contents.d/plex-log-tail
+  # — s6-rc enumerates the user bundle by listing this directory;
+  # presence (not content) of a file named after the service enables it.
+  contents-marker: ""

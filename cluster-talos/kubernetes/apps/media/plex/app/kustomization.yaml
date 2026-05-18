@@ -4,6 +4,7 @@ resources:
   - namespace.yaml
   - pvc.yaml
   - configmap-html-tv-app-profile.yaml
+  - configmap-plex-log-tail.yaml
   - helmrelease.yaml
   - cronjob-backup-preferences.yaml
   - cronjob-trigger-db-backup.yaml
