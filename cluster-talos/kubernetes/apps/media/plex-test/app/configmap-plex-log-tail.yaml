@@ -1,0 +1,20 @@
+---
+# Same pattern as prod plex (cluster-talos/kubernetes/apps/media/plex/app/
+# configmap-plex-log-tail.yaml) — s6-overlay longrun that tails PMS's
+# file-based log into stdout so fluent-bit (tanzu-system-logging
+# DaemonSet) ships request/decision detail to skw-vcflogs alongside
+# the regular container logs. `tail -F` follows by name across PMS's
+# internal 10 MB log rotation.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plex-log-tail
+  namespace: plex-test
+data:
+  type: |
+    longrun
+  run: |
+    #!/command/with-contenv bash
+    exec s6-setuidgid abc \
+      tail -n0 -F "/config/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log"
+  contents-marker: ""
