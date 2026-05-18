@@ -1,27 +1,13 @@
 ---
-# Override of PMS's bundled HTML TV App client profile.
-#
-# Why this exists:
-#   The shipped /usr/lib/plexmediaserver/Resources/Profiles/HTML TV App.xml
-#   lists `audioCodec="aac"` first for HLS+mpegts. PMS 1.43.x ignores the
-#   v2 Plex Web client's `X-Plex-Client-Profile-Extra` augmentation
-#   block (`add-transcode-target-audio-codec audioCodec=ac3 replace=true`),
-#   so the decision goes out as AAC even though the v2 client only
-#   accepts AC3 for HLS. The v2 player then errors out 23 s after
-#   receiving the decision, with H4 on screen, before ever requesting
-#   the manifest. (Reproduces with subtitles on AND off, source codec
-#   irrelevant, scaleplex bypassed — confirmed PMS-side regression.)
-#
-# Fix:
-#   Promote AC3 ahead of AAC for the HLS target. PMS picks the first
-#   compatible audio codec, so this changes the chosen encoder from aac
-#   to ac3 without removing AAC support. Affected client population:
-#   anything that advertises `X-Plex-Client-Profile-Name: HTML TV App`
-#   — currently both LG TVs in the household:
-#     - LG 49UF640V-ZA (webOS 2.1.0, Plex for LG 4.29.9, tv-v2-webos)
-#     - LG 49SJ800V-ZB (webOS 3.9.0, Plex for LG 5.94.1, tv-v5-webos)
-#   Both LG TVs natively decode AC3, so the v5-webos client should be
-#   unaffected by the codec swap.
+# Override of PMS's bundled HTML TV App client profile (plex-test).
+# Mirror of prod plex/app/configmap-html-tv-app-profile.yaml — keep in
+# sync. Full rationale lives in the prod copy; in short:
+#  - AC3-first HLS target: works around PMS 1.43.x regression where the
+#    v2 webOS client's audio-codec augmentation is ignored, leaving LG
+#    TVs in an H4 error loop.
+#  - 4K/10-bit transcode-output cap: stock 1080p/8-bit clamps forced
+#    transcodes (e.g. burn-sub) on 4K HDR LG panels even when the
+#    client quality slider is set high.
 #
 # Plex picks up overrides from
 # `/config/Library/Application Support/Plex Media Server/Profiles/`
@@ -32,7 +18,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: plex-html-tv-app-profile
-  namespace: plex
+  namespace: plex-test
 data:
   HTML_TV_App.xml: |
     <?xml version="1.0" encoding="utf-8"?>
