@@ -5,7 +5,7 @@ FROM docker.io/netboxcommunity/netbox:${NETBOX_VERSION}
 USER root
 
 # renovate: datasource=pypi depName=netbox-plugin-dns
-ARG NETBOX_PLUGIN_DNS_VERSION=1.5.7
+ARG NETBOX_PLUGIN_DNS_VERSION=1.5.8
 
 ENV VIRTUAL_ENV=/opt/netbox/venv
 RUN /usr/local/bin/uv pip install --no-cache \
