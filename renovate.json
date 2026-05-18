@@ -117,6 +117,48 @@
       "ignoreTests": false
     },
     {
+      "description": "Self-hosted apps: own PR group, kept out of the infra helm-charts group",
+      "matchFileNames": [
+        "cluster-talos/kubernetes/apps/arr/autobrr/**",
+        "cluster-talos/kubernetes/apps/downloaders/qbittorrent/**",
+        "cluster-talos/kubernetes/apps/downloaders/sabnzbd/**",
+        "cluster-talos/kubernetes/apps/media/tautulli/**",
+        "cluster-talos/kubernetes/apps/media/tdarr/**",
+        "cluster-talos/kubernetes/apps/tools/homepage/**",
+        "cluster-talos/kubernetes/apps/tools/ocis/**"
+      ],
+      "groupName": "self-hosted apps"
+    },
+    {
+      "description": "Auto-merge self-hosted app image bumps (3-day cooldown, CI must pass)",
+      "matchFileNames": [
+        "cluster-talos/kubernetes/apps/arr/autobrr/**",
+        "cluster-talos/kubernetes/apps/downloaders/qbittorrent/**",
+        "cluster-talos/kubernetes/apps/downloaders/sabnzbd/**",
+        "cluster-talos/kubernetes/apps/media/tautulli/**",
+        "cluster-talos/kubernetes/apps/media/tdarr/**",
+        "cluster-talos/kubernetes/apps/tools/homepage/**",
+        "cluster-talos/kubernetes/apps/tools/ocis/**"
+      ],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true,
+      "automergeType": "pr",
+      "minimumReleaseAge": "3 days",
+      "ignoreTests": false
+    },
+    {
+      "description": "Plex: own PR, manual merge (verify scaleplex compatibility)",
+      "matchFileNames": ["cluster-talos/kubernetes/apps/media/plex/**"],
+      "groupName": "plex",
+      "automerge": false
+    },
+    {
+      "description": "Plex-test: own PR, manual merge (verify scaleplex compatibility)",
+      "matchFileNames": ["cluster-talos/kubernetes/apps/media/plex-test/**"],
+      "groupName": "plex-test",
+      "automerge": false
+    },
+    {
       "description": "Auto-merge GitHub Actions with 3-day cooldown",
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
