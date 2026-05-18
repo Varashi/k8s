@@ -96,7 +96,7 @@ spec:
           app:
             image:
               repository: ghcr.io/linuxserver/plex
-              tag: 1.43.1.10611-1e34174b1-ls303
+              tag: 1.43.1.10611-1e34174b1-ls305
             env:
               TZ: Europe/Brussels
               VERSION: docker
@@ -157,7 +157,7 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              tag: sha-14910ca
+              tag: sha-08b3ebb
             env:
               TZ: Europe/Brussels
               # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
@@ -343,35 +343,3 @@ spec:
             # session output.
             app:
               - path: /media
-      # Override PMS's bundled HTML TV App client profile with an
-      # AC3-first / 4K-10bit version — mirrors prod plex. See the
-      # configmap header for the full rationale.
-      html-tv-app-profile:
-        type: configMap
-        name: plex-html-tv-app-profile
-        advancedMounts:
-          pms:
-            app:
-              - path: "/config/Library/Application Support/Plex Media Server/Profiles/HTML TV App.xml"
-                subPath: HTML_TV_App.xml
-                readOnly: true
-      # s6-overlay longrun that tails PMS's file-based log into the
-      # container's stdout so fluent-bit ships request/decision detail
-      # to vcflogs. Same pattern + caveats as prod plex; see the
-      # configmap header.
-      plex-log-tail:
-        type: configMap
-        name: plex-log-tail
-        defaultMode: 0o755
-        advancedMounts:
-          pms:
-            app:
-              - path: /etc/s6-overlay/s6-rc.d/plex-log-tail/type
-                subPath: type
-                readOnly: true
-              - path: /etc/s6-overlay/s6-rc.d/plex-log-tail/run
-                subPath: run
-                readOnly: true
-              - path: /etc/s6-overlay/s6-rc.d/user/contents.d/plex-log-tail
-                subPath: contents-marker
-                readOnly: true
