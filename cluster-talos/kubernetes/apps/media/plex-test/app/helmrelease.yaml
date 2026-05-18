@@ -175,10 +175,6 @@ spec:
               # renders via libass under a process-wide mutex with a
               # pre-graph chunk buffer (Phase 2b).
               WORKER_DUMP_ARGV: "1"
-              # DIAGNOSTIC (2026-05-18): suppress -canthrottleurl
-              # injection to A/B whether canThrottle causes the live
-              # PGS-burn throughput collapse. Remove once diagnosed.
-              SCALEPLEX_DISABLE_CANTHROTTLE: "1"
             probes:
               liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 10, failureThreshold: 3 } }
               readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3501 }, periodSeconds: 2, failureThreshold: 60 } }
