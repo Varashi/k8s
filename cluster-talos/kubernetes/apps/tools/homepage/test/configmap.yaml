@@ -69,11 +69,11 @@ data:
               display: block
               mappings:
                 - field: cpu_pct
-                  label: PMS CPU
+                  label: Plex CPU
                   format: float
                   suffix: "%"
                 - field: mem_pct
-                  label: PMS Mem
+                  label: Plex Mem
                   format: float
                   suffix: "%"
                 - field: workers_ready
