@@ -145,12 +145,6 @@ spec:
                 interval: 60s
                 conditions:
                   - "[STATUS] == 200"
-              - name: clusterplex
-                group: media
-                url: https://clusterplex.${SECRET_DOMAIN}/identity
-                interval: 60s
-                conditions:
-                  - "[STATUS] < 500"
               - name: tautulli
                 group: media
                 url: https://tautulli.${SECRET_DOMAIN}
