@@ -59,31 +59,25 @@ data:
               view: both
               showEpisodeNumber: true
               expandOneStreamToTwoRows: false
-        - Transcode stats:
+        - Plex fleet:
             icon: mdi-chip
-            description: Plex performance
+            description: PMS pod + scaleplex workers
             widget:
               type: customapi
-              url: http://prometheus-server.monitoring.svc/api/v1/query?query=label_replace%28100%20%2A%20sum%28rate%28container_cpu_usage_seconds_total%7Bnamespace%3D%22plex%22%2Ccontainer%3D%22app%22%7D%5B2m%5D%29%29%20/%20on%28%29%20group_left%20sum%28kube_node_status_allocatable%7Bresource%3D%22cpu%22%7D%20%2A%20on%28node%29%20group_right%20kube_pod_info%7Bnamespace%3D%22plex%22%2Ccreated_by_kind%3D%22ReplicaSet%22%7D%29%2C%22metric%22%2C%22cpupct%22%2C%22%22%2C%22%22%29%20or%20label_replace%28100%20%2A%20sum%28container_memory_working_set_bytes%7Bnamespace%3D%22plex%22%2Ccontainer%3D%22app%22%7D%29%20/%20on%28%29%20group_left%20sum%28kube_node_status_allocatable%7Bresource%3D%22memory%22%7D%20%2A%20on%28node%29%20group_right%20kube_pod_info%7Bnamespace%3D%22plex%22%2Ccreated_by_kind%3D%22ReplicaSet%22%7D%29%2C%22metric%22%2C%22mempct%22%2C%22%22%2C%22%22%29%20or%20label_replace%28%28sum%28intel_gpu_client_engine_busy_ratio%7Bcomm%3D%22Plex%20Transcoder%22%2Cengine%3D%22video%22%7D%29%20or%20vector%280%29%29%2A100%2C%22metric%22%2C%22engine%22%2C%22%22%2C%22%22%29%20or%20label_replace%28sum%28rate%28node_mountstats_nfs_read_bytes_total%7Bexport%3D~%22.%2Amediapool/media%22%7D%5B2m%5D%29%20%2A%20on%28node%29%20group_left%28%29%20kube_pod_info%7Bnamespace%3D%22plex%22%2Ccreated_by_kind%3D%22ReplicaSet%22%7D%29/1e6%2C%22metric%22%2C%22nfsread%22%2C%22%22%2C%22%22%29
+              url: http://127.0.0.1:8088/plex-fleet
               refreshInterval: 5000
               display: block
               mappings:
-                - field: data.result.0.value.1
-                  label: CPU
+                - field: cpu_pct
+                  label: PMS CPU
                   format: float
                   suffix: "%"
-                - field: data.result.1.value.1
-                  label: Mem
+                - field: mem_pct
+                  label: PMS Mem
                   format: float
                   suffix: "%"
-                - field: data.result.2.value.1
-                  label: GPU encoder
-                  format: float
-                  suffix: "%"
-                - field: data.result.3.value.1
-                  label: Disk read
-                  format: float
-                  suffix: " MB/s"
+                - field: workers_ready
+                  label: Workers ready
         - Transcode streams:
             icon: mdi-swap-horizontal
             widget:
@@ -397,27 +391,6 @@ data:
                   label: Used
                   format: float
                   suffix: "%"
-        - Longhorn:
-            icon: mdi-harddisk-plus
-            description: GPU pod storage
-            widget:
-              type: customapi
-              url: http://127.0.0.1:8088/longhorn
-              refreshInterval: 30000
-              display: block
-              mappings:
-                - field: volumes_total
-                  label: Volumes
-                - field: volumes_degraded
-                  label: Degraded
-                - field: disk_used_gib
-                  label: Used
-                  format: float
-                  suffix: " GiB"
-                - field: used_pct
-                  label: Used
-                  format: float
-                  suffix: "%"
         - Kasten:
             icon: mdi-backup-restore
             description: K8s backup
@@ -522,11 +495,11 @@ data:
       .services-group:has(li[data-name="Tracearr"]) li[data-name="Plex Service"] { grid-column: 1; grid-row: 1; }
       .services-group:has(li[data-name="Tracearr"]) li[data-name="Plex"] { grid-column: 2; grid-row: 1; }
       .services-group:has(li[data-name="Tracearr"]) li[data-name="Tracearr"] { grid-column: 1; grid-row: 2 / span 2; }
-      .services-group:has(li[data-name="Tracearr"]) li[data-name="Transcode stats"] { grid-column: 2; grid-row: 2; }
+      .services-group:has(li[data-name="Tracearr"]) li[data-name="Plex fleet"] { grid-column: 2; grid-row: 2; }
       .services-group:has(li[data-name="Tracearr"]) li[data-name="Transcode streams"] { grid-column: 2; grid-row: 3; }
     }
-    /* Fuse Transcode stats + Transcode streams into one visual card */
-    li[data-name="Transcode stats"] .service-card {
+    /* Fuse Plex fleet + Transcode streams into one visual card */
+    li[data-name="Plex fleet"] .service-card {
       margin-bottom: 0 !important;
       padding-bottom: 0 !important;
       border-bottom-left-radius: 0 !important;
@@ -602,16 +575,15 @@ data:
         row-gap: 0.25rem;
       }
     }
-    /* Infrastructure - Storage (desktop): 4 columns */
+    /* Infrastructure - Storage (desktop): 3 columns */
     @media (min-width: 900px) {
       .services-group:has(li[data-name="TrueNAS"]) ul.services-list {
-        grid-template-columns: 1fr 1fr 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr;
         column-gap: 0.25rem;
         row-gap: 0.25rem;
       }
       .services-group:has(li[data-name="TrueNAS"]) li[data-name="TrueNAS"] { grid-column: 1; }
       .services-group:has(li[data-name="TrueNAS"]) li[data-name="vSAN"] { grid-column: 2; }
-      .services-group:has(li[data-name="TrueNAS"]) li[data-name="Longhorn"] { grid-column: 3; }
-      .services-group:has(li[data-name="TrueNAS"]) li[data-name="Kasten"] { grid-column: 4; }
+      .services-group:has(li[data-name="TrueNAS"]) li[data-name="Kasten"] { grid-column: 3; }
     }
   custom.js: ""
