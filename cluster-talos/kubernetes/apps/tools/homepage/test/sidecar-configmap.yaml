@@ -64,6 +64,10 @@ data:
     PLEX_POD_RE = os.getenv("PLEX_POD_RE", "plex-[a-z0-9]+-[a-z0-9]+")
     TAUTULLI_URL = os.getenv("TAUTULLI_URL", "http://tautulli.tautulli.svc:8181")
     TAUTULLI_KEY = os.getenv("HOMEPAGE_VAR_TAUTULLI", "")
+    ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "http://plex-orchestrator.plex.svc:3500")
+    _scaleplex_cache = {"ts": 0.0, "body": None}
+    _SCALEPLEX_TTL = 5.0
+    _scaleplex_lock = threading.Lock()
 
     _lock = threading.Lock()
     _history = {}  # stream_id -> list[(ts, speed)]
@@ -478,6 +482,53 @@ data:
             _plex_fleet_cache.update(ts=now, body=body)
         return body
 
+    def _fetch_scaleplex_workers():
+        now = time.monotonic()
+        with _scaleplex_lock:
+            if _scaleplex_cache["body"] and now - _scaleplex_cache["ts"] < _SCALEPLEX_TTL:
+                return _scaleplex_cache["body"]
+        try:
+            with urllib.request.urlopen(f"{ORCHESTRATOR_URL}/workers", timeout=5) as r:
+                arr = json.loads(r.read())
+        except Exception:
+            arr = []
+        workers_by_node = {}
+        for w in arr:
+            try:
+                ip = w.get("url", "").split("//", 1)[1].split(":", 1)[0]
+            except Exception:
+                continue
+            node = _prom_label(
+                f'kube_pod_info{{namespace="{PLEX_NS}",pod_ip="{ip}"}}',
+                "node",
+            )
+            if node:
+                workers_by_node[node] = w
+        out = {}
+        for idx, node in enumerate(sorted(workers_by_node.keys()), start=1):
+            w = workers_by_node[node]
+            cpu_q = (
+                f'100 * sum(rate(container_cpu_usage_seconds_total{{namespace="{PLEX_NS}",'
+                f'container="app",pod=~"plex-worker-.*",'
+                f'kubernetes_io_hostname="{node}"}}[2m])) / on() '
+                f'sum(kube_node_status_allocatable{{node="{node}",resource="cpu"}})'
+            )
+            nfs_q = (
+                f'sum(rate(node_mountstats_nfs_read_bytes_total{{export=~".*mediapool/media",'
+                f'node="{node}"}}[2m]))/1e6'
+            )
+            out[str(idx)] = {
+                "node": node,
+                "healthy": bool(w.get("healthy")),
+                "transcodes": int(w.get("active_sessions") or 0),
+                "cpu_pct": round(_prom_scalar(cpu_q), 1),
+                "video_pct": round(float(w.get("gpu_load") or 0) * 100, 1),
+                "disk_mbps": round(_prom_scalar(nfs_q), 1),
+            }
+        with _scaleplex_lock:
+            _scaleplex_cache.update(ts=now, body=out)
+        return out
+
     def _fetch_kasten():
         now = time.monotonic()
         if _kasten_cache["body"] and now - _kasten_cache["ts"] < _KASTEN_TTL:
@@ -610,6 +661,23 @@ data:
             if self.path == "/vsan":
                 try:
                     body = json.dumps(_fetch_vsan()).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                except Exception as e:
+                    msg = f"upstream error: {e}".encode()
+                    self.send_response(502)
+                    self.send_header("Content-Length", str(len(msg)))
+                    self.end_headers()
+                    self.wfile.write(msg)
+                return
+            if self.path.startswith("/scaleplex-worker/"):
+                idx = self.path[len("/scaleplex-worker/"):]
+                try:
+                    all_w = _fetch_scaleplex_workers()
+                    body = json.dumps(all_w.get(idx, {})).encode()
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.send_header("Content-Length", str(len(body)))
