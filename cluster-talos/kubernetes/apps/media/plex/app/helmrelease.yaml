@@ -45,7 +45,7 @@ spec:
               # scaleplex-relay as an s6-rc.d longrun. Transcoding is
               # delegated to the in-namespace orchestrator + worker
               # fleet; the PMS no longer transcodes locally.
-              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-f28bf17
+              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:v1.0.0
               # scaleplex-relay listens here; the shim's collectEnv()
               # also reads LOCAL_RELAY_PORT + PMS_SERVICE to derive the
               # per-session SCALEPLEX_PMS_BASE_URL for worker callbacks.
@@ -72,7 +72,7 @@ spec:
           app:
             image:
               repository: ghcr.io/varashi/scaleplex_orchestrator
-              tag: sha-5daef39
+              tag: v1.0.0
             env:
               TZ: Europe/Brussels
               LISTEN_ADDR: ":3500"
@@ -111,7 +111,7 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              tag: sha-6a30636
+              tag: v1.0.0
             env:
               TZ: Europe/Brussels
               # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
