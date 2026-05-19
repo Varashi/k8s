@@ -37,8 +37,6 @@ spec:
         effect: NoSchedule
     deschedulerPolicyAPIVersion: descheduler/v1alpha2
     deschedulerPolicy:
-      metricsProviders:
-        - source: KubernetesMetrics
       profiles:
         - name: default
           pluginConfig:
@@ -66,8 +64,6 @@ spec:
                 minPodLifetimeSeconds: 3600
             - name: LowNodeUtilization
               args:
-                metricsUtilization:
-                  source: KubernetesMetrics
                 thresholds:
                   cpu: 20
                   memory: 20
