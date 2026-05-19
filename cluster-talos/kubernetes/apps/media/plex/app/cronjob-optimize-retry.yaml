@@ -11,7 +11,13 @@ data:
     # Movies: only 'error/sourceFileUnavailable' (file replaced by arr upgrade —
     #         reprocess re-binds to current Part). transcoderError /
     #         sourceFileMetadataError are deterministic codec/probe failures and
-    #         loop forever; skip them. 'disabled/good' is completed-and-off.
+    #         loop forever; skip them.
+    #
+    # State routing (PMS rejects /reprocess for non-error items):
+    #   processingState=error    -> PUT /reprocess  (Plex Web UI: "Retry" on errored)
+    #   processingState=disabled -> PUT /enable     (Plex Web UI: "Retry" on "Deleted",
+    #                                                meaning the optimized file was
+    #                                                cleaned up and needs regenerating)
     #
     # Iterates every optimize job currently in the Background Processing List
     # (playlist 1066). Tautulli creates per-show jobs dynamically, so a fixed
@@ -89,14 +95,15 @@ data:
                 season_ep = f" S{it['parentIndex']:02d}E{it['index']:02d}"
             label = f"{show}{season_ep} - {title}".strip(" -")
             print(f"ITEM  {state:8s} {ctx:24s} {rk} {label} | {fingerprint(it)}")
-            u = f"{PLEX_URL}/playlists/{BPL_ID}/items/{job_id}/{rk}/reprocess?X-Plex-Token={token}"
+            action = "enable" if state == "disabled" else "reprocess"
+            u = f"{PLEX_URL}/playlists/{BPL_ID}/items/{job_id}/{rk}/{action}?X-Plex-Token={token}"
             r = urllib.request.Request(u, method="PUT")
             try:
                 urllib.request.urlopen(r, timeout=15)
-                print(f"RETRY {state:8s} {ctx:24s} {rk} {label}")
+                print(f"RETRY {state:8s} {ctx:24s} {rk} {label} action={action}")
                 grand_ok += 1
             except urllib.error.HTTPError as e:
-                print(f"FAIL  {state:8s} {ctx:24s} {rk} {label} http={e.code}")
+                print(f"FAIL  {state:8s} {ctx:24s} {rk} {label} action={action} http={e.code}")
                 grand_fail += 1
     print(f"done jobs={len(jobs)} total_items={grand_total} targets={grand_targets} ok={grand_ok} fail={grand_fail}")
 ---
