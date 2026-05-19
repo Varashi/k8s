@@ -91,8 +91,8 @@ data:
                 label: transcodeInfo.speed
                 format: float
                 suffix: "×"
-    - Plex Transcoders:
-        - Plex Transcoder 1:
+    - Transcoders:
+        - Plex worker 1:
             icon: mdi-video-switch
             description: scaleplex worker
             widget:
@@ -119,7 +119,7 @@ data:
                   label: Disk I/O
                   format: float
                   suffix: " MB/s"
-        - Plex Transcoder 2:
+        - Plex worker 2:
             icon: mdi-video-switch
             description: scaleplex worker
             widget:
@@ -146,7 +146,7 @@ data:
                   label: Disk I/O
                   format: float
                   suffix: " MB/s"
-        - Plex Transcoder 3:
+        - Plex worker 3:
             icon: mdi-video-switch
             description: scaleplex worker
             widget:
@@ -173,6 +173,75 @@ data:
                   label: Disk I/O
                   format: float
                   suffix: " MB/s"
+        - Tdarr worker 1:
+            icon: mdi-video-switch
+            description: Library transcoder
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/tdarr-host/skw-esxi4
+              refreshInterval: 15000
+              display: block
+              mappings:
+                - field: transcode_active
+                  label: Transcode
+                - field: cpu_pct
+                  label: CPU
+                  format: float
+                  suffix: "%"
+                - field: mem_pct
+                  label: Memory
+                  format: float
+                  suffix: "%"
+                - field: video_pct
+                  label: Encoder
+                  format: float
+                  suffix: "%"
+        - Tdarr worker 2:
+            icon: mdi-video-switch
+            description: Library transcoder
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/tdarr-host/skw-esxi5
+              refreshInterval: 15000
+              display: block
+              mappings:
+                - field: transcode_active
+                  label: Transcode
+                - field: cpu_pct
+                  label: CPU
+                  format: float
+                  suffix: "%"
+                - field: mem_pct
+                  label: Memory
+                  format: float
+                  suffix: "%"
+                - field: video_pct
+                  label: Encoder
+                  format: float
+                  suffix: "%"
+        - Tdarr worker 3:
+            icon: mdi-video-switch
+            description: Library transcoder
+            widget:
+              type: customapi
+              url: http://127.0.0.1:8088/tdarr-host/skw-esxi6
+              refreshInterval: 15000
+              display: block
+              mappings:
+                - field: transcode_active
+                  label: Transcode
+                - field: cpu_pct
+                  label: CPU
+                  format: float
+                  suffix: "%"
+                - field: mem_pct
+                  label: Memory
+                  format: float
+                  suffix: "%"
+                - field: video_pct
+                  label: Encoder
+                  format: float
+                  suffix: "%"
     - Media Pipeline:
         - Ombi:
             icon: ombi.png
@@ -353,75 +422,6 @@ data:
                   label: Memory
                   format: float
                   suffix: "%"
-        - Tdarr Node 1:
-            icon: mdi-video-switch
-            description: Library transcoder
-            widget:
-              type: customapi
-              url: http://127.0.0.1:8088/tdarr-host/skw-esxi4
-              refreshInterval: 15000
-              display: block
-              mappings:
-                - field: transcode_active
-                  label: Transcode
-                - field: cpu_pct
-                  label: CPU
-                  format: float
-                  suffix: "%"
-                - field: mem_pct
-                  label: Memory
-                  format: float
-                  suffix: "%"
-                - field: video_pct
-                  label: Encoder
-                  format: float
-                  suffix: "%"
-        - Tdarr Node 2:
-            icon: mdi-video-switch
-            description: Library transcoder
-            widget:
-              type: customapi
-              url: http://127.0.0.1:8088/tdarr-host/skw-esxi5
-              refreshInterval: 15000
-              display: block
-              mappings:
-                - field: transcode_active
-                  label: Transcode
-                - field: cpu_pct
-                  label: CPU
-                  format: float
-                  suffix: "%"
-                - field: mem_pct
-                  label: Memory
-                  format: float
-                  suffix: "%"
-                - field: video_pct
-                  label: Encoder
-                  format: float
-                  suffix: "%"
-        - Tdarr Node 3:
-            icon: mdi-video-switch
-            description: Library transcoder
-            widget:
-              type: customapi
-              url: http://127.0.0.1:8088/tdarr-host/skw-esxi6
-              refreshInterval: 15000
-              display: block
-              mappings:
-                - field: transcode_active
-                  label: Transcode
-                - field: cpu_pct
-                  label: CPU
-                  format: float
-                  suffix: "%"
-                - field: mem_pct
-                  label: Memory
-                  format: float
-                  suffix: "%"
-                - field: video_pct
-                  label: Encoder
-                  format: float
-                  suffix: "%"
     - Infrastructure - Storage:
         - TrueNAS:
             icon: mdi-nas
@@ -559,7 +559,7 @@ data:
     }
     /* Mobile: stack tiles in all custom-grid groups */
     .services-group:has(li[data-name="Tracearr"]) ul.services-list,
-    .services-group:has(li[data-name="Plex Transcoder 1"]) ul.services-list,
+    .services-group:has(li[data-name="Plex worker 1"]) ul.services-list,
     .services-group:has(li[data-name="Ombi"]) ul.services-list,
     .services-group:has(li[data-name="VM Host 1"]) ul.services-list,
     .services-group:has(li[data-name="TrueNAS"]) ul.services-list {
@@ -609,16 +609,20 @@ data:
     li[data-name="Transcode streams"] .service-container > div {
       padding-bottom: 0.25rem !important;
     }
-    /* Plex Transcoders (tablet+): 3 cards side by side */
+    /* Transcoders (tablet+): 3 cols × 2 rows (Plex workers row 1, Tdarr workers row 2) */
     @media (min-width: 500px) {
-      .services-group:has(li[data-name="Plex Transcoder 1"]) ul.services-list {
+      .services-group:has(li[data-name="Plex worker 1"]) ul.services-list {
         grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: auto auto;
         column-gap: 0.25rem;
         row-gap: 0.25rem;
       }
-      .services-group:has(li[data-name="Plex Transcoder 1"]) li[data-name="Plex Transcoder 1"] { grid-column: 1; }
-      .services-group:has(li[data-name="Plex Transcoder 1"]) li[data-name="Plex Transcoder 2"] { grid-column: 2; }
-      .services-group:has(li[data-name="Plex Transcoder 1"]) li[data-name="Plex Transcoder 3"] { grid-column: 3; }
+      .services-group:has(li[data-name="Plex worker 1"]) li[data-name="Plex worker 1"] { grid-column: 1; grid-row: 1; }
+      .services-group:has(li[data-name="Plex worker 1"]) li[data-name="Plex worker 2"] { grid-column: 2; grid-row: 1; }
+      .services-group:has(li[data-name="Plex worker 1"]) li[data-name="Plex worker 3"] { grid-column: 3; grid-row: 1; }
+      .services-group:has(li[data-name="Plex worker 1"]) li[data-name="Tdarr worker 1"] { grid-column: 1; grid-row: 2; }
+      .services-group:has(li[data-name="Plex worker 1"]) li[data-name="Tdarr worker 2"] { grid-column: 2; grid-row: 2; }
+      .services-group:has(li[data-name="Plex worker 1"]) li[data-name="Tdarr worker 3"] { grid-column: 3; grid-row: 2; }
     }
     /* Media Pipeline (tablet): 2 columns auto-flow */
     @media (min-width: 500px) and (max-width: 767px) {
@@ -643,11 +647,11 @@ data:
       .services-group:has(li[data-name="Ombi"]) li[data-name="NZBGet"] { grid-column: 3; grid-row: 1; }
       .services-group:has(li[data-name="Ombi"]) li[data-name="qBittorrent"] { grid-column: 3; grid-row: 2; }
     }
-    /* Infrastructure - Compute (desktop): 3 cols (hosts), 3 rows (host / gpu-worker / tdarr-node) */
+    /* Infrastructure - Compute (desktop): 3 cols (hosts), 2 rows (host / gpu-worker) */
     @media (min-width: 768px) {
       .services-group:has(li[data-name="VM Host 1"]) ul.services-list {
         grid-template-columns: 1fr 1fr 1fr;
-        grid-template-rows: auto auto auto;
+        grid-template-rows: auto auto;
         column-gap: 0.25rem;
         row-gap: 0.25rem;
       }
@@ -657,9 +661,6 @@ data:
       .services-group:has(li[data-name="VM Host 1"]) li[data-name="GPU Worker 1"] { grid-column: 1; grid-row: 2; }
       .services-group:has(li[data-name="VM Host 1"]) li[data-name="GPU Worker 2"] { grid-column: 2; grid-row: 2; }
       .services-group:has(li[data-name="VM Host 1"]) li[data-name="GPU Worker 3"] { grid-column: 3; grid-row: 2; }
-      .services-group:has(li[data-name="VM Host 1"]) li[data-name="Tdarr Node 1"] { grid-column: 1; grid-row: 3; }
-      .services-group:has(li[data-name="VM Host 1"]) li[data-name="Tdarr Node 2"] { grid-column: 2; grid-row: 3; }
-      .services-group:has(li[data-name="VM Host 1"]) li[data-name="Tdarr Node 3"] { grid-column: 3; grid-row: 3; }
     }
     /* Infrastructure - Storage (tablet): 2x2 */
     @media (min-width: 500px) and (max-width: 899px) {
