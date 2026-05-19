@@ -521,6 +521,14 @@ data:
                 f'100 * (sum(intel_gpu_client_engine_busy_ratio{{engine="video",'
                 f'node="{node}"}}) or vector(0))'
             )
+            # Live ffmpeg speed= ratio from the scaleplex worker; tracks
+            # actual encode rate including through canThrottle stretches
+            # that PMS's TranscodeSession.speed hides (see scaleplex worker
+            # commit 8aaa0d5).
+            speed_q = (
+                f'sum(scaleplex_worker_current_speed_ratio{{namespace="{PLEX_NS}",'
+                f'node="{node}"}}) or vector(0)'
+            )
             out[str(idx)] = {
                 "node": node,
                 "healthy": bool(w.get("healthy")),
@@ -528,6 +536,7 @@ data:
                 "cpu_pct": round(_prom_scalar(cpu_q), 1),
                 "video_pct": round(_prom_scalar(vid_q), 1),
                 "disk_mbps": round(_prom_scalar(nfs_q), 1),
+                "speed_x": round(_prom_scalar(speed_q), 2),
             }
         with _scaleplex_lock:
             _scaleplex_cache.update(ts=now, body=out)
