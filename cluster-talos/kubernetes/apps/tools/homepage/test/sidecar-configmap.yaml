@@ -517,12 +517,16 @@ data:
                 f'sum(rate(node_mountstats_nfs_read_bytes_total{{export=~".*mediapool/media",'
                 f'node="{node}"}}[2m]))/1e6'
             )
+            vid_q = (
+                f'100 * (sum(intel_gpu_client_engine_busy_ratio{{engine="video",'
+                f'node="{node}"}}) or vector(0))'
+            )
             out[str(idx)] = {
                 "node": node,
                 "healthy": bool(w.get("healthy")),
                 "transcodes": int(w.get("active_sessions") or 0),
                 "cpu_pct": round(_prom_scalar(cpu_q), 1),
-                "video_pct": round(float(w.get("gpu_load") or 0) * 100, 1),
+                "video_pct": round(_prom_scalar(vid_q), 1),
                 "disk_mbps": round(_prom_scalar(nfs_q), 1),
             }
         with _scaleplex_lock:
