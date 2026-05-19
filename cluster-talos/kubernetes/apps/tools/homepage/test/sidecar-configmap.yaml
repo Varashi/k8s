@@ -18,7 +18,7 @@ data:
     PORT = int(os.getenv("PORT", "8088"))
     TRACEARR_URL = os.getenv("TRACEARR_URL", "http://tracearr-app.tracearr.svc:3000")
     TOKEN = os.getenv("HOMEPAGE_VAR_TRACEARR", "")
-    WINDOW_SEC = float(os.getenv("SPEED_AVG_WINDOW_SEC", "300"))
+    WINDOW_SEC = float(os.getenv("SPEED_AVG_WINDOW_SEC", "60"))
     TRUENAS_URL = os.getenv("TRUENAS_URL", "https://skw-truenas-data.boeye.net")
     TRUENAS_TOKEN = os.getenv("TRUENAS_TOKEN", "")
     TRUENAS_DATASET = os.getenv("TRUENAS_DATASET", "DATA/mediapool")
@@ -99,10 +99,7 @@ data:
                 while hist and hist[0][0] < cutoff:
                     hist.pop(0)
                 if hist:
-                    # Ignore zero samples (scaleplex worker throttle / paused encoder).
-                    # The remaining values reflect actual encode speed while running.
-                    nz = [v for _, v in hist if v > 0]
-                    ti["speed"] = (sum(nz) / len(nz)) if nz else 0.0
+                    ti["speed"] = sum(v for _, v in hist) / len(hist)
                     s["transcodeInfo"] = ti
             for sid in list(_history.keys()):
                 if sid not in active:
