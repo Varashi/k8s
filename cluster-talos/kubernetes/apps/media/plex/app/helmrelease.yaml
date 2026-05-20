@@ -33,7 +33,7 @@ spec:
           app:
             image:
               repository: ghcr.io/linuxserver/plex
-              tag: "1.43.1.10611-1e34174b1-ls306"
+              tag: "1.43.2.10687-563d026ea-ls307"
             env:
               TZ: Europe/Brussels
               VERSION: docker
@@ -72,7 +72,7 @@ spec:
           app:
             image:
               repository: ghcr.io/varashi/scaleplex_orchestrator
-              tag: v1.0.0
+              tag: v1.1.1
             env:
               TZ: Europe/Brussels
               LISTEN_ADDR: ":3500"
@@ -111,7 +111,7 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              tag: v1.0.0
+              tag: v1.1.1
             env:
               TZ: Europe/Brussels
               # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
