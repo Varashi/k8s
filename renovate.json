@@ -27,6 +27,16 @@
     },
     {
       "customType": "regex",
+      "description": "Kubernetes/kubelet version pin in talm values.yaml",
+      "managerFilePatterns": ["/^cluster-talos/talos/values\\.yaml$/"],
+      "matchStrings": [
+        "kubernetesVersion:\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "ghcr.io/siderolabs/kubelet"
+    },
+    {
+      "customType": "regex",
       "description": "Cilium version in bootstrap Makefile",
       "managerFilePatterns": ["/^cluster-talos/talos/Makefile$/"],
       "matchStrings": [

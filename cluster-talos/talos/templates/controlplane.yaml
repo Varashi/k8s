@@ -4,12 +4,23 @@ persist: true
 machine:
   type: controlplane
   kubelet:
+    image: ghcr.io/siderolabs/kubelet:{{ .Values.cluster.kubernetesVersion }}
     extraArgs:
       rotate-server-certificates: "true"
       cloud-provider: external
     extraConfig:
       shutdownGracePeriod: 60s
       shutdownGracePeriodCriticalPods: 20s
+      evictionHard:
+        memory.available: "500Mi"
+        nodefs.available: "10%"
+      evictionSoft:
+        memory.available: "1Gi"
+        nodefs.available: "15%"
+      evictionSoftGracePeriod:
+        memory.available: "1m30s"
+        nodefs.available: "1m30s"
+      evictionMaxPodGracePeriod: 60
     nodeIP:
       validSubnets:
         {{- range .Values.machine.kubelet.nodeIPSubnets }}
@@ -62,6 +73,7 @@ cluster:
     endpoint: {{ .Values.cluster.endpoint }}
   clusterName: {{ .Values.cluster.name }}
   apiServer:
+    image: registry.k8s.io/kube-apiserver:{{ .Values.cluster.kubernetesVersion }}
     certSANs:
       {{- range .Values.cluster.apiCertSANs }}
       - {{ . }}
@@ -83,6 +95,7 @@ cluster:
   proxy:
     disabled: true
   controllerManager:
+    image: registry.k8s.io/kube-controller-manager:{{ .Values.cluster.kubernetesVersion }}
     extraArgs:
       bind-address: 0.0.0.0
       attach-detach-reconcile-sync-period: 15s
@@ -91,6 +104,7 @@ cluster:
         cpu: 50m
         memory: 128Mi
   scheduler:
+    image: registry.k8s.io/kube-scheduler:{{ .Values.cluster.kubernetesVersion }}
     extraArgs:
       bind-address: 0.0.0.0
     resources:

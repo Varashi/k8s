@@ -4,6 +4,10 @@ cluster:
   # Extra API server cert SANs. Defaults to []; populate via gitignored
   # values.local.yaml to keep external DNS names out of the committed tree.
   apiCertSANs: []
+  # Kubernetes version (kubelet image tag). Must be pinned in templates because
+  # talm apply strips unknown fields — if omitted, Talos defaults to its bundled
+  # kubelet version (v1.35.0 for Talos v1.13), silently downgrading nodes.
+  kubernetesVersion: v1.36.1
 
 # Installer image — schematic embeds vmtoolsd-guest-agent
 # Schematic: 903b2da78f99adef03cbbd4df6714563823f63218508800751560d3bc3557e40

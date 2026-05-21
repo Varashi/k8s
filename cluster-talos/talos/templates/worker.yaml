@@ -17,6 +17,7 @@ machine:
     {{- end }}
   {{- end }}
   kubelet:
+    image: ghcr.io/siderolabs/kubelet:{{ .Values.cluster.kubernetesVersion }}
     extraArgs:
       rotate-server-certificates: "true"
       cloud-provider: external
@@ -26,6 +27,16 @@ machine:
     extraConfig:
       shutdownGracePeriod: 60s
       shutdownGracePeriodCriticalPods: 20s
+      evictionHard:
+        memory.available: "500Mi"
+        nodefs.available: "10%"
+      evictionSoft:
+        memory.available: "1Gi"
+        nodefs.available: "15%"
+      evictionSoftGracePeriod:
+        memory.available: "1m30s"
+        nodefs.available: "1m30s"
+      evictionMaxPodGracePeriod: 60
     nodeIP:
       validSubnets:
         {{- range .Values.machine.kubelet.nodeIPSubnets }}
