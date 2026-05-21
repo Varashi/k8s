@@ -59,8 +59,6 @@ reviews:
       enabled: false
     languagetool:
       enabled: false
-    ast-grep:
-      enabled: false
 
   finishing_touches:
     docstrings:
