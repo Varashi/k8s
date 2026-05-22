@@ -113,7 +113,10 @@ metadata:
   name: plex-optimize-retry
   namespace: plex
 spec:
-  schedule: "0 * * * *"
+  # Daytime only: optimize retries trigger Plex transcodes (heavy CPU+GPU).
+  # Keep them out of the low-power overnight window.
+  schedule: "0 8-19 * * *"
+  timeZone: Europe/Brussels
   suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
