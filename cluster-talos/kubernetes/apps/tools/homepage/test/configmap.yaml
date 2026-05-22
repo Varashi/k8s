@@ -624,28 +624,20 @@ data:
       .services-group:has(li[data-name="Plex worker 1"]) li[data-name="Plex worker 3"] { grid-column: 1; grid-row: 3; }
       .services-group:has(li[data-name="Plex worker 1"]) li[data-name="Tdarr worker 3"] { grid-column: 2; grid-row: 3; }
     }
-    /* Media Pipeline (tablet): 2 columns auto-flow */
-    @media (min-width: 500px) and (max-width: 767px) {
+    /* Media Pipeline (tablet+): 2 cols × 3 rows (requests/storage, arr, downloaders) */
+    @media (min-width: 500px) {
       .services-group:has(li[data-name="Ombi"]) ul.services-list {
         grid-template-columns: 1fr 1fr;
-        column-gap: 0.25rem;
-        row-gap: 0.25rem;
-      }
-    }
-    /* Media Pipeline (desktop): Ombi (col 1 full height) | Sonarr/Radarr stacked | NZBGet/qBittorrent stacked */
-    @media (min-width: 768px) {
-      .services-group:has(li[data-name="Ombi"]) ul.services-list {
-        grid-template-columns: 1fr 1fr 1fr;
-        grid-template-rows: 1fr 1fr;
+        grid-template-rows: auto auto auto;
         column-gap: 0.25rem;
         row-gap: 0.25rem;
       }
       .services-group:has(li[data-name="Ombi"]) li[data-name="Ombi"] { grid-column: 1; grid-row: 1; }
-      .services-group:has(li[data-name="Ombi"]) li[data-name="Disk Space"] { grid-column: 1; grid-row: 2; }
-      .services-group:has(li[data-name="Ombi"]) li[data-name="Sonarr"] { grid-column: 2; grid-row: 1; }
+      .services-group:has(li[data-name="Ombi"]) li[data-name="Disk Space"] { grid-column: 2; grid-row: 1; }
+      .services-group:has(li[data-name="Ombi"]) li[data-name="Sonarr"] { grid-column: 1; grid-row: 2; }
       .services-group:has(li[data-name="Ombi"]) li[data-name="Radarr"] { grid-column: 2; grid-row: 2; }
-      .services-group:has(li[data-name="Ombi"]) li[data-name="NZBGet"] { grid-column: 3; grid-row: 1; }
-      .services-group:has(li[data-name="Ombi"]) li[data-name="qBittorrent"] { grid-column: 3; grid-row: 2; }
+      .services-group:has(li[data-name="Ombi"]) li[data-name="NZBGet"] { grid-column: 1; grid-row: 3; }
+      .services-group:has(li[data-name="Ombi"]) li[data-name="qBittorrent"] { grid-column: 2; grid-row: 3; }
     }
     /* Infrastructure - Compute (desktop): 3 cols (hosts), 2 rows (host / gpu-worker) */
     @media (min-width: 768px) {
