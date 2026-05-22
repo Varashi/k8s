@@ -163,6 +163,14 @@ spec:
                 interval: 60s
                 conditions:
                   - "[STATUS] < 500"
+              - name: scaleplex
+                group: media
+                # orchestrator is ClusterIP-only (no ingress); /readyz == 200
+                # iff orchestrator is up AND >=1 worker is registered+healthy.
+                url: http://plex-orchestrator.plex.svc.cluster.local:3500/readyz
+                interval: 60s
+                conditions:
+                  - "[STATUS] == 200"
 
               # tools (not auto-discoverable: chart-owned HTTPRoute / no HTTPRoute)
               - name: netbox
