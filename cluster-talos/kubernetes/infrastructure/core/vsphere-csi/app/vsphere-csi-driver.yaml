@@ -278,7 +278,7 @@ spec:
             - mountPath: /csi
               name: socket-dir
         - name: vsphere-csi-controller
-          image: registry.k8s.io/csi-vsphere/driver:v3.7.0
+          image: registry.k8s.io/csi-vsphere/driver:v3.7.1
           args:
             - "--fss-name=internal-feature-states.csi.vsphere.vmware.com"
             - "--fss-namespace=$(CSI_NAMESPACE)"
@@ -474,7 +474,7 @@ spec:
               - --mode=kubelet-registration-probe
             initialDelaySeconds: 3
         - name: vsphere-csi-node
-          image: registry.k8s.io/csi-vsphere/driver:v3.7.0
+          image: registry.k8s.io/csi-vsphere/driver:v3.7.1
           args:
             - "--fss-name=internal-feature-states.csi.vsphere.vmware.com"
             - "--fss-namespace=$(CSI_NAMESPACE)"
@@ -623,7 +623,7 @@ spec:
             - name: registration-dir
               mountPath: /registration
         - name: vsphere-csi-node
-          image: registry.k8s.io/csi-vsphere/driver:v3.7.0
+          image: registry.k8s.io/csi-vsphere/driver:v3.7.1
           command:
             - "csi.exe"
           args:
