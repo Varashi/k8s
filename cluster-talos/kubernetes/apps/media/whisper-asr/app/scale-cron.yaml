@@ -1,0 +1,124 @@
+---
+# Time-window whisper-asr to 08:00-20:00 Europe/Brussels.
+# Whisper ASR (Bazarr provider) churns ~1.85 cores when a wanted-search cycle
+# lands overnight. Park the deployment at 0 replicas outside working hours so
+# overnight Bazarr searches that need ASR fail gracefully and retry next cycle
+# (adaptive_searching). Flux drift detection is off on the HR, so manual scale
+# survives reconcile; a genuine helm upgrade (e.g. renovate) resets to 1 until
+# the next scale-down cron — acceptable.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: whisper-asr-scaler
+  namespace: whisper-asr
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: whisper-asr-scaler
+  namespace: whisper-asr
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    verbs: ["get", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: whisper-asr-scaler
+  namespace: whisper-asr
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: whisper-asr-scaler
+subjects:
+  - kind: ServiceAccount
+    name: whisper-asr-scaler
+    namespace: whisper-asr
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: whisper-asr-scale-up
+  namespace: whisper-asr
+spec:
+  schedule: "0 8 * * *"
+  timeZone: Europe/Brussels
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: whisper-asr-scaler
+          containers:
+            - name: scale
+              # renovate: datasource=docker depName=alpine/k8s versioning=docker
+              image: alpine/k8s:1.36.1
+              imagePullPolicy: IfNotPresent
+              command:
+                - kubectl
+                - scale
+                - deployment/whisper-asr
+                - --replicas=1
+              securityContext:
+                runAsUser: 1000
+                runAsGroup: 1000
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+                seccompProfile:
+                  type: RuntimeDefault
+              resources:
+                requests: { cpu: 25m, memory: 64Mi }
+                limits: { memory: 128Mi }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: whisper-asr-scale-down
+  namespace: whisper-asr
+spec:
+  schedule: "0 20 * * *"
+  timeZone: Europe/Brussels
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: whisper-asr-scaler
+          containers:
+            - name: scale
+              # renovate: datasource=docker depName=alpine/k8s versioning=docker
+              image: alpine/k8s:1.36.1
+              imagePullPolicy: IfNotPresent
+              command:
+                - kubectl
+                - scale
+                - deployment/whisper-asr
+                - --replicas=0
+              securityContext:
+                runAsUser: 1000
+                runAsGroup: 1000
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+                seccompProfile:
+                  type: RuntimeDefault
+              resources:
+                requests: { cpu: 25m, memory: 64Mi }
+                limits: { memory: 128Mi }
