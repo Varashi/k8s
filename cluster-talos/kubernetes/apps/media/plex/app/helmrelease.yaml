@@ -111,11 +111,20 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              tag: v1.3.0
+              # v1.4.0: rewriter→fork migration (device/crf/preset/inlineass
+              # styling moved into the fork, patches 0116-0119) + honor-Plex-
+              # HW/SW. See CHANGELOG. Subtitle burn-in now reflects Plex's
+              # appearance settings on the HW path too.
+              tag: v1.4.0
             env:
               TZ: Europe/Brussels
-              # All knobs (HW_RENDER_DEVICE, HW_VAAPI_DRIVER,
-              # HW_FONTS_DIR, WORKER_MAX_SESSIONS) default sensibly.
+              # Device retarget now in the fork (0116); pin the worker GPU.
+              SCALEPLEX_RENDER_DEVICE: /dev/dri/renderD128
+              # FORCE_HW=1: always re-accelerate (v1.3.0 behaviour). v1.4.0's
+              # honor-Plex-HW/SW is the code default; prod keeps FORCE_HW=1 so
+              # the honor paths stay dormant (the HW-dec/SW-enc hybrid 4K-HDR
+              # corruption is FORCE_HW=0-only — see KNOWN_ISSUES).
+              SCALEPLEX_FORCE_HW: "1"
               # Encoder choice (h264_vaapi vs hevc_vaapi) is driven by
               # PMS argv — Plex picks libx264/libx265 per session, the
               # worker maps 1:1 to the VAAPI variant.
