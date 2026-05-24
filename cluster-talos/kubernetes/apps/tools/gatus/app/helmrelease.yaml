@@ -171,6 +171,25 @@ spec:
                 interval: 60s
                 conditions:
                   - "[STATUS] == 200"
+              - name: scaleplex-test
+                group: media
+                # plex-test orchestrator (ClusterIP-only); /readyz == 200 iff
+                # the test orchestrator is up AND >=1 test worker is healthy.
+                url: http://plex-test-orchestrator.plex-test.svc.cluster.local:3500/readyz
+                interval: 60s
+                conditions:
+                  - "[STATUS] == 200"
+              - name: scaleplex-worker-fleet
+                group: media
+                # /workers returns a JSON array of registered workers. Assert
+                # the full GPU fleet (3) is present — catches a worker that
+                # dropped out (reduced transcode capacity) while /readyz still
+                # passes on the survivors.
+                url: http://plex-orchestrator.plex.svc.cluster.local:3500/workers
+                interval: 60s
+                conditions:
+                  - "[STATUS] == 200"
+                  - "len([BODY]) >= 3"
 
               # tools (not auto-discoverable: chart-owned HTTPRoute / no HTTPRoute)
               - name: netbox
