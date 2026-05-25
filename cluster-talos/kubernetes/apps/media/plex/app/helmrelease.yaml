@@ -111,13 +111,17 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              # v1.5.0: paced self-decode for -map_inlineass (fork patch 0120).
-              # The subtitle stream now self-decodes via a sink-less decoder
-              # (paced by the demux), and the rewriter drops Plex's
-              # `-map <spec> -f null -codec ass|dvdsub nullfile` decode-sink —
-              # killing the embedded-sub startup-skip burst. Live-validated on
-              # plex-test (4K HDR Avatar, play+seek, subs synced). =sha-2fff55b.
-              tag: v1.5.0
+              # v1.6.0: GPU-resident OpenCL HDR tonemap fix (regression) +
+              # FORCE_HW=0 readiness. On ffmpeg-7 the filter_complex
+              # `hwmap=derive_device=opencl` va->opencl derive failed ENOSYS
+              # (exit 218) unless the opencl device is explicit + input is a VA
+              # surface + no reverse-map round-trip — gpuResidentOpenCLTonemap
+              # post-pass restores it GPU-resident (no sysmem bounce, algo
+              # preserved). + EAE-on-bail / counterfactual log / hybrid reshape.
+              # Validated: Tier-1 320/321, Tier-2 32/32, Tier-3 live (Android,
+              # AV1/HEVC/H264 x HDR/SDR x text/PGS/no-sub burn x seek x TrueHD).
+              # =sha-c515697.
+              tag: v1.6.0
             env:
               TZ: Europe/Brussels
               # Device retarget now in the fork (0116); pin the worker GPU.
