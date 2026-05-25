@@ -157,12 +157,11 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              # honor-hwsw2: rewriter→fork migration (device retarget 0116,
-              # crf→qp 0117, preset+opt-stubs 0118) + honor-Plex-HW/SW
-              # per-axis (docs/HW_PROFILE.md) + Plex inlineass styling keys
-              # in the fork (0119, overrides/outline/shadow/language) so the
-              # rewriter no longer strips them. plex-test validation build.
-              tag: honor-hwsw2
+              # v1.5.0: paced self-decode for -map_inlineass (fork patch 0120)
+              # — sink-less decoder + rewriter drops the null decode-sink.
+              # Validated here (4K HDR play+seek, subs synced) then shipped to
+              # prod 2026-05-25; plex-test now tracks the release.
+              tag: v1.5.0
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
