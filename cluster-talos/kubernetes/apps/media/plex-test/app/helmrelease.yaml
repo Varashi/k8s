@@ -157,11 +157,15 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              # v1.6.1: bitmap sub-burn unified onto inlineass + PGS clear fix
-              # (fork patch 0121) + orthogonal SW-reshape detector. Validated
-              # here (4K HDR PGS 0.37x→4.6x; PGS clear filmstrip; SW-text
-              # inlineass-on-VA) then shipped to prod 2026-05-26.
-              tag: v1.6.1
+              # sha-a929334: PR #41 — orthogonal HW-decode-text refactor.
+              # Last 2 of 6 reFilter* shape-keyed regexes (reFilterHWAss,
+              # reFilterHWOpenCLAss) collapsed onto extractGraphFacts +
+              # composeBurn(vaResident=true). +animatedTierDown axis on
+              # composeBurn so SW-reshape path picks up animated cue
+              # tier-down (latent feature). Orthogonal parity harness
+              # 1369/1369 over 1583-entry corpus (zero drift). LIVE on
+              # plex-test 2026-05-26 for validation before main merge.
+              tag: sha-a929334
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
