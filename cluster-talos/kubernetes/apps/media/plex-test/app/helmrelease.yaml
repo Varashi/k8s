@@ -157,15 +157,22 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              # sha-a929334: PR #41 — orthogonal HW-decode-text refactor.
-              # Last 2 of 6 reFilter* shape-keyed regexes (reFilterHWAss,
-              # reFilterHWOpenCLAss) collapsed onto extractGraphFacts +
-              # composeBurn(vaResident=true). +animatedTierDown axis on
-              # composeBurn so SW-reshape path picks up animated cue
-              # tier-down (latent feature). Orthogonal parity harness
-              # 1369/1369 over 1583-entry corpus (zero drift). LIVE on
-              # plex-test 2026-05-26 for validation before main merge.
-              tag: sha-a929334
+              # sha-29394ef: PR #41 (orthogonal HW-decode-text) + fork
+              # patch 0122 (scaleplex_inlineass pending-queue survives
+              # probe->live rebind). 0122 fixes the silent-no-subs
+              # regression for SIDECAR SRT + HW-decode-text-burn
+              # exposed by PR #41's composeBurn(vaResident=true) shape
+              # (validated 2026-05-26: 8 sidecar sessions × 3 encoder
+              # variants × tonemap on/off, all ❌ on sha-a929334).
+              # Replay queue is now persistent — handle_subtitle always
+              # appends, link_graph replays on every (re)bind so the
+              # live-pass flt_ctx's libass track is populated even when
+              # the sidecar demuxer EOFed before the rebind.
+              # Embedded SRT/PGS/ASS (incl. heavy animated typeset on
+              # Chained Soldier Modified Kakumei + Fire Force karaoke)
+              # all validated on sha-a929334; sidecar SRT validation
+              # pending on this image.
+              tag: sha-29394ef
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
