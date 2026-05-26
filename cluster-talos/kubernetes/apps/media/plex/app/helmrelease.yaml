@@ -111,18 +111,28 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              # v1.6.1: bitmap sub-burn unified onto inlineass + PGS cue-clear
-              # fix + orthogonal SW-reshape detector. The 4K HDR + burned-PGS +
-              # tonemap shape ran ~0.37x (full-frame sub2video overlay + decode→
-              # sysmem→re-upload round-trip); the unified composeBurn path is
-              # VA-resident scale_vaapi(p010) → opencl tonemap → inlineass
-              # render_height — measured 0.37x → 4.6x realtime live. Fork patch
-              # 0121 makes the bitmap clear sticky (refresh_bitmap was
-              # resurrecting the cue one frame after the empty-PCS clear since
-              # v1.3.0). Orthogonal detector collapses 4 of 6 reFilter* regexes
-              # onto extractGraphFacts + composeBurn (parity 1369/1369 vs corpus).
-              # =sha-c14abaa.
-              tag: v1.6.1
+              # v1.7.0: rewriter-orthogonality completion. HW-decode-text branch
+              # (last reFilter* shape-keyed regex survivor) folded onto
+              # extractGraphFacts + composeBurn — every reshape now sits behind
+              # one fact-extractor + one composer. Fork patch 0122 (sched-
+              # sinkless-per-output) + rewriter sidecar-sink-keep: sidecar SRT
+              # bindings KEEP the -f null dvdsub decode-sink, embedded
+              # bindings drop it via v1.5.0 paced-self-decode. tryOptimizeRemux
+              # parallel path collapsed into Rewrite() with isRemux gate
+              # (-47 LOC, 720-cell corpus parity). Pre-tag testing infra
+              # landed alongside: rewriter tag canon (rewriter_tags.go + AST
+              # inventory + value-stability test), CI go test -cover +
+              # replay fixture corpus (240 stratified Optimize cells per-PR),
+              # release-gate docs, optimize-corpus-gen tool.
+              # Live-validated 2026-05-26: 11/11 release-gate cells PASS
+              # across 7 client surfaces (Plex Web Chrome/Firefox, Plex
+              # Windows, Android TV, LG webOS, PS4, Android mobile) at
+              # 3-5x realtime sustained. KNOWN: PWin720p closed (was open
+              # since 2026-05-13). Two new known-issues queued for post-tag
+              # fix (FramedropBSF + dup video:hdr-source tag, both
+              # recoverable/cosmetic).
+              # =sha-c53f4b4.
+              tag: v1.7.0
             env:
               TZ: Europe/Brussels
               # Device retarget now in the fork (0116); pin the worker GPU.
