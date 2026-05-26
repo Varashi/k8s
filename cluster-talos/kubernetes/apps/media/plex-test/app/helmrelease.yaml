@@ -157,25 +157,23 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              # sha-00d9ef0: PR #41 (orthogonal HW-decode-text) +
-              # rewriter sidecar-sink-keep fix. Drops the over-reach in
-              # patch 0120 that stripped `-map <spec> -f null -codec
-              # ass nullfile` unconditionally. For sidecar bindings
-              # (file_idx >= 1 on `-map_inlineass`) the sink-less
-              # self-decode doesn't pump the SEPARATE sidecar demuxer
-              # — scheduler choke after 1 packet, decoder produces 0
-              # frames, libass track stays empty, subs render blank
-              # (validated 2026-05-26 with She's Out of My League:
-              # 1 packet / 7 bytes from 134 KiB SRT). Keep Plex's
-              # decode-sink for sidecar; strip stays for embedded
-              # (file_idx == 0) where the shared demuxer is pumped by
-              # the video pipeline. More-faithful adherence to Plex's
-              # emitted argv; the 0120 optimization is gated, not
-              # eliminated. Embedded SRT/PGS/ASS (incl. heavy animated
-              # typeset on Chained Soldier Modified Kakumei + Fire
-              # Force karaoke + MHA dialog) all validated on the prior
-              # image; sidecar SRT validation pending on this image.
-              tag: sha-00d9ef0
+              # sha-29394ef: PR #41 + fork patch 0122. ROLLED BACK from
+              # sha-00d9ef0 2026-05-26 which segfaulted on init: the
+              # rewriter sidecar-sink-keep fix created a dual-consumer
+              # conflict on the sub stream — patch 0120's
+              # sch_dec_set_sinkless is a whole-decoder flag, so when
+              # we kept Plex's `-map 1:s:0 -f null -codec ass nullfile`
+              # decode-sink alongside the `-map_inlineass` binding,
+              # both consumers tried to attach to the same decoder
+              # with conflicting sink-less + real-sink semantics.
+              # Crash during stream mapping (validated on She's Out
+              # 2026-05-26). Need a proper fork patch that gates
+              # setup_decoders on whether the IST already has a real
+              # decoder consumer. Until then, this image keeps the
+              # known state: embedded SRT/PGS/ASS work, sidecar SRT
+              # silently no-subs (1 packet from demuxer choke). No
+              # crash.
+              tag: sha-29394ef
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
