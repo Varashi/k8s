@@ -168,7 +168,7 @@ spec:
               # ONLY — for sidecar SRT silent-no-subs investigation
               # (demuxer choke after 1 packet via patch 0120 sink-less
               # decoder). Revert to a release tag before any other use.
-              tag: debug-symbols
+              tag: debug-sched-fix
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
