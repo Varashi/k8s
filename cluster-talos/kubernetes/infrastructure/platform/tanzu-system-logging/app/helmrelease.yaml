@@ -40,23 +40,32 @@ spec:
         image: ghcr.io/varashi/vcflogs-cfapi-adapter:v0.1.0
         imagePullPolicy: IfNotPresent
         env:
+          # Bind to 0.0.0.0 (all interfaces) inside the container's
+          # netns so kubelet's httpGet probe (which connects from the
+          # node, NOT the pod) can reach the port. The container netns
+          # is pod-scoped — no Service/hostPort means nothing outside
+          # the pod can reach this port anyway. fluent-bit (same pod,
+          # same netns) still reaches us via 127.0.0.1:8080.
           - name: LISTEN_ADDR
-            value: "127.0.0.1:8080"
+            value: ":8080"
           - name: VCFLOGS_INGEST_URL
             value: "https://skw-vcflogs.${SECRET_DOMAIN}:9543/api/v1/events/ingest/k8s-talos"
           - name: VCFLOGS_TLS_INSECURE
             value: "true"
           - name: FORWARD_TIMEOUT
             value: "15s"
+        ports:
+          - name: ingest
+            containerPort: 8080
         resources:
           requests: {cpu: 10m, memory: 32Mi}
           limits:   {cpu: 100m, memory: 128Mi}
         livenessProbe:
-          httpGet: {path: /healthz, port: 8080, host: 127.0.0.1}
+          httpGet: {path: /healthz, port: ingest}
           initialDelaySeconds: 5
           periodSeconds: 30
         readinessProbe:
-          httpGet: {path: /healthz, port: 8080, host: 127.0.0.1}
+          httpGet: {path: /healthz, port: ingest}
           initialDelaySeconds: 2
           periodSeconds: 10
         securityContext:
