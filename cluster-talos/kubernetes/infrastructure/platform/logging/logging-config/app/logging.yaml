@@ -15,6 +15,16 @@ metadata:
   namespace: logging
 spec:
   controlNamespace: logging
+  # Allow the operator to delete+recreate the Fluent Bit DS / Fluentd
+  # STS when an immutable spec field changes (e.g. PVC template's
+  # storageClassName, hostPath path, volume size). Without this, the
+  # operator refuses with "Object has to be recreated, but refusing
+  # to remove without explicitly being told so." For a homelab
+  # where the fluentd buffer is a few minutes of log replay, the
+  # data-loss-on-recreate cost is acceptable; for production
+  # deployments with strict log durability requirements, leave this
+  # false and use a planned manual sts delete + PVC migration.
+  enableRecreateWorkloadOnImmutableFieldChange: true
 
   # ---------- Fluent Bit (per-node collector DaemonSet) ----------
   fluentbit:
