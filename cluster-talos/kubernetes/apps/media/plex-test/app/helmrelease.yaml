@@ -157,18 +157,13 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              # debug-orig-bug: PR #41 base rewriter (strip-all,
-              # matching sha-29394ef behavior) + debug ffmpeg deb
-              # (DEB_BUILD_OPTIONS=nostrip, shared libs retain .debug_*
-              # sections; the ffmpeg fttools binary itself is still
-              # stripped — would need --disable-stripping in
-              # debian/rules CONFIG too — but libavformat/libavfilter
-              # cover the SRT demuxer + vf_inlineass paths we want to
-              # gdb). Worker image adds gdb to apt install. DIAGNOSTIC
-              # ONLY — for sidecar SRT silent-no-subs investigation
-              # (demuxer choke after 1 packet via patch 0120 sink-less
-              # decoder). Revert to a release tag before any other use.
-              tag: sha-c53f4b4
+              # v1.7.1 — matches prod (closes KNOWN: FramedropBSF +
+              # DupHDRTag, adds AST walker + go.work + plex_session_token).
+              # Prior pin to a debug-symbols sha-c53f4b4 image was for
+              # the sidecar-SRT silent-no-subs investigation; resolved
+              # by #41's sidecar-sink-keep + fork patch 0122. See
+              # project_scaleplex_sidecar_srt_diagnosis memory.
+              tag: v1.7.1
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
