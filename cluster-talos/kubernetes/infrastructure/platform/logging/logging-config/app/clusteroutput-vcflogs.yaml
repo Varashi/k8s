@@ -41,10 +41,20 @@ spec:
       - msg
       - message
     # Plugin retries on 5xx and drops on 4xx by default. Buffer
-    # chunk + flush cadence inherited from the Logging CR's
-    # fluentd.bufferStorageVolume PVC.
+    # chunk + flush cadence — file-backed on the PVC from the
+    # Logging CR's fluentd.bufferStorageVolume.
+    #
+    # flush_mode MUST be "interval" for flush_interval to take
+    # effect. Default is "lazy", which uses timekey (10m default in
+    # the operator's vmware-loginsight wrapper) — flush_interval is
+    # silently ignored and chunks sit on disk for up to 11 minutes
+    # before posting to CFAPI. Setting interval here keeps the
+    # ~5s end-to-end latency we want (and matches the previous
+    # syslog OUTPUT's per-event flush cadence).
     buffer:
+      flush_mode: interval
       flush_interval: 5s
+      flush_thread_count: 2
       retry_max_interval: 30s
       chunk_limit_size: 8MB
       total_limit_size: 1GB
