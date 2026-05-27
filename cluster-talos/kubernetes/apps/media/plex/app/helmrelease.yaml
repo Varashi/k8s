@@ -111,24 +111,22 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              # v1.7.1: cleanup release on top of v1.7.0 (no breaking changes).
-              # Closes both KNOWN: items logged at v1.7.0 tag time plus AST
-              # walker gap + CodeRabbit lint-config gap; adds plex_session_token
-              # to argv-capture JSON for vcflogs ↔ corpus cross-ref.
-              #   - #51 fix(rewriter): strip Plex framedrop BSF (closes
-              #     KNOWN: FramedropBSF — exit 8 on DASH AAC+seek)
-              #   - #52 fix(rewriter): emit video:hdr-source(...) exactly
-              #     once (closes KNOWN: DupHDRTag — cosmetic 2× emit on
-              #     HW-decode-text + HDR)
-              #   - #53 refactor(testing): inventory walker tracks
-              #     :=/= assignments + *ast.StarExpr (catches the
-              #     segment-list tags previously hidden)
-              #   - #54 build: go.work + .golangci.yml (CodeRabbit
-              #     lint runs from repo root work now)
-              #   - #55 feat(worker): plex_session_token + plex_session_uuid
-              #     in argv-capture JSON
-              # =sha-d4c570c.
-              tag: v1.7.1
+              # v1.7.2: maintenance release — fork patch 0123 introduces
+              # SubCueClock primitive for vf_inlineass bitmap path.
+              # Folds the open-ended display-window lifecycle behind a
+              # small, testable API (sub_cue_set/close/active_at,
+              # INT64_MIN open-ended sentinel) and absorbs the v1.6.1
+              # sticky-clear fix (patch 0121 dropped). 5 scattered
+              # AssContext fields → 2 SubCueClock structs; single source
+              # of truth for "is bitmap cue active at T". Text path
+              # unchanged (libass owns its own clock). No perf delta.
+              # Validated live on plex-test (debug deb): PGS bitmap
+              # burn engages inlineass-vaapi branch + first segment
+              # ready; ASS/SRT text paths unchanged; 0121 spot-check
+              # via 30-frame HLS pull confirms cues clear correctly
+              # between dialogue lines.
+              # =sha-d370b97.
+              tag: v1.7.2
             env:
               TZ: Europe/Brussels
               # Device retarget now in the fork (0116); pin the worker GPU.
