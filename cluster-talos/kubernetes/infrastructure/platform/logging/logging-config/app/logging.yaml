@@ -65,6 +65,9 @@ spec:
     # File-buffer on a small PVC per replica — survives pod restart,
     # absorbs vcflogs back-pressure. PVC size chosen to hold ~1h of
     # peak log volume (LogVerbose=1 on prod plex can push 200MB/h).
+    # storageClassName omitted on purpose → cluster default (vsan,
+    # vSphere CSI). Longhorn was removed earlier; vsan handles
+    # ReadWriteOnce + WaitForFirstConsumer just fine.
     bufferStorageVolume:
       pvc:
         spec:
@@ -72,9 +75,6 @@ spec:
           resources:
             requests:
               storage: 5Gi
-          # k8s-talos default StorageClass is longhorn — change here
-          # if/when we migrate (memory: longhorn removal planned).
-          storageClassName: longhorn
     # Tolerate all nodes so the aggregator can land anywhere if
     # capacity tightens.
     tolerations:
