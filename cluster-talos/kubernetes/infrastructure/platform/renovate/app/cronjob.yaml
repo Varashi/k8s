@@ -25,7 +25,7 @@ spec:
                 - name: RENOVATE_PLATFORM
                   value: github
                 - name: RENOVATE_REPOSITORIES
-                  value: '["Varashi/k8s", "Varashi/scaleplex", "Varashi/be-stream-downloader", "Varashi/gpu-node-vsphere-maintenance-controller"]'
+                  value: '["Varashi/k8s", "Varashi/scaleplex", "Varashi/belgarr", "Varashi/gpu-node-vsphere-maintenance-controller"]'
                 - name: RENOVATE_GIT_AUTHOR
                   value: "Renovate Bot <renovate@${SECRET_DOMAIN}>"
                 - name: LOG_LEVEL

@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: belgarr-data
+  namespace: belgarr
+spec:
+  # Rebind the existing PV from the old be-stream-downloader-data PVC so the
+  # camoufox profile + provider token caches survive the namespace rename.
+  # Phase C clears the old claimRef before flux applies this manifest.
+  volumeName: pvc-b6adea0b-f241-4915-b9ed-02e68db3f38a
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: vsan
+  resources:
+    requests:
+      storage: 10Gi

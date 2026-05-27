@@ -2,8 +2,8 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: be-stream-downloader
-  namespace: be-stream-downloader
+  name: belgarr
+  namespace: belgarr
 spec:
   interval: 30m
   chart:
@@ -25,13 +25,13 @@ spec:
       imagePullSecrets:
         - name: ghcr-pull-secret
     controllers:
-      be-stream-downloader:
+      belgarr:
         containers:
           app:
             image:
-              # renovate: datasource=docker depName=ghcr.io/varashi/be-stream-downloader
-              repository: ghcr.io/varashi/be-stream-downloader
-              tag: v0.5.0@sha256:9a0159fc1f1458dea69def98f9ea3edbb139ada0ad1a367e7c251cbd018d1785
+              # renovate: datasource=docker depName=ghcr.io/varashi/belgarr
+              repository: ghcr.io/varashi/belgarr
+              tag: v0.6.0@sha256:1ec166fffab53fb86ddf2767345263032fb3a974bdfc8e61d4de679e7fc6b6f7
               pullPolicy: IfNotPresent
             env:
               # Image default is /downloads; remap because we mount the
@@ -50,16 +50,16 @@ spec:
               # (L1). Local L3 WVD gets HTTP 403 — route through the public
               # getwvkeys.cc anonymous remote-CDM pool. Privacy note: every
               # license challenge identifies playback to that operator.
-              BEDL_GOPLAY_USE_REMOTE_CDM: "1"
+              BELG_GOPLAY_USE_REMOTE_CDM: "1"
             envFrom:
               - secretRef:
-                  name: be-stream-downloader-secrets
+                  name: belgarr-secrets
             resources:
               requests:
                 cpu: 100m
                 memory: 256Mi
               limits:
-                # Serial-only execution (BEDL_MAX_CONCURRENT_DOWNLOADS=1):
+                # Serial-only execution (BELG_MAX_CONCURRENT_DOWNLOADS=1):
                 # one n-m3u8dl-re peaks ~1.5 cores + ~600 MiB during a 4 Mbps
                 # DASH decode; this leaves headroom for a concurrent show
                 # refresh scrape and the FastAPI event loop without slack.
@@ -86,7 +86,7 @@ spec:
                   periodSeconds: 10
     service:
       app:
-        controller: be-stream-downloader
+        controller: belgarr
         ports:
           http:
             port: 8000
@@ -94,13 +94,13 @@ spec:
       app:
         annotations:
           gethomepage.dev/enabled: "true"
-          gethomepage.dev/name: BeStreamDL
+          gethomepage.dev/name: Belgarr
           gethomepage.dev/description: VRT MAX + VTM GO downloader
           gethomepage.dev/group: Media
           gethomepage.dev/weight: "60"
-          gethomepage.dev/href: https://bedl.${SECRET_DOMAIN}
+          gethomepage.dev/href: https://belgarr.${SECRET_DOMAIN}
         hostnames:
-          - bedl.${SECRET_DOMAIN}
+          - belgarr.${SECRET_DOMAIN}
         parentRefs:
           - name: main
             namespace: cilium
@@ -119,12 +119,12 @@ spec:
         # PVC pre-created in pvc.yaml (vsan); using existingClaim avoids
         # bjw-s reusing the previous longhorn PVC name and trying to
         # mutate its immutable spec.
-        existingClaim: be-stream-downloader-data
+        existingClaim: belgarr-data
         globalMounts:
           - path: /data
       wvd:
         type: secret
-        name: be-stream-downloader-wvd
+        name: belgarr-wvd
         defaultMode: 0400
         globalMounts:
           - path: /wvd
