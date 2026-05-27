@@ -26,6 +26,45 @@ spec:
     kind: DaemonSet
     tolerations:
       - operator: Exists
+    # vcflogs-cfapi-adapter sidecar — translates fluent-bit's [OUTPUT]
+    # http (top-level JSON array) into the {"events":[...]} wrapper
+    # vRealize Log Insight's CFAPI ingest expects. Was on syslog
+    # (TCP/514) until 2026-05-27; that path enforced RFC 5424's
+    # 2048-byte cap, clipping long Plex Web Request: lines past byte
+    # 2040 (the X-Plex-Client-Profile-Extra header alone runs 1500+
+    # bytes, taking X-Plex-Product/Version/Token with it into the
+    # cut). CFAPI has no documented size cap. See
+    # github.com/Varashi/vcflogs-cfapi-adapter for the adapter source.
+    extraContainers:
+      - name: vcflogs-cfapi-adapter
+        image: ghcr.io/varashi/vcflogs-cfapi-adapter:v0.1.0
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: LISTEN_ADDR
+            value: "127.0.0.1:8080"
+          - name: VCFLOGS_INGEST_URL
+            value: "https://skw-vcflogs.${SECRET_DOMAIN}:9543/api/v1/events/ingest/k8s-talos"
+          - name: VCFLOGS_TLS_INSECURE
+            value: "true"
+          - name: FORWARD_TIMEOUT
+            value: "15s"
+        resources:
+          requests: {cpu: 10m, memory: 32Mi}
+          limits:   {cpu: 100m, memory: 128Mi}
+        livenessProbe:
+          httpGet: {path: /healthz, port: 8080, host: 127.0.0.1}
+          initialDelaySeconds: 5
+          periodSeconds: 30
+        readinessProbe:
+          httpGet: {path: /healthz, port: 8080, host: 127.0.0.1}
+          initialDelaySeconds: 2
+          periodSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65532
+          capabilities: {drop: [ALL]}
     config:
       service: |
         [Service]
@@ -81,22 +120,34 @@ spec:
           Operation           lift
           Nested_Under        kubernetes
       outputs: |
+        # CFAPI HTTPS ingest via the vcflogs-cfapi-adapter sidecar
+        # (see extraContainers above). Replaces the previous syslog
+        # output, which hit the RFC 5424 2048-byte per-message cap
+        # and truncated long Plex Web Request: lines mid-token —
+        # losing X-Plex-Product / X-Plex-Version / X-Plex-Token from
+        # the tail when X-Plex-Client-Profile-Extra (1.5KB typical)
+        # appeared earlier in the header list.
+        #
+        # Format json + json_date_format epoch_ms produce the shape
+        # the adapter expects: top-level JSON array of records, each
+        # with a numeric `timestamp` key in epoch ms. The adapter
+        # reshapes per-record into CFAPI's
+        # {"events":[{"text":...,"timestamp":...,"fields":[...]}]}
+        # wrapper and POSTs to skw-vcflogs CFAPI.
         [OUTPUT]
-          Name                 syslog
-          Match                kube.*
-          Host                 skw-vcflogs.${SECRET_DOMAIN}
-          Port                 514
-          Mode                 tcp
-          Syslog_Format        rfc5424
-          Syslog_Hostname_key  tkg_cluster
-          Syslog_Appname_key   pod_name
-          Syslog_Procid_key    container_name
-          Syslog_Message_key   message
-          Syslog_Msgid_key     namespace_name
-          Syslog_SD_key        k8s
-          Syslog_SD_key        labels
-          Syslog_SD_key        annotations
-          Syslog_SD_key        tkg
+          Name              http
+          Match             kube.*
+          Host              127.0.0.1
+          Port              8080
+          URI               /
+          Format            json
+          json_date_key     timestamp
+          json_date_format  epoch_ms
+          tls               Off
+          # Loopback to the sidecar — retries are cheap; let
+          # fluent-bit drive the back-pressure rather than blocking
+          # the input thread on a long upstream POST.
+          Retry_Limit       5
       customParsers: |
         [PARSER]
           Name                 cri
