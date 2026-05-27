@@ -4,8 +4,8 @@
 # `/config/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log`
 # (no exposed knob to redirect that to stdout); without this service
 # the verbose request/decision lines never reach kubectl/Freelens or
-# the tanzu-system-logging fluent-bit DaemonSet that ships container
-# stdout to skw-vcflogs.boeye.net:514.
+# the Logging Operator's Fluent Bit DaemonSet (ns=logging) that
+# tails container stdout → Fluentd aggregator → skw-vcflogs CFAPI.
 #
 # Pattern mirrors the scaleplex_pms_dockermod's `scaleplex-relay`
 # longrun (same s6-overlay v3 layout — three files per service:

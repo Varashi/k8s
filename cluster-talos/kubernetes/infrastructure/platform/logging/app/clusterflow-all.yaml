@@ -1,0 +1,30 @@
+---
+# ClusterFlow — the routing rule. Matches *everything* from every
+# namespace and sends it to the vcflogs ClusterOutput. Mirrors the
+# previous fluent-bit `[OUTPUT] syslog Match kube.*` behavior:
+# every container log goes to vcflogs, no per-namespace filtering.
+#
+# When we want per-namespace selectivity later (e.g., suppress noisy
+# system logs), replace this with multiple Flow/ClusterFlow CRs and
+# selectors. For now: one ClusterFlow, one ClusterOutput.
+apiVersion: logging.banzaicloud.io/v1beta1
+kind: ClusterFlow
+metadata:
+  name: all-to-vcflogs
+  namespace: logging
+spec:
+  match:
+    # Match every namespace. The empty `select: {}` is the
+    # operator's canonical "match all" form.
+    - select: {}
+  globalOutputRefs:
+    - vcflogs
+  # Filters run in order. Tag normalization keeps the records
+  # parsable downstream; the kubernetes_metadata enrichment is
+  # added automatically by the operator for Fluent Bit collection.
+  filters:
+    # Drop fluent-bit's per-line `logtag` (P/F) marker — it's a
+    # CRI partial-line indicator, not useful to vcflogs. Keep
+    # everything else.
+    - record_modifier:
+        remove_keys: logtag

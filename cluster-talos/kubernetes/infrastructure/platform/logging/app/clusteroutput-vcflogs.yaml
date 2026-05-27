@@ -1,0 +1,50 @@
+---
+# ClusterOutput — the destination. Cluster-scoped so any namespace
+# can route to it via a ClusterFlow. Wraps the
+# `fluent-plugin-vmware-loginsight` (v1.4.2, bundled in the operator's
+# v1.17-5.0-full Fluentd image) and POSTs to vRealize Log Insight's
+# CFAPI ingest endpoint.
+#
+# Why CFAPI (HTTPS) vs syslog (TCP/514): the syslog path enforces
+# RFC 5424's 2048-byte per-message cap. Plex Web Request: lines run
+# ~3800 bytes when X-Plex-Client-Profile-Extra is present, getting
+# clipped mid-token at byte 2040 — losing X-Plex-Product /
+# X-Plex-Version / X-Plex-Token from the tail. CFAPI has no
+# documented size cap. (See:
+#   https://github.com/Varashi/k8s/pull/151 for the prior homemade
+#   sidecar that did this translation by hand before we adopted the
+#   operator pattern.)
+apiVersion: logging.banzaicloud.io/v1beta1
+kind: ClusterOutput
+metadata:
+  name: vcflogs
+  namespace: logging
+spec:
+  vmwareLogInsight:
+    scheme: https
+    # Aria appliance ships a self-signed cert; we accept it on the
+    # internal network. Flip to true once the cert gets a real CA.
+    ssl_verify: false
+    host: "skw-vcflogs.${SECRET_DOMAIN}"
+    port: 9543
+    # CFAPI's agent_id is an arbitrary tag the receiver records
+    # against each event — not auth, just an identifier so vcflogs
+    # can attribute the stream. Matches what the previous adapter
+    # used (k8s-talos).
+    agent_id: k8s-talos
+    # Default `log_text_keys` (`log`, `msg`, `message`) is what
+    # we want — the CRI parser populates `log`/`message` for
+    # container stdout/stderr, and the kubernetes_metadata filter
+    # may copy to `msg`.
+    log_text_keys:
+      - log
+      - msg
+      - message
+    # Plugin retries on 5xx and drops on 4xx by default. Buffer
+    # chunk + flush cadence inherited from the Logging CR's
+    # fluentd.bufferStorageVolume PVC.
+    buffer:
+      flush_interval: 5s
+      retry_max_interval: 30s
+      chunk_limit_size: 8MB
+      total_limit_size: 1GB
