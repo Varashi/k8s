@@ -85,9 +85,27 @@ spec:
           resources:
             requests:
               storage: 5Gi
-    # Tolerate all nodes so the aggregator can land anywhere if
-    # capacity tightens.
-    tolerations:
-      - operator: Exists
+    # No tolerations on purpose. A wildcard `operator: Exists` here
+    # also tolerates `node.kubernetes.io/unschedulable:NoSchedule`
+    # (cordon) and any custom maintenance taint, so the aggregator
+    # refuses to evict during `kubectl drain` and blocks node
+    # maintenance — exactly the problem `terminationGracePeriodSeconds`
+    # below tries to mitigate. With no tolerations, the scheduler
+    # evicts cleanly on cordon and the STS reschedules on another
+    # non-GPU worker.
+    #
+    # PVC-backed STS: pin to non-GPU workers. GPU workers are scarce
+    # and frequently drained for scaleplex / Plex maintenance; a
+    # stateful aggregator with a node-affined PVC has no business on
+    # one. The label below is set by node-feature-discovery on every
+    # GPU worker; using `DoesNotExist` keeps Fluentd off them while
+    # still allowing every other worker (current: worker-1, worker-2).
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: intel.feature.node.kubernetes.io/gpu
+                  operator: DoesNotExist
     # Don't let the aggregator block node maintenance for hours.
     terminationGracePeriodSeconds: 60
