@@ -157,13 +157,12 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              # v1.7.1 — matches prod (closes KNOWN: FramedropBSF +
-              # DupHDRTag, adds AST walker + go.work + plex_session_token).
-              # Prior pin to a debug-symbols sha-c53f4b4 image was for
-              # the sidecar-SRT silent-no-subs investigation; resolved
-              # by #41's sidecar-sink-keep + fork patch 0122. See
-              # project_scaleplex_sidecar_srt_diagnosis memory.
-              tag: v1.7.1
+              # v1.7.2 — matches prod. SubCueClock primitive for
+              # vf_inlineass bitmap path; absorbs the v1.6.1 sticky-
+              # clear fix into a small structural API. Validated live
+              # on this env (debug-clock-primitive image) before
+              # promotion. See project_scaleplex_v172 memory.
+              tag: v1.7.2
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
