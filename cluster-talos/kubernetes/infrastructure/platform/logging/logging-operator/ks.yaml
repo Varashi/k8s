@@ -1,0 +1,24 @@
+---
+# logging-operator — installs the Kube Logging Operator HelmRelease.
+# This ks owns the operator deployment + the CRDs it ships
+# (Logging, ClusterFlow, ClusterOutput, FluentbitAgent, etc.).
+#
+# Split from `logging-config` because the CRs in that sister ks
+# can't apply until these CRDs exist. Mirrors the
+# cert-manager / certs split pattern already used in this repo.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: logging-operator
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: configs
+  path: ./cluster-talos/kubernetes/infrastructure/platform/logging/logging-operator/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+  timeout: 5m
