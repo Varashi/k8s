@@ -13,7 +13,8 @@ resources:
   - external-dns/external-dns-cloudflare/ks.yaml
   - cloudflare-operator-system/cloudflare-operator/ks.yaml
   - cloudflare-operator-system/cloudflare-tunnel/ks.yaml
-  - logging/ks.yaml
+  - logging/logging-operator/ks.yaml
+  - logging/logging-config/ks.yaml
   - kasten-io/ks.yaml
   - spegel/ks.yaml
   - renovate/ks.yaml

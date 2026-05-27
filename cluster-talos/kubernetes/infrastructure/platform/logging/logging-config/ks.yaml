@@ -1,0 +1,29 @@
+---
+# logging-config — declares the actual logging pipeline (Logging,
+# ClusterFlow, ClusterOutput CRs) on top of the operator's CRDs.
+#
+# Depends on `logging-operator` so Flux waits for the chart's
+# HelmRelease to land + the CRDs to register before applying these
+# CRs. Without this split, the kustomization failed on first apply
+# with "no matches for kind Logging in version
+# logging.banzaicloud.io/v1beta1".
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: logging-config
+  namespace: flux-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: logging-operator
+  path: ./cluster-talos/kubernetes/infrastructure/platform/logging/logging-config/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars
+  wait: true
+  timeout: 5m
