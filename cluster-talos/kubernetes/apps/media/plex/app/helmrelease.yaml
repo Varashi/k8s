@@ -72,7 +72,16 @@ spec:
           app:
             image:
               repository: ghcr.io/varashi/scaleplex_orchestrator
-              tag: v1.2.0
+              # v1.3.0 (released as scaleplex v1.8.0): adds two new
+              # discovery modes alongside the existing DNS — WORKERS_LIST
+              # (static comma-list) and PUSH (worker self-registers via
+              # POST /register + 5s heartbeat, reaped at 15s). /workers
+              # JSON gains a `sources` field; pool re-keyed by URL so
+              # all three sources dedup naturally. k8s deployments
+              # byte-identical: only the DNS code path runs unless the
+              # new envs are set. Validated on plex-test 2026-05-27 +
+              # end-to-end on SKW-Docker VM. =sha-e13a760.
+              tag: v1.3.0
             env:
               TZ: Europe/Brussels
               LISTEN_ADDR: ":3500"
@@ -111,22 +120,18 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              # v1.7.2: maintenance release — fork patch 0123 introduces
-              # SubCueClock primitive for vf_inlineass bitmap path.
-              # Folds the open-ended display-window lifecycle behind a
-              # small, testable API (sub_cue_set/close/active_at,
-              # INT64_MIN open-ended sentinel) and absorbs the v1.6.1
-              # sticky-clear fix (patch 0121 dropped). 5 scattered
-              # AssContext fields → 2 SubCueClock structs; single source
-              # of truth for "is bitmap cue active at T". Text path
-              # unchanged (libass owns its own clock). No perf delta.
-              # Validated live on plex-test (debug deb): PGS bitmap
-              # burn engages inlineass-vaapi branch + first segment
-              # ready; ASS/SRT text paths unchanged; 0121 spot-check
-              # via 30-frame HLS pull confirms cues clear correctly
-              # between dialogue lines.
-              # =sha-d370b97.
-              tag: v1.7.2
+              # v1.8.0 — adds `startRegisterLoop()` for PUSH discovery
+              # (no-op in k8s since SCALEPLEX_ORCHESTRATOR_URL is unset;
+              # DNS code path runs unchanged byte-for-byte from v1.7.2).
+              # Worker registers with orchestrator via POST /register +
+              # heartbeat only when running on a non-k8s deployment (see
+              # deploy/docker/). Validated end-to-end against plex-test
+              # PMS on SKW-Docker VM 2026-05-27 (real 4K HDR AV1
+              # transcode); plex-test bumped to v1.8.0 the same day
+              # 2026-05-27 and ran clean before prod promotion. See
+              # project_scaleplex_docker_deployment memory.
+              # =sha-e13a760.
+              tag: v1.8.0
             env:
               TZ: Europe/Brussels
               # Device retarget now in the fork (0116); pin the worker GPU.
