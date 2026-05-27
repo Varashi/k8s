@@ -61,7 +61,15 @@ spec:
             # least-loaded.
             image:
               repository: ghcr.io/varashi/scaleplex_orchestrator
-              tag: sha-606540c
+              # v1.3.0 (released as scaleplex v1.8.0): adds two new
+              # discovery modes alongside the existing DNS — WORKERS_LIST
+              # (static comma-list) and PUSH (worker self-registers via
+              # POST /register + 5s heartbeat, reaped at 15s). /workers
+              # JSON gains a `sources` field; pool re-keyed by URL so
+              # all three sources dedup naturally. k8s deployments
+              # byte-identical: only the DNS code path runs unless the
+              # new envs are set. =sha-e13a760.
+              tag: v1.3.0
             env:
               TZ: Europe/Brussels
               LISTEN_ADDR: ":3500"
@@ -157,12 +165,13 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              # v1.7.2 — matches prod. SubCueClock primitive for
-              # vf_inlineass bitmap path; absorbs the v1.6.1 sticky-
-              # clear fix into a small structural API. Validated live
-              # on this env (debug-clock-primitive image) before
-              # promotion. See project_scaleplex_v172 memory.
-              tag: v1.7.2
+              # v1.8.0 — adds `startRegisterLoop()` for PUSH discovery
+              # (no-op in k8s since SCALEPLEX_ORCHESTRATOR_URL is unset;
+              # DNS code path runs unchanged byte-for-byte). Validated
+              # end-to-end against this PMS on SKW-Docker VM 2026-05-27
+              # before promotion. See project_scaleplex_docker_deployment
+              # memory. =sha-e13a760.
+              tag: v1.8.0
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
