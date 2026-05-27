@@ -20,6 +20,6 @@ resources:
   - prometheus-community.yaml
   - descheduler.yaml
   - stakater.yaml
-  - fluent.yaml
+  - kube-logging.yaml
   - gpu-node-vsphere-maintenance-controller.yaml
   - authentik.yaml

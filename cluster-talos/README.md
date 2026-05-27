@@ -110,7 +110,7 @@ cluster-talos/
     │       ├── cloudflare-operator-system/
     │       │   ├── cloudflare-operator/ # ClusterTunnel CRD + operator
     │       │   └── cloudflare-tunnel/   # ClusterTunnel instance + default TunnelBinding
-    │       ├── tanzu-system-logging/    # Fluent-Bit DaemonSet → VCF Operations for Logs (syslog rfc5424)
+    │       ├── logging/                 # Logging Operator: Fluent Bit DS → Fluentd STS → VCF Operations for Logs (CFAPI)
     │       ├── kasten-io/               # Kasten K10 (LDAPS to AD)
     │       ├── spegel/                  # P2P containerd image cache
     │       ├── renovate/                # Dependency update bot

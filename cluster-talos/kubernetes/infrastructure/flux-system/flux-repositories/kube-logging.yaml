@@ -1,8 +1,10 @@
+---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
-  name: fluent
+  name: kube-logging
   namespace: flux-system
 spec:
+  type: oci
+  url: oci://ghcr.io/kube-logging/helm-charts
   interval: 1h
-  url: https://fluent.github.io/helm-charts

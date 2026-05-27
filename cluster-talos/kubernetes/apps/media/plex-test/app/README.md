@@ -28,8 +28,8 @@ Mirrors the same mechanism the prod `plex` HR uses (see
 (`plex-log-tail`) that runs `tail -n0 -F` on
 `/config/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log`
 as uid 1000 inside the `pms` container. Output flows to container
-stdout → fluent-bit DaemonSet in `tanzu-system-logging` →
-`skw-vcflogs.boeye.net:514`.
+stdout → Logging Operator Fluent Bit DS (`logging` ns) → Fluentd
+aggregator → `skw-vcflogs.boeye.net:9543` CFAPI HTTPS.
 
 Only delta vs prod: the persistence entry hangs off controller key `pms`
 (plex-test calls the PMS container that, not `app` like prod does) and

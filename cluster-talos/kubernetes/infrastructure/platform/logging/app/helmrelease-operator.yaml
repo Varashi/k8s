@@ -1,0 +1,45 @@
+---
+# Logging Operator — installs the controller that watches Logging /
+# Flow / Output CRDs and reconciles a Fluent Bit DaemonSet + Fluentd
+# StatefulSet from them. The chart ships only the operator + CRDs;
+# the actual logging pipeline is declared via the CRs in the
+# sibling logging.yaml / clusteroutput-*.yaml / clusterflow-*.yaml.
+#
+# Docs: https://kube-logging.dev/docs/
+# Chart: oci://ghcr.io/kube-logging/helm-charts/logging-operator
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: logging-operator
+  namespace: logging
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: logging-operator
+      version: 6.5.2
+      sourceRef:
+        kind: HelmRepository
+        name: kube-logging
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+    crds: CreateReplace
+  upgrade:
+    cleanupOnFail: true
+    crds: CreateReplace
+    remediation:
+      strategy: rollback
+      retries: 3
+  values:
+    # Keep the operator itself lean — it just watches CRDs.
+    resources:
+      requests: {cpu: 10m, memory: 64Mi}
+      limits:   {cpu: 200m, memory: 256Mi}
+    # The operator's leader election uses a Lease in this ns.
+    enableLeaderElection: true
+    # Don't ship the bundled `logging` resource — we declare ours
+    # explicitly in logging.yaml so it's GitOps-visible.
+    logging:
+      enabled: false
