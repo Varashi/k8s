@@ -124,7 +124,13 @@ spec:
               # for the rewriter's URL substitutions).
               LOCAL_RELAY_ENABLED: "1"
               LOCAL_RELAY_PORT: "32499"
-              PMS_SERVICE: plex-test-pms.plex-test.svc
+              # Hybrid fleet: point PMS_SERVICE at the pms-lb DNS (resolves to
+              # 172.16.4.106) instead of the in-cluster ClusterIP, so the URL
+              # the shim hands workers (http://PMS_SERVICE:32499 → relay) is
+              # reachable by BOTH in-cluster Arc workers (hairpin via the LB)
+              # and off-cluster workers (e.g. NVIDIA on skw-d-frank). The LB
+              # exposes the relay port 32499 (see service.pms-lb.ports.relay).
+              PMS_SERVICE: plex-test-svc.${SECRET_DOMAIN}
               PMS_PORT: "32400"
               # scaleplex-shim reads SCALEPLEX_ORCHESTRATOR_URL and
               # POSTs the task envelope there. Keep ORCHESTRATOR_URL
