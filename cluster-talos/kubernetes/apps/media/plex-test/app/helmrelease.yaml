@@ -61,14 +61,13 @@ spec:
             # least-loaded.
             image:
               repository: ghcr.io/varashi/scaleplex_orchestrator
-              # v1.4.0 (released as scaleplex v1.9.0): capability-aware
-              # routing — workers report backend + load on /capability;
-              # schedule() tiers HW workers ahead of CPU-only
-              # (SCALEPLEX_PREFER_HW=1 default) with a configurable
-              # within-tier strategy (SCALEPLEX_LB_STRATEGY=load default).
-              # Homogeneous Intel fleet here collapses to the prior
-              # least-loaded behaviour — no new envs set. =sha-28303ce.
-              tag: v1.4.0
+              # sha-4ee6996 (post-v1.4.0, #93 fix): /readyz no longer gates on
+              # worker presence — fixes the push-only-fleet deadlock (orchestrator
+              # can't be Ready w/o a worker; PUSH worker can't register w/o the
+              # orchestrator being Ready in the LB). bleeding-edge sha on the test
+              # bench; folds into the next orchestrator release. v1.4.0 base:
+              # capability-aware routing (PREFER_HW + LB_STRATEGY). =sha-4ee6996.
+              tag: sha-4ee6996
             env:
               TZ: Europe/Brussels
               LISTEN_ADDR: ":3500"
