@@ -301,6 +301,15 @@ spec:
           external:
             port: 32401
             targetPort: 32400
+          # scaleplex-relay, exposed off-cluster so EXTERNAL workers (e.g.
+          # the NVIDIA worker on skw-d-frank) can reach it for progress /
+          # manifest callbacks + the L3 Pass probe. In-cluster workers use
+          # the ClusterIP `pms` Service:32499; this mirrors it on the LB so
+          # a hybrid k8s+external fleet can share one PMS_SERVICE pointing
+          # here. Must target the relay (32499), NOT PMS:32400 — the relay
+          # is what rewrites the loopback source PMS requires.
+          relay:
+            port: 32499
       worker:
         # Headless Service — orchestrator does DNS lookup and gets a
         # list of pod IPs back. ClusterIP would mask the per-pod
