@@ -146,8 +146,13 @@ spec:
               # the PMS Arc onto the worker Arcs. No cross-backend (homo-
               # geneous Arc); gate inert for passthrough; FORCE_HW=1 only
               # re-accels the residual SW-emit cases (L3 probe → relay).
-              # =sha-c8daea1.
-              tag: v1.9.1
+              # v1.10.0 (scaleplex v1.10.0): NVIDIA GPU-resident sub-burn —
+              # vf_inlineass CUDA branch (fork patch 0126, #76/#107/#110),
+              # full nvenc<->vaapi sub-burn parity. NVENC-only feature;
+              # DORMANT on prod's Arc-only fleet — VAAPI path byte-behavior
+              # unchanged (proven: qa_matrix Arc 320/320 PASS). Pre-prod
+              # gate green both backends 2026-05-29. =sha-<v1.10.0>.
+              tag: v1.10.0
             env:
               TZ: Europe/Brussels
               # Device retarget now in the fork (0116); pin the worker GPU.
