@@ -173,12 +173,12 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              # v1.9.0 — cross-backend reshape (rewrites any VAAPI/NVENC/
-              # SW argv to this worker's own backend), WORKER_BACKEND
-              # auto-detect, CPU swDialect fallback, Plex-Pass gate L1/L3.
-              # On this Intel Arc node WORKER_BACKEND auto-resolves to
-              # vaapi (default). =sha-62cc0c2.
-              tag: v1.9.0
+              # v1.9.1 — worker-only patch on v1.9.0: cross-backend reshape no
+              # longer Pass-gated (foreign HW = proof of Pass, #99) + backend-
+              # aware pre-warm with a 30s timeout (#101). v1.9.0 base: cross-
+              # backend reshape, WORKER_BACKEND auto-detect, swDialect fallback,
+              # Plex-Pass gate L1/L3. Arc node → vaapi. =sha-c8daea1.
+              tag: v1.9.1
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
