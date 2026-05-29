@@ -119,10 +119,9 @@ spec:
               # myPlexSubscription from Preferences.xml → forwards
               # SCALEPLEX_PASS_ACTIVE per session. =sha-62cc0c2.
               DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:v1.3.0
-              # Both LOCAL_RELAY_* are read by scaleplex-relay (and by
-              # the shim's collectEnv() to derive SCALEPLEX_PMS_BASE_URL
-              # for the rewriter's URL substitutions).
-              LOCAL_RELAY_ENABLED: "1"
+              # LOCAL_RELAY_PORT is read by scaleplex-relay (the s6 longrun
+              # listens on it) + the shim's collectEnv() to derive
+              # SCALEPLEX_PMS_BASE_URL for the rewriter's URL substitutions.
               LOCAL_RELAY_PORT: "32499"
               # Hybrid fleet: point PMS_SERVICE at the pms-lb DNS (resolves to
               # 172.16.4.106) instead of the in-cluster ClusterIP, so the URL

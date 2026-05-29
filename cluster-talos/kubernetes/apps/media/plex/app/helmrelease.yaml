@@ -52,7 +52,6 @@ spec:
               # scaleplex-relay listens here; the shim's collectEnv()
               # also reads LOCAL_RELAY_PORT + PMS_SERVICE to derive the
               # per-session SCALEPLEX_PMS_BASE_URL for worker callbacks.
-              LOCAL_RELAY_ENABLED: "1"
               LOCAL_RELAY_PORT: "32499"
               PMS_SERVICE: plex.plex.svc
               PMS_PORT: "32400"
