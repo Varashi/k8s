@@ -83,8 +83,12 @@ spec:
               # byte-identical: only the DNS code path runs unless the
               # new envs are set. v1.4.0 (scaleplex v1.9.0): capability-aware
               # routing + LB strategy; collapses to least-loaded on prod's
-              # homogeneous Arc fleet (no new envs set). =sha-28303ce.
-              tag: v1.4.0
+              # homogeneous Arc fleet (no new envs set).
+              # v1.4.1 (scaleplex v1.10.1): /readyz no longer gates on worker
+              # presence (#93 push-only-fleet deadlock fix). No-op on prod's
+              # DNS-only Arc fleet (always has workers → always Ready); ships for
+              # consistency + future push workers. =sha-4ee6996.
+              tag: v1.4.1
             env:
               TZ: Europe/Brussels
               LISTEN_ADDR: ":3500"
