@@ -136,9 +136,12 @@ spec:
               # v1.9.1 (scaleplex v1.9.1): v1.9.0 cross-backend reshape +
               # capability client + Pass-gate L1/L3, plus v1.9.1 patches
               # (#99 cross-backend not Pass-gated, #101 backend-aware
-              # pre-warm + 30s timeout). Inert on prod's homogeneous
-              # in-cluster Arc (no cross-backend; FORCE_HW-on-SW gate L3
-              # probe reaches the in-cluster relay → Pass confirmed).
+              # pre-warm + 30s timeout). prod PMS is GPU-accelerated (Arc
+              # i915, HardwareAcceleratedCodecs=1) so Plex emits VAAPI →
+              # worker hw-passthrough; the fleet OFFLOADS the transcode off
+              # the PMS Arc onto the worker Arcs. No cross-backend (homo-
+              # geneous Arc); gate inert for passthrough; FORCE_HW=1 only
+              # re-accels the residual SW-emit cases (L3 probe → relay).
               # =sha-c8daea1.
               tag: v1.9.1
             env:
