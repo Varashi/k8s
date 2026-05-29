@@ -45,7 +45,10 @@ spec:
               # scaleplex-relay as an s6-rc.d longrun. Transcoding is
               # delegated to the in-namespace orchestrator + worker
               # fleet; the PMS no longer transcodes locally.
-              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:v1.0.0
+              # v1.3.0 (scaleplex v1.9.0): adds Pass-gate L2 — shim reads
+              # myPlexSubscription from Preferences.xml → SCALEPLEX_PASS_ACTIVE
+              # per session. =sha-62cc0c2.
+              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:v1.3.0
               # scaleplex-relay listens here; the shim's collectEnv()
               # also reads LOCAL_RELAY_PORT + PMS_SERVICE to derive the
               # per-session SCALEPLEX_PMS_BASE_URL for worker callbacks.
@@ -79,9 +82,10 @@ spec:
               # JSON gains a `sources` field; pool re-keyed by URL so
               # all three sources dedup naturally. k8s deployments
               # byte-identical: only the DNS code path runs unless the
-              # new envs are set. Validated on plex-test 2026-05-27 +
-              # end-to-end on SKW-Docker VM. =sha-e13a760.
-              tag: v1.3.0
+              # new envs are set. v1.4.0 (scaleplex v1.9.0): capability-aware
+              # routing + LB strategy; collapses to least-loaded on prod's
+              # homogeneous Arc fleet (no new envs set). =sha-28303ce.
+              tag: v1.4.0
             env:
               TZ: Europe/Brussels
               LISTEN_ADDR: ":3500"
@@ -130,8 +134,14 @@ spec:
               # transcode); plex-test bumped to v1.8.0 the same day
               # 2026-05-27 and ran clean before prod promotion. See
               # project_scaleplex_docker_deployment memory.
-              # =sha-e13a760.
-              tag: v1.8.0
+              # v1.9.1 (scaleplex v1.9.1): v1.9.0 cross-backend reshape +
+              # capability client + Pass-gate L1/L3, plus v1.9.1 patches
+              # (#99 cross-backend not Pass-gated, #101 backend-aware
+              # pre-warm + 30s timeout). Inert on prod's homogeneous
+              # in-cluster Arc (no cross-backend; FORCE_HW-on-SW gate L3
+              # probe reaches the in-cluster relay → Pass confirmed).
+              # =sha-c8daea1.
+              tag: v1.9.1
             env:
               TZ: Europe/Brussels
               # Device retarget now in the fork (0116); pin the worker GPU.
