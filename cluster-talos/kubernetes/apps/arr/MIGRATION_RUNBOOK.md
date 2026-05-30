@@ -24,17 +24,21 @@ Add to Bitwarden Secrets Manager — 32-char random per app:
 
 Without these, ESO sync fails → cnpg bootstrap stalls → arr Pods crash on env injection.
 
-## Migrator tool — pick one before applying any `migrate/job.yaml`
+## Migrator tool
 
-Per-app Job YAMLs sit at `apps/arr/<app>/migrate/job.yaml` with `image: TBD-PER-RUNBOOK`. Out of gitops on purpose (one-shot, deleted after success).
+Use **`ghcr.io/roxedus/pgloader`** — pgloader build maintained by Roxedus (author of the Servarr Postgres wiki). This is the path the Servarr docs send everyone to.
 
-Candidate tools (verify maintenance state at apply time):
+Each `migrate/job.yaml` carries `image: TBD-PER-RUNBOOK` as a deliberate stop-sign so you can pin a digest at apply time. Before running the Job:
 
-1. **`recyclarr-postgres-migrator`-style .NET tool** — purpose-built, schema-aware, FK-respecting. Best fit when active.
-2. **`dimitri/pgloader:latest`** — generic SQLite → Postgres, well-known. Needs a small `.load` file per arr to handle identity-column resets. Confirmed-working community recipes exist.
-3. **Workstation Python script** — `sqlite3` + `psycopg2`, ~50 LOC, walks SQLite tables in FK order, COPYs into Postgres, resets sequences. Most control; no extra image to vet.
+1. Pull + pin a digest:
+   ```bash
+   crane digest ghcr.io/roxedus/pgloader:latest
+   # then patch the Job YAML: image: ghcr.io/roxedus/pgloader@sha256:<digest>
+   ```
+2. Drop in a per-arr pgloader `.load` recipe (mount via ConfigMap) — recipe shape per arr is in https://wiki.servarr.com/sonarr/postgres-setup#migrating and https://wiki.servarr.com/radarr/postgres-setup#migrating. Bazarr is N/A (fresh-PG path).
+3. Override the Job command/args to invoke `pgloader /etc/pgloader/recipe.load`.
 
-**Recommendation order**: 1 if maintained → 2 with vetted .load file → 3 if both options stale. Pin a digest (`@sha256:...`) for whichever image you pick.
+**Fallback** if pgloader trips on a particular DB: https://github.com/regulardude400/radarr-sqlite-csv-to-postgres (CSV-export workaround referenced by the Servarr wiki).
 
 ## Per-app migration sequence (Sonarr / Radarr / Prowlarr style)
 
