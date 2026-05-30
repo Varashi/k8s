@@ -1,5 +1,5 @@
 [tools]
-flux2 = "2.8.7"
+flux2 = "2.8.8"
 talosctl = "1.13.2"
 kubectl = "1.36.1"
 helm = "4.2.0"
