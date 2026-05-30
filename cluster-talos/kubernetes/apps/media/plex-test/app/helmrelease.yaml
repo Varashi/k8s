@@ -116,7 +116,10 @@ spec:
               # v1.3.0 (scaleplex v1.9.0) adds Pass-gate L2: shim reads
               # myPlexSubscription from Preferences.xml → forwards
               # SCALEPLEX_PASS_ACTIVE per session. =sha-62cc0c2.
-              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:v1.3.0
+              # TEMP DISABLED 2026-05-30 to bisect external-SRT direct-play
+              # sub-not-rendering on Plex Windows. Compare plex-test (stock)
+              # vs plex (with dockermod) on Allo Allo S5. Revert after test.
+              # DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:v1.3.0
               # LOCAL_RELAY_PORT is read by scaleplex-relay (the s6 longrun
               # listens on it) + the shim's collectEnv() to derive
               # SCALEPLEX_PMS_BASE_URL for the rewriter's URL substitutions.
