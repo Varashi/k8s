@@ -1,0 +1,38 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sonarr-nl-pg-migrate
+  namespace: sonarr-nl
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        supplementalGroups: [568]
+      containers:
+        - name: migrator
+          image: TBD-PER-RUNBOOK
+          env:
+            - { name: SQLITE_PATH, value: /config/sonarr.db }
+            - { name: PG_HOST,     value: sonarr-nl-pg-rw.sonarr-nl.svc }
+            - { name: PG_PORT,     value: "5432" }
+            - { name: PG_USER,     value: sonarr_nl }
+            - { name: PG_MAIN_DB,  value: sonarr_nl_main }
+            - { name: PG_LOG_DB,   value: sonarr_nl_log }
+            - name: PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sonarr-nl-db-credentials
+                  key: password
+          volumeMounts:
+            - { name: config, mountPath: /config, readOnly: true }
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: sonarr-nl-config

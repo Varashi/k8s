@@ -52,6 +52,16 @@ spec:
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
+              SONARR__POSTGRES__USER: sonarr
+              SONARR__POSTGRES__HOST: sonarr-pg-rw.sonarr.svc
+              SONARR__POSTGRES__PORT: "5432"
+              SONARR__POSTGRES__MAINDB: sonarr_main
+              SONARR__POSTGRES__LOGDB: sonarr_log
+              SONARR__POSTGRES__PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: sonarr-db-credentials
+                    key: password
     service:
       app:
         controller: sonarr

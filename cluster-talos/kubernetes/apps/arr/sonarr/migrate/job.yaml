@@ -1,0 +1,42 @@
+---
+# Note: sonarr.db is ~1 GB. Migration will take longer than other arrs.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sonarr-pg-migrate
+  namespace: sonarr
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        supplementalGroups: [568]
+      containers:
+        - name: migrator
+          image: TBD-PER-RUNBOOK
+          resources:
+            requests: { cpu: 500m, memory: 512Mi }
+            limits:   { cpu: 2,    memory: 2Gi }
+          env:
+            - { name: SQLITE_PATH, value: /config/sonarr.db }
+            - { name: PG_HOST,     value: sonarr-pg-rw.sonarr.svc }
+            - { name: PG_PORT,     value: "5432" }
+            - { name: PG_USER,     value: sonarr }
+            - { name: PG_MAIN_DB,  value: sonarr_main }
+            - { name: PG_LOG_DB,   value: sonarr_log }
+            - name: PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sonarr-db-credentials
+                  key: password
+          volumeMounts:
+            - { name: config, mountPath: /config, readOnly: true }
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: sonarr-config

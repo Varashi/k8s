@@ -1,0 +1,38 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: radarr-pg-migrate
+  namespace: radarr
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        supplementalGroups: [568]
+      containers:
+        - name: migrator
+          image: TBD-PER-RUNBOOK
+          env:
+            - { name: SQLITE_PATH, value: /config/radarr.db }
+            - { name: PG_HOST,     value: radarr-pg-rw.radarr.svc }
+            - { name: PG_PORT,     value: "5432" }
+            - { name: PG_USER,     value: radarr }
+            - { name: PG_MAIN_DB,  value: radarr_main }
+            - { name: PG_LOG_DB,   value: radarr_log }
+            - name: PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: radarr-db-credentials
+                  key: password
+          volumeMounts:
+            - { name: config, mountPath: /config, readOnly: true }
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: radarr-config

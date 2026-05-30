@@ -53,6 +53,16 @@ spec:
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
+              RADARR__POSTGRES__USER: radarr_nl
+              RADARR__POSTGRES__HOST: radarr-nl-pg-rw.radarr-nl.svc
+              RADARR__POSTGRES__PORT: "5432"
+              RADARR__POSTGRES__MAINDB: radarr_nl_main
+              RADARR__POSTGRES__LOGDB: radarr_nl_log
+              RADARR__POSTGRES__PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: radarr-nl-db-credentials
+                    key: password
     service:
       app:
         controller: radarr-nl

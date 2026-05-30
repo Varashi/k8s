@@ -1,0 +1,48 @@
+---
+# One-shot SQLite -> Postgres migrator for radarr-nl.
+# OUT OF GITOPS by design: applied manually with `kubectl apply -f`, deleted after success.
+# Prereqs: cnpg cluster ready + radarr-nl scaled to 0 + schema bootstrapped by FluentMigrator
+# (start radarr-nl once against empty PG, let it create the tables, then scale back to 0).
+#
+# Migrator image -- pick ONE before applying:
+#   a) ghcr.io/recyclarr-postgres-migrator/recyclarr-postgres-migrator:latest  (Servarr community, .NET)
+#   b) dimitri/pgloader:latest  (generic, needs a load file; well-known)
+#   c) Run from workstation: python script + psycopg2 + sqlite3 (most control)
+# See ../../MIGRATION_RUNBOOK.md for the vetted choice + invocation.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: radarr-nl-pg-migrate
+  namespace: radarr-nl
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        supplementalGroups: [568]
+      containers:
+        - name: migrator
+          image: TBD-PER-RUNBOOK  # see runbook before apply
+          env:
+            - { name: SQLITE_PATH, value: /config/radarr.db }
+            - { name: PG_HOST,     value: radarr-nl-pg-rw.radarr-nl.svc }
+            - { name: PG_PORT,     value: "5432" }
+            - { name: PG_USER,     value: radarr_nl }
+            - { name: PG_MAIN_DB,  value: radarr_nl_main }
+            - { name: PG_LOG_DB,   value: radarr_nl_log }
+            - name: PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: radarr-nl-db-credentials
+                  key: password
+          volumeMounts:
+            - { name: config, mountPath: /config, readOnly: true }
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: radarr-nl-config

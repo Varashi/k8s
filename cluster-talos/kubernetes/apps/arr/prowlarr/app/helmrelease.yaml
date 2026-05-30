@@ -48,6 +48,16 @@ spec:
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
+              PROWLARR__POSTGRES__USER: prowlarr
+              PROWLARR__POSTGRES__HOST: prowlarr-pg-rw.prowlarr.svc
+              PROWLARR__POSTGRES__PORT: "5432"
+              PROWLARR__POSTGRES__MAINDB: prowlarr_main
+              PROWLARR__POSTGRES__LOGDB: prowlarr_log
+              PROWLARR__POSTGRES__PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: prowlarr-db-credentials
+                    key: password
     service:
       app:
         controller: prowlarr

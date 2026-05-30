@@ -3,4 +3,6 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - pvc.yaml
+  - cluster.yaml
+  - externalsecret.yaml
   - helmrelease.yaml
