@@ -1,0 +1,49 @@
+---
+# One-shot SQLite -> Postgres migrator for prowlarr.
+# Note: prowlarr HR runs as root, so /config files are root-owned. Job runs as root to read them.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: prowlarr-pg-migrate
+  namespace: prowlarr
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      containers:
+        - name: migrator
+          image: TBD-PER-RUNBOOK
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits:   { cpu: 1,    memory: 1Gi }
+          env:
+            - { name: SQLITE_PATH, value: /config/prowlarr.db }
+            - { name: PG_HOST,     value: prowlarr-pg-rw.prowlarr.svc }
+            - { name: PG_PORT,     value: "5432" }
+            - { name: PG_USER,     value: prowlarr }
+            - { name: PG_MAIN_DB,  value: prowlarr_main }
+            - { name: PG_LOG_DB,   value: prowlarr_log }
+            - name: PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: prowlarr-db-credentials
+                  key: password
+          volumeMounts:
+            - { name: config, mountPath: /config, readOnly: true }
+            - { name: tmp,    mountPath: /tmp }
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: prowlarr-config
+        - name: tmp
+          emptyDir: { sizeLimit: 1Gi }

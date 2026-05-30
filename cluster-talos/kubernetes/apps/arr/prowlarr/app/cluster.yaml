@@ -1,0 +1,34 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: prowlarr-pg
+  namespace: prowlarr
+spec:
+  instances: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  storage:
+    size: 5Gi
+    storageClass: vsan
+  bootstrap:
+    initdb:
+      database: prowlarr_main
+      owner: prowlarr
+      secret:
+        name: prowlarr-db-credentials
+      postInitSQL:
+        - CREATE DATABASE prowlarr_log OWNER prowlarr;
+  affinity:
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: intel.feature.node.kubernetes.io/gpu
+                operator: DoesNotExist

@@ -1,0 +1,32 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: bazarr-pg
+  namespace: bazarr
+spec:
+  instances: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  storage:
+    size: 5Gi
+    storageClass: vsan
+  bootstrap:
+    initdb:
+      database: bazarr
+      owner: bazarr
+      secret:
+        name: bazarr-db-credentials
+  affinity:
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: intel.feature.node.kubernetes.io/gpu
+                operator: DoesNotExist

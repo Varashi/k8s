@@ -52,6 +52,16 @@ spec:
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
+              POSTGRES_ENABLED: "True"
+              POSTGRES_HOST: bazarr-pg-rw.bazarr.svc
+              POSTGRES_PORT: "5432"
+              POSTGRES_DATABASE: bazarr
+              POSTGRES_USERNAME: bazarr
+              POSTGRES_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: bazarr-db-credentials
+                    key: password
             resources:
               requests:
                 cpu: 100m
