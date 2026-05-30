@@ -1,142 +1,165 @@
 # Arr stack — SQLite → cnpg Postgres migration
 
-Per-app cnpg cluster (Ombi/tracearr pattern). One PR (this branch) carries all 6 cluster manifests + HR envs. Migration runs **app-by-app**, in this order:
+**STATUS: COMPLETE 2026-05-30.** All 6 arr apps live on Postgres. SQLite files stashed at `/config/preflight/` (1-week soak before deletion). This document is now reference for future migrations of the same shape.
 
-1. radarr-nl (smoke test, 15 MB)
-2. prowlarr (38 MB) — single indexer source-of-truth; do early to catch any RSS-flow issues
-3. sonarr-nl (45 MB)
-4. radarr (92 MB)
-5. sonarr (**1017 MB**, the original symptom)
-6. bazarr (fresh-PG path, see bottom)
+## Outcome
 
-## Prereq — BWS secrets (must exist BEFORE merge)
+| App | SQLite pre | Postgres post | Notes |
+|---|---|---|---|
+| sonarr | 1017 MB | **440 MB** | -57%; EpisodeFiles 676 MB → 97 MB via pglz on `rawStreamData` |
+| bazarr | 169 MB | (fresh, ~few MB) | fresh-PG path, re-syncs from arrs on schedule |
+| radarr | 92 MB | smaller | |
+| sonarr-nl | 45 MB | smaller | |
+| prowlarr | 38 MB | smaller | |
+| radarr-nl | 15 MB | smaller | smoke test target |
 
-Add to Bitwarden Secrets Manager — 32-char random per app:
+## ⚠ Learnings (what we did differently from the original plan)
 
-| BWS key | Used by |
-|---|---|
-| `SECRET_RADARR_NL_POSTGRES_PASSWORD` | radarr-nl-pg + app |
-| `SECRET_PROWLARR_POSTGRES_PASSWORD` | prowlarr-pg + app |
-| `SECRET_SONARR_NL_POSTGRES_PASSWORD` | sonarr-nl-pg + app |
-| `SECRET_RADARR_POSTGRES_PASSWORD`    | radarr-pg + app |
-| `SECRET_SONARR_POSTGRES_PASSWORD`    | sonarr-pg + app |
-| `SECRET_BAZARR_POSTGRES_PASSWORD`    | bazarr-pg + app |
+1. **Bundle-merge gotcha**: PR #159 carried HR env additions for all 6 apps at once. On merge, flux reconciled all 6 simultaneously → arr Pods rolled with Postgres env before cnpg clusters finished bootstrapping → all apps crashed at startup. **Recovery was emergency scale-to-0 + serial migration**. **Lesson for next time**: split into one PR for cnpg+ES (no app impact) + one PR per arr to add HR env (gated on that arr's migration). Or — accept that the bundled merge becomes the start signal for an immediate serial migration window.
 
-Without these, ESO sync fails → cnpg bootstrap stalls → arr Pods crash on env injection.
+2. **Wiki's 7-table DELETE list is incomplete**: the Servarr wiki recommends `DELETE` on 7 known-seeded tables before pgloader. We hit a PK collision on `NamingConfig` (radarr-nl had it pre-populated too). **Use TRUNCATE-all instead** (preserves schema, clears all FluentMigrator seed data, resets sequences). See refined procedure below.
 
-## Migrator tool
+3. **Bazarr image does NOT honor `POSTGRES_*` env**: `ghcr.io/home-operations/bazarr:1.5.6` (and likely others) only reads `postgresql:` block in `/config/config/config.yaml`. The env block in the HelmRelease is documentary only. **Bazarr requires direct config.yaml patching** before it'll connect to PG. Procedure below.
 
-Use **`ghcr.io/roxedus/pgloader`** — pgloader build maintained by Roxedus (author of the Servarr Postgres wiki). This is the path the Servarr docs send everyone to.
+## Migration order used
 
-Each `migrate/job.yaml` carries `image: TBD-PER-RUNBOOK` as a deliberate stop-sign so you can pin a digest at apply time. Before running the Job:
+1. radarr-nl (smoke test, 15 MB) → validated TRUNCATE-all pattern
+2. prowlarr (38 MB) → 73k rows / 1.7s
+3. sonarr-nl (45 MB) → 36k rows / 1.8s
+4. radarr (92 MB) → 135k rows / 3.2s
+5. sonarr (**1017 MB**) → 439k rows / 23s
+6. bazarr (fresh-PG, no pgloader) → schema bootstrapped, library re-syncs from arrs
 
-1. Pull + pin a digest:
-   ```bash
-   crane digest ghcr.io/roxedus/pgloader:latest
-   # then patch the Job YAML: image: ghcr.io/roxedus/pgloader@sha256:<digest>
-   ```
-2. Drop in a per-arr pgloader `.load` recipe (mount via ConfigMap) — recipe shape per arr is in https://wiki.servarr.com/sonarr/postgres-setup#migrating and https://wiki.servarr.com/radarr/postgres-setup#migrating. Bazarr is N/A (fresh-PG path).
-3. Override the Job command/args to invoke `pgloader /etc/pgloader/recipe.load`.
+## Per-app refined procedure (Sonarr / Radarr / Prowlarr style)
 
-**Fallback** if pgloader trips on a particular DB: https://github.com/regulardude400/radarr-sqlite-csv-to-postgres (CSV-export workaround referenced by the Servarr wiki).
-
-## Per-app migration sequence (Sonarr / Radarr / Prowlarr style)
-
-Replace `<APP>` with the namespace (radarr-nl / prowlarr / sonarr-nl / radarr / sonarr).
+Replace `<APP>` with the namespace + deploy name. For NL variants, also adjust `<ROLE>` (`sonarr_nl`/`radarr_nl`) and `<DB>` (`sonarr_nl_main`/`radarr_nl_main`).
 
 ```bash
-APP=radarr-nl   # change per iteration
-K="kubectl --context k8s-talos -n $APP"
+APP=radarr-nl
+NS=$APP
+PGC=${APP}-pg
+ROLE=${APP//-/_}           # radarr-nl → radarr_nl
+DB=${ROLE}_main
+PVC=${APP}-config
+SQF=${APP%-nl}.db          # radarr-nl → radarr.db ; prowlarr → prowlarr.db (manual for prowlarr)
+K="kubectl --context k8s-talos -n $NS"
+IMG='ghcr.io/roxedus/pgloader@sha256:1a7a86ad56623c00ee714ee4969913ed5c6f59ac9785073e2ffd1bea9cc54d31'
 
-# 1) Confirm cnpg cluster is healthy (after PR merge + flux reconcile)
-$K get cluster.postgresql.cnpg.io
-# expect: STATUS = Cluster in healthy state, READY 2/2
+# 1) Bring up against empty PG so FluentMigrator creates the schema
+$K scale deploy/$APP --replicas=1
+$K wait --for=condition=available deploy/$APP --timeout=180s
 
-# 2) Verify ESO secret synced
-$K get secret ${APP}-db-credentials -o jsonpath='{.data.password}' | base64 -d | head -c8; echo
-# expect: 8 chars of the BWS password
+# 2) Scale down so SQLite is quiesced and PVC detachable
+$K scale deploy/$APP --replicas=0
+$K wait --for=delete pod -l app.kubernetes.io/name=$APP --timeout=60s
 
-# 3) Stop the app so SQLite is quiesced
-$K scale deploy/${APP} --replicas=0
-$K wait --for=delete pod -l app.kubernetes.io/name=${APP} --timeout=60s
+# 3) TRUNCATE all tables (clears every FluentMigrator-seeded row, resets sequences)
+$K exec -i ${PGC}-1 -- psql -d $DB <<'SQL'
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN SELECT tablename FROM pg_tables WHERE schemaname='public' LOOP
+    EXECUTE 'TRUNCATE TABLE "' || r.tablename || '" RESTART IDENTITY CASCADE';
+  END LOOP;
+END $$;
+SQL
 
-# 4) Bring the app up against EMPTY Postgres → FluentMigrator creates schema
-$K scale deploy/${APP} --replicas=1
-$K wait --for=condition=available deploy/${APP} --timeout=180s
-# Wait for log line: "Migrated to revision N" / "Database migrations completed"
-$K logs deploy/${APP} | grep -iE 'migrat|postgres'
+# 4) Run pgloader as one-shot pod (mounts config PVC RW — SQLite WAL mode needs writable dir for -shm/-wal sidecars)
+PASS=$($K get secret ${APP}-db-credentials -o jsonpath='{.data.password}' | base64 -d)
+$K run pgloader-$APP --rm -i --restart=Never --image=$IMG \
+  --overrides='{
+    "spec": {
+      "securityContext": {"runAsUser":0,"runAsGroup":0,"fsGroup":1000,"supplementalGroups":[568]},
+      "containers": [{
+        "name": "pgloader-'$APP'",
+        "image": "'$IMG'",
+        "securityContext": {"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"seccompProfile":{"type":"RuntimeDefault"}},
+        "args": ["--with","quote identifiers","--with","data only","--with","prefetch rows = 100","--with","batch size = 1MB","/config/'$SQF'","postgresql://'$ROLE':'$PASS'@'$PGC'-rw.'$NS'.svc:5432/'$DB'"],
+        "volumeMounts": [{"name":"config","mountPath":"/config"}]
+      }],
+      "volumes": [{"name":"config","persistentVolumeClaim":{"claimName":"'$PVC'"}}],
+      "restartPolicy": "Never"
+    }
+  }'
+# Watch the output. 0 errors = clean.
 
-# 5) Stop the app again before data copy
-$K scale deploy/${APP} --replicas=0
-$K wait --for=delete pod -l app.kubernetes.io/name=${APP} --timeout=60s
+# 5) Scale up; app boots on populated Postgres
+$K scale deploy/$APP --replicas=1
+$K wait --for=condition=available deploy/$APP --timeout=180s
 
-# 6) Edit migrate/job.yaml, replace image: TBD-PER-RUNBOOK with the vetted image, then:
-$K apply -f apps/arr/${APP}/migrate/job.yaml
-$K wait --for=condition=complete job/${APP}-pg-migrate --timeout=30m
-$K logs job/${APP}-pg-migrate
+# 6) Verify via API: counts match pre-migration baseline.
+# 7) Stash old SQLite as rollback artefact:
+$K exec deploy/$APP -- sh -c "mkdir -p /config/preflight && mv /config/${SQF} /config/${SQF}-shm /config/${SQF}-wal /config/preflight/ 2>/dev/null; ls -lh /config/preflight/"
 
-# 7) Start the app against populated Postgres
-$K scale deploy/${APP} --replicas=1
-
-# 8) Verify in UI: Series/Movies list intact, History present, Activity working,
-#    queued downloads still queued, indexers connected.
-
-# 9) Keep the SQLite as rollback artefact for 1 week
-$K exec deploy/${APP} -- sh -c 'mv /config/*.db /config/*.db-wal /config/*.db-shm /config/preflight/ 2>/dev/null; mkdir -p /config/preflight && mv /config/*.db* /config/preflight/'
-
-# 10) After soak: delete /config/preflight + delete the migrate Job
-$K exec deploy/${APP} -- rm -rf /config/preflight
-$K delete -f apps/arr/${APP}/migrate/job.yaml
+# 8) After 1-week soak: rm -rf /config/preflight/ via exec.
 ```
 
-**Rollback (within soak window)**:
+The `--with "prefetch rows = 100"` and `--with "batch size = 1MB"` flags are recommended by the Servarr wiki for large DBs (sonarr 1 GB). Harmless on small ones.
+
+## Bazarr — fresh-PG, config.yaml direct edit
+
+Bazarr image doesn't honor `POSTGRES_*` env. Patch config.yaml + restart.
+
 ```bash
-$K scale deploy/${APP} --replicas=0
-# restore preflight DB
-$K exec deploy/${APP%-*}-... -- sh -c 'mv /config/preflight/*.db* /config/'  # adapt
-# revert HR env: remove the *__POSTGRES__* block (git revert <commit>) — flux reconciles
-$K scale deploy/${APP} --replicas=1
+NS=bazarr
+POD=$(kubectl --context k8s-talos -n $NS get pod -l app.kubernetes.io/name=bazarr -o jsonpath='{.items[0].metadata.name}')
+PASS=$(kubectl --context k8s-talos -n $NS get secret bazarr-db-credentials -o jsonpath='{.data.password}' | base64 -d)
+
+# Copy out, edit with python+yaml, copy back, restart
+kubectl --context k8s-talos -n $NS cp $POD:/config/config/config.yaml /tmp/bz.yaml
+PASS="$PASS" python3 -c "
+import os, yaml
+cfg = yaml.safe_load(open('/tmp/bz.yaml'))
+cfg['postgresql'] = {'enabled': True, 'host': 'bazarr-pg-rw.bazarr.svc', 'port': 5432,
+                     'database': 'bazarr', 'username': 'bazarr',
+                     'password': os.environ['PASS'], 'url': ''}
+yaml.safe_dump(cfg, open('/tmp/bz.yaml','w'), sort_keys=True, default_flow_style=False)
+"
+kubectl --context k8s-talos -n $NS cp /tmp/bz.yaml $POD:/config/config/config.yaml
+kubectl --context k8s-talos -n $NS delete pod $POD --wait=false
+kubectl --context k8s-talos -n $NS wait --for=condition=available deploy/bazarr --timeout=180s
+
+# After restart: Bazarr connects to PG, creates empty schema, UI shows empty wanted-subtitle lists.
+# Library state re-syncs from Sonarr/Radarr on next polling cycle (or trigger Series Search in UI).
+# Stash old SQLite:
+kubectl --context k8s-talos -n $NS exec deploy/bazarr -- sh -c 'mkdir -p /config/db/preflight && mv /config/db/bazarr.db /config/db/bazarr.db-shm /config/db/bazarr.db-wal /config/db/preflight/ 2>/dev/null'
 ```
 
-If post-merge but pre-migration: simply don't run the Job — arr is still on SQLite. The cnpg cluster sits idle (~120 MB RAM per instance × 2). To roll back fully, `git revert` the PR.
+## BWS secrets (already in place)
 
-## Bazarr — fresh-PG path (no migrator)
-
-Bazarr Postgres support (since v1.4) has no battle-tested migrator. Path: empty PG + Bazarr rescans state from Sonarr/Radarr APIs.
-
-```bash
-K="kubectl --context k8s-talos -n bazarr"
-
-# 1) Cluster healthy + secret synced (same checks as above)
-
-# 2) Stop bazarr; preserve old DB as rollback
-$K scale deploy/bazarr --replicas=0
-$K exec deploy/bazarr -- sh -c 'mkdir -p /config/db/preflight && mv /config/db/bazarr.db* /config/db/preflight/' || true
-
-# 3) Start bazarr → connects to empty bazarr db → creates schema on first boot
-$K scale deploy/bazarr --replicas=1
-
-# 4) In UI: verify Series/Movies sync from Sonarr/Radarr; trigger a full library scan
-#    to repopulate wanted-subtitle lists. Download history will be empty (acceptable).
-
-# 5) Soak 1 week, then delete /config/db/preflight.
-```
-
-## Verification matrix (per arr, post-migration)
-
-- `kubectl logs deploy/<app>` shows no DB errors, "Connected to Postgres" or equivalent.
-- UI Series/Movies/Indexers list count matches pre-migration.
-- History tab renders within ~1s (was the user complaint for sonarr).
-- New download triggers + imports work end-to-end (test with a small NZB).
-- Gatus probe stays green.
-
-## DB sizing reference (pre-migration)
-
-| App | SQLite | Notes |
+| BWS key | Used by | State |
 |---|---|---|
-| sonarr | 1017 MB | EpisodeFiles.MediaInfo blobs dominate (~650 MB); History 182 MB / 209k rows |
-| bazarr | 169 MB | fresh-PG (no migrator) |
-| radarr | 92 MB | |
-| sonarr-nl | 45 MB | |
-| prowlarr | 38 MB | |
-| radarr-nl | 15 MB | smoke test |
+| `SECRET_RADARR_NL_POSTGRES_PASSWORD` | radarr-nl-pg + app | ✓ created 2026-05-30 |
+| `SECRET_PROWLARR_POSTGRES_PASSWORD` | prowlarr-pg + app | ✓ |
+| `SECRET_SONARR_NL_POSTGRES_PASSWORD` | sonarr-nl-pg + app | ✓ |
+| `SECRET_RADARR_POSTGRES_PASSWORD` | radarr-pg + app | ✓ |
+| `SECRET_SONARR_POSTGRES_PASSWORD` | sonarr-pg + app | ✓ |
+| `SECRET_BAZARR_POSTGRES_PASSWORD` | bazarr-pg + app | ✓ |
+
+## Rollback (within soak window)
+
+```bash
+APP=radarr-nl  # any arr
+NS=$APP
+K="kubectl --context k8s-talos -n $NS"
+$K scale deploy/$APP --replicas=0
+$K wait --for=delete pod -l app.kubernetes.io/name=$APP --timeout=60s
+# Manually edit HR or git revert the env block (flux reconciles)
+# Restore preflight:
+$K exec deploy/$APP -- sh -c 'mv /config/preflight/*.db* /config/' || \
+$K exec -ti $($K get pod | awk 'NR==2{print $1}') -- sh -c 'mv /config/preflight/*.db* /config/'  # if deploy has 0 pods, attach to a debug pod
+$K scale deploy/$APP --replicas=1
+```
+
+For bazarr: same pattern with `/config/db/preflight/`.
+
+## Post-soak cleanup (~2026-06-06)
+
+```bash
+for ns in sonarr sonarr-nl radarr radarr-nl prowlarr; do
+  kubectl --context k8s-talos -n $ns exec deploy/$ns -- rm -rf /config/preflight
+done
+kubectl --context k8s-talos -n bazarr exec deploy/bazarr -- rm -rf /config/db/preflight
+```
+
+Then optionally delete the `migrate/job.yaml` files (we didn't use them — went with `kubectl run --rm -i` interactive runs instead).
