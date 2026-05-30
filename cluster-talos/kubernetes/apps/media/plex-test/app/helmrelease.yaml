@@ -170,12 +170,10 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              # v1.10.0 — NVENC vf_inlineass CUDA branch: GPU-resident text/ASS
-              # + bitmap(PGS) sub-burn, texture upscale, animated_tier_down
-              # (#76/#107/#110) + WSL2 /dev/dxg auto-detect (#63). NVENC-only
-              # changes; Arc node → vaapi path is behavior-identical to v1.9.1.
-              # =sha-f10da76 (sha256:d3b62ed4).
-              tag: v1.10.0
+              # CANARY 2026-05-31 for v1.11.0 release validation: includes
+              # #138 inlineass scrub + #135 AMD bring-up. Revert to a real
+              # release tag (v1.11.0) once cut by release-please PR #132.
+              tag: sha-6a446c8
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
