@@ -6,6 +6,12 @@ metadata:
   namespace: bazarr
 spec:
   instances: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
   storage:
     size: 5Gi
     storageClass: vsan

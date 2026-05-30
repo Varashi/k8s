@@ -18,6 +18,14 @@ spec:
       containers:
         - name: migrator
           image: TBD-PER-RUNBOOK
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits:   { cpu: 1,    memory: 1Gi }
           env:
             - { name: SQLITE_PATH, value: /config/radarr.db }
             - { name: PG_HOST,     value: radarr-pg-rw.radarr.svc }
@@ -32,7 +40,10 @@ spec:
                   key: password
           volumeMounts:
             - { name: config, mountPath: /config, readOnly: true }
+            - { name: tmp,    mountPath: /tmp }
       volumes:
         - name: config
           persistentVolumeClaim:
             claimName: radarr-config
+        - name: tmp
+          emptyDir: { sizeLimit: 1Gi }

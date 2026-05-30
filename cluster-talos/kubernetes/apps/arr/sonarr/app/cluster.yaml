@@ -6,6 +6,12 @@ metadata:
   namespace: sonarr
 spec:
   instances: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
   storage:
     size: 5Gi
     storageClass: vsan

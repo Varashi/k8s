@@ -19,6 +19,11 @@ spec:
       containers:
         - name: migrator
           image: TBD-PER-RUNBOOK
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
           resources:
             requests: { cpu: 500m, memory: 512Mi }
             limits:   { cpu: 2,    memory: 2Gi }
@@ -36,7 +41,10 @@ spec:
                   key: password
           volumeMounts:
             - { name: config, mountPath: /config, readOnly: true }
+            - { name: tmp,    mountPath: /tmp }
       volumes:
         - name: config
           persistentVolumeClaim:
             claimName: sonarr-config
+        - name: tmp
+          emptyDir: { sizeLimit: 1Gi }

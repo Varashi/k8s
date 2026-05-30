@@ -4,11 +4,8 @@
 # Prereqs: cnpg cluster ready + radarr-nl scaled to 0 + schema bootstrapped by FluentMigrator
 # (start radarr-nl once against empty PG, let it create the tables, then scale back to 0).
 #
-# Migrator image -- pick ONE before applying:
-#   a) ghcr.io/recyclarr-postgres-migrator/recyclarr-postgres-migrator:latest  (Servarr community, .NET)
-#   b) dimitri/pgloader:latest  (generic, needs a load file; well-known)
-#   c) Run from workstation: python script + psycopg2 + sqlite3 (most control)
-# See ../../MIGRATION_RUNBOOK.md for the vetted choice + invocation.
+# See ../../MIGRATION_RUNBOOK.md for the vetted migrator image (ghcr.io/roxedus/pgloader) +
+# pgloader recipe invocation. Pin a @sha256 digest before applying.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -27,7 +24,15 @@ spec:
         supplementalGroups: [568]
       containers:
         - name: migrator
-          image: TBD-PER-RUNBOOK  # see runbook before apply
+          image: TBD-PER-RUNBOOK
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits:   { cpu: 1,    memory: 1Gi }
           env:
             - { name: SQLITE_PATH, value: /config/radarr.db }
             - { name: PG_HOST,     value: radarr-nl-pg-rw.radarr-nl.svc }
@@ -42,7 +47,10 @@ spec:
                   key: password
           volumeMounts:
             - { name: config, mountPath: /config, readOnly: true }
+            - { name: tmp,    mountPath: /tmp }
       volumes:
         - name: config
           persistentVolumeClaim:
             claimName: radarr-nl-config
+        - name: tmp
+          emptyDir: { sizeLimit: 1Gi }
