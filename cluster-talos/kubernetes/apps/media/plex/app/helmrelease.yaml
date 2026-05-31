@@ -48,7 +48,11 @@ spec:
               # v1.3.0 (scaleplex v1.9.0): adds Pass-gate L2 — shim reads
               # myPlexSubscription from Preferences.xml → SCALEPLEX_PASS_ACTIVE
               # per session. =sha-62cc0c2.
-              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:v1.3.0
+              # v1.3.1 (scaleplex v1.11.0): shim now queries the local Plex API
+              # for Pass state (#126/#127/#133) — drops the deferred Plex.tv
+              # roundtrip. Byte-identical on already-active subs; only the
+              # discovery path changed. =sha-40fb784.
+              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:v1.3.1
               # scaleplex-relay listens here; the shim's collectEnv()
               # also reads LOCAL_RELAY_PORT + PMS_SERVICE to derive the
               # per-session SCALEPLEX_PMS_BASE_URL for worker callbacks.
@@ -152,7 +156,17 @@ spec:
               # DORMANT on prod's Arc-only fleet — VAAPI path byte-behavior
               # unchanged (proven: qa_matrix Arc 320/320 PASS). Pre-prod
               # gate green both backends 2026-05-29. =sha-<v1.10.0>.
-              tag: v1.10.0
+              # v1.11.0 (scaleplex v1.11.0): inlineass `font_path`/
+              # `fontconfig_file` scrub HOTFIX (#138) — every force-burn
+              # SRT/ASS session on prod was silently hitting libass
+              # fontconfig and exiting 145 (uid:1000 vs PMS install paths);
+              # rewriter scrubs both keys before ffmpeg sees them, libass
+              # falls back to the fork's bundled DejaVu Sans. Cosmetic-only
+              # diff vs Plex's Noto Sans Medium. Also includes AMD radeonsi
+              # vendor branch (#135, DORMANT on Arc), vendor-aware VAAPI
+              # driver detection (#130, no-op for iHD), mesa-va-drivers
+              # added to image (#131). =sha-6a446c8.
+              tag: v1.11.0
             env:
               TZ: Europe/Brussels
               # Device retarget now in the fork (0116); pin the worker GPU.

@@ -116,7 +116,10 @@ spec:
               # v1.3.0 (scaleplex v1.9.0) adds Pass-gate L2: shim reads
               # myPlexSubscription from Preferences.xml → forwards
               # SCALEPLEX_PASS_ACTIVE per session. =sha-62cc0c2.
-              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:v1.3.0
+              # v1.3.1 (scaleplex v1.11.0): shim queries local Plex API for
+              # Pass state (#126/#127/#133); drops deferred Plex.tv roundtrip.
+              # =sha-40fb784.
+              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:v1.3.1
               # LOCAL_RELAY_PORT is read by scaleplex-relay (the s6 longrun
               # listens on it) + the shim's collectEnv() to derive
               # SCALEPLEX_PMS_BASE_URL for the rewriter's URL substitutions.
@@ -170,10 +173,13 @@ spec:
             # the worker is hot.
             image:
               repository: ghcr.io/varashi/scaleplex_worker
-              # CANARY 2026-05-31 for v1.11.0 release validation: includes
-              # #138 inlineass scrub + #135 AMD bring-up. Revert to a real
-              # release tag (v1.11.0) once cut by release-please PR #132.
-              tag: sha-6a446c8
+              # v1.11.0: inlineass `font_path`/`fontconfig_file` scrub
+              # HOTFIX (#138, kills exit-145 on force-burn), AMD radeonsi
+              # vendor branch (#135, DORMANT on Arc fleet), vendor-aware
+              # VAAPI driver detection (#130), mesa-va-drivers in image
+              # (#131). Canary-validated 2026-05-31 (sha-6a446c8 → v1.11.0).
+              # =sha-6a446c8.
+              tag: v1.11.0
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
