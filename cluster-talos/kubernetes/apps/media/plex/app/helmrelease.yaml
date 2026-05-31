@@ -166,7 +166,19 @@ spec:
               # vendor branch (#135, DORMANT on Arc), vendor-aware VAAPI
               # driver detection (#130, no-op for iHD), mesa-va-drivers
               # added to image (#131). =sha-6a446c8.
-              tag: v1.11.0
+              # v1.11.1 (scaleplex v1.11.1): hotfix for three latent bugs
+              # unmasked by v1.11.0's #138 (#144) — (A) rewriter normalizes
+              # PMS `:#0xNN` stream-spec syntax to ordinal form (fixes
+              # Plex Versions/Optimized for TV + m2ts high-PID argv that
+              # were silently hitting skip:no-decoder bail, ~2.6% of
+              # corpus), (B) bail path now rewrites `-manifest_name`
+              # loopback URL to relay (was missing, only `-segment_list`
+              # was handled → ECONNREFUSED → exit-145 on dash + force-
+              # burn), (C) fontconfig cache writable for uid:1000 +
+              # Noto Sans bundled with Medium→Regular alias (closes
+              # #143 visual-parity gap to stock Plex burns).
+              # =sha-ad1119b.
+              tag: v1.11.1
             env:
               TZ: Europe/Brussels
               # Device retarget now in the fork (0116); pin the worker GPU.

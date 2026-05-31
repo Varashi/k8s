@@ -179,7 +179,11 @@ spec:
               # VAAPI driver detection (#130), mesa-va-drivers in image
               # (#131). Canary-validated 2026-05-31 (sha-6a446c8 → v1.11.0).
               # =sha-6a446c8.
-              tag: v1.11.0
+              # v1.11.1 (2026-05-31): #144 hotfix for three latent bugs
+              # unmasked by #138 — `:#0xNN` stream-spec normalization,
+              # bail-mode manifest_name rewrite, fontconfig cache
+              # writability + Noto Sans bundle. =sha-ad1119b.
+              tag: v1.11.1
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
