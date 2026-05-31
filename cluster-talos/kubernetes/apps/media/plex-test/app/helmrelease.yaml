@@ -351,6 +351,22 @@ spec:
             namespace: cilium
             sectionName: https
         rules:
+          # Plex's /library/streams/* emits a malformed HTTP/1.1 206 on Range
+          # requests; Envoy's strict parser rejects it ("protocol error") → 502,
+          # which breaks libmpv (Plex for Windows) external-SRT sub-add over the
+          # gateway. Strip Range here so Plex returns a clean 200. Subtitle
+          # streams are tiny, never need partial fetch. See Varashi/k8s#164.
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /library/streams
+            filters:
+              - type: RequestHeaderModifier
+                requestHeaderModifier:
+                  remove: ["Range"]
+            backendRefs:
+              - identifier: pms
+                port: http
           - matches:
               - path:
                   type: PathPrefix
