@@ -53,6 +53,39 @@ automatically.
 Bisect history (and how to recognise the same pattern on a different
 client) is in memory `reference_pms_html_tv_app_ac3_override.md`.
 
+## HTTPRoute: strip `Range` on `/library/streams`
+
+The `route` block in `helmrelease.yaml` has an extra rule that removes the
+`Range` request header for `/library/streams` (the catch-all `/` rule is
+otherwise untouched).
+
+**Why:** PMS's dynamic-response handler emits **two conflicting
+`Content-Length` headers** on a Range/`206` (the full-resource length *and*
+the partial length). RFC 7230 §3.3.2 forbids that, so the Cilium/Envoy
+gateway rejects the upstream response (`reset reason: protocol error`) and
+returns **502**. Lenient clients tolerate it, but Plex for Windows (libmpv)
+issues a Range request for external-SRT `sub-add`, so over the gateway it
+gets a 502 → `MPV_ERROR_LOADING_FAILED` (`error -12`) → subtitles silently
+fail to render. Connecting direct to the LB (no Envoy) hides the bug, which
+is why it only bit gateway/WAN clients. Stripping `Range` makes PMS return a
+clean `200` (subtitle streams are a few KB — partial fetch is pointless).
+
+**Scope — do NOT broaden to `/`:** the same PMS bug affects every dynamic
+endpoint (`/library/sections`, etc.), but real clients only ever Range two
+things: media (`/library/parts`, which serves a *correct* single
+`Content-Length` and **needs** Range for seeking) and subtitles
+(`/library/streams`, the broken one). So `/library/streams` is the only
+endpoint that is both client-Range'd and malformed — a path-scoped strip is
+complete, and a blanket strip would break video seeking.
+
+Without this, the `plex.boeye.net:443` gateway entry in Plex's *Custom
+server access URLs* has to be removed (forcing clients onto the direct LB)
+to get subtitles — at the cost of the cert-valid secure path + 443-egress
+fallback. The strip lets the `:443` URL stay. Full bisect + raw-socket
+evidence: `Varashi/k8s#164` and memory
+`feedback_plex_windows_srt_direct_play_upstream_bug.md`. plex-test ships the
+same rule.
+
 ## PMS file log → stdout → vcflogs
 
 `configmap-plex-log-tail.yaml` registers an s6-overlay v3 longrun named
