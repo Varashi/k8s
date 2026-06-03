@@ -1,0 +1,16 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: vsphere-passthrough-node-controller
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: oci://ghcr.io/varashi/charts/vsphere-passthrough-node-controller
+  ref:
+    tag: 0.5.0
+  verify:
+    provider: cosign
+    matchOIDCIdentity:
+      - issuer: ^https://token\.actions\.githubusercontent\.com$
+        subject: ^https://github\.com/Varashi/vsphere-passthrough-node-controller/\.github/workflows/release\.yaml@refs/tags/.*$

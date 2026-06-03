@@ -22,5 +22,5 @@ resources:
   - descheduler.yaml
   - stakater.yaml
   - kube-logging.yaml
-  - gpu-node-vsphere-maintenance-controller.yaml
+  - vsphere-passthrough-node-controller.yaml
   - authentik.yaml

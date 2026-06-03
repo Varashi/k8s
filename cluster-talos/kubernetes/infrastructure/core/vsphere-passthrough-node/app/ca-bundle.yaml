@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: boeye-ca-bundle
-  namespace: gpu-node-vsphere-maintenance
+  namespace: vsphere-passthrough-node
 data:
   ca.pem: |
     -----BEGIN CERTIFICATE-----
