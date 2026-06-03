@@ -79,8 +79,9 @@ cluster:
       - {{ . }}
       {{- end }}
     extraArgs:
-      default-not-ready-toleration-seconds: "120"
-      default-unreachable-toleration-seconds: "120"
+      # Faster pod failover on node death (cluster-wide default; k8s ships 300).
+      default-not-ready-toleration-seconds: "30"
+      default-unreachable-toleration-seconds: "30"
     resources:
       requests:
         cpu: 200m

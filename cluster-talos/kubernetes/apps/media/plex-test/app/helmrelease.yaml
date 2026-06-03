@@ -159,18 +159,6 @@ spec:
               operator: Equal
               value: "true"
               effect: NoSchedule
-            # Fast failover: evict + reschedule 30s after the node goes
-            # unreachable/not-ready (overrides the cluster-wide 120s default).
-            # Actual recovery still needs the volume force-detached from a dead
-            # node — see issue on automating the out-of-service taint.
-            - key: node.kubernetes.io/not-ready
-              operator: Exists
-              effect: NoExecute
-              tolerationSeconds: 30
-            - key: node.kubernetes.io/unreachable
-              operator: Exists
-              effect: NoExecute
-              tolerationSeconds: 30
           securityContext:
             supplementalGroups: [568]
 
