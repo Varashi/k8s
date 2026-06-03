@@ -378,7 +378,7 @@ spec:
     persistence:
       config:
         type: persistentVolumeClaim
-        existingClaim: plex-test-config-vsan
+        existingClaim: plex-test-config-iscsi
         advancedMounts:
           pms:
             app:
