@@ -34,6 +34,8 @@ node:
   gateway: 172.16.4.254
   vip: ""         # VIP (CPs only), e.g. 172.16.4.1
   storageIP: ""   # storage NIC IP (workers only), e.g. 10.5.1.20/24
+  storageMAC: ""  # storage NIC MAC (GPU workers); selects the NIC by hardwareAddr
+                  # instead of busPath — immune to GPU passthrough PCI-slot shuffle
   labels: {}                 # optional: machine.nodeLabels
   taints: {}                 # optional: machine.nodeTaints, format "<value>:<effect>".
                              # MUST match registerWithTaints exactly or NodeApplyController

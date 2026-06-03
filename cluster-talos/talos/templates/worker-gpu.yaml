@@ -53,9 +53,14 @@ machine:
         routes:
           - network: 0.0.0.0/0
             gateway: {{ .Values.node.gateway | quote }}
-      {{- if .Values.node.storageIP }}
+      {{- /* Storage NIC selected by MAC, not busPath: on gpu-worker-3 the
+             passthrough GPU claims PCI slot 0000:13:00.0 (where the storage NIC
+             sits on the other nodes), so a busPath selector is unstable. MAC is
+             immune to slot shuffling. (Helm comment — stripped before YAML so it
+             can't scatter into other lists on talm's comment-preserving render.) */}}
+      {{- if and .Values.node.storageIP .Values.node.storageMAC }}
       - deviceSelector:
-          busPath: "0000:13:00.0"
+          hardwareAddr: {{ .Values.node.storageMAC | quote }}
         addresses:
           - {{ .Values.node.storageIP }}
       {{- end }}
