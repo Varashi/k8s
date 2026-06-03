@@ -8,6 +8,7 @@ resources:
   - snapshot-controller/ks.yaml
   - vsphere-cpi/ks.yaml
   - vsphere-csi/ks.yaml
+  - democratic-csi-iscsi/ks.yaml
   - intel-gpu/ks.yaml
   - intel-gpu-config/ks.yaml
   - etcd-backup/ks.yaml

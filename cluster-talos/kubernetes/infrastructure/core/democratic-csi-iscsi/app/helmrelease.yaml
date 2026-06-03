@@ -1,0 +1,62 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: democratic-csi-iscsi
+  namespace: democratic-csi
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: democratic-csi
+      version: 0.15.x
+      sourceRef:
+        kind: HelmRepository
+        name: democratic-csi
+        namespace: flux-system
+  values:
+    # Pre-provisioned (static) volumes only — vSAN iSCSI exposes no provisioning
+    # API, so we use the node-manual driver: no dynamic provisioner, PVs carry
+    # the iscsi target/lun in volumeAttributes (see plex-test config PV).
+    csiDriver:
+      name: org.democratic-csi.node-manual
+    storageClasses: []
+    volumeSnapshotClasses: []
+
+    driver:
+      config:
+        driver: node-manual
+
+    # node-manual needs only the attacher (VolumeAttachment lifecycle); there is
+    # nothing to dynamically provision/resize/snapshot.
+    controller:
+      externalAttacher:
+        enabled: true
+      externalProvisioner:
+        enabled: false
+      externalResizer:
+        enabled: false
+      externalSnapshotter:
+        enabled: false
+
+    node:
+      # nsenter into the host PID ns to run the iscsi-tools extension's iscsiadm
+      # (Talos ships it at /usr/local/sbin/iscsiadm; kubelet's own ns can't reach
+      # iscsid, which is why the in-tree iscsi plugin fails on Talos).
+      hostPID: true
+      driver:
+        extraEnv:
+          - name: ISCSIADM_HOST_STRATEGY
+            value: nsenter
+          - name: ISCSIADM_HOST_PATH
+            value: /usr/local/sbin/iscsiadm
+        iscsiDirHostPath: /usr/local/etc/iscsi
+        iscsiDirHostPathType: ""
+      # Only GPU workers carry the iscsi-tools extension (baked into their
+      # schematic) and the storage NIC — restrict the node plugin to them.
+      nodeSelector:
+        intel.feature.node.kubernetes.io/gpu: "true"
+      tolerations:
+        - key: intel.feature.node.kubernetes.io/gpu
+          operator: Equal
+          value: "true"
+          effect: PreferNoSchedule

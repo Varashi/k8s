@@ -11,6 +11,7 @@ resources:
   - external-dns.yaml
   - cloudflare-operator.yaml
   - metrics-server.yaml
+  - democratic-csi.yaml
   - vsphere-cpi.yaml
   - kasten.yaml
   - cnpg.yaml
