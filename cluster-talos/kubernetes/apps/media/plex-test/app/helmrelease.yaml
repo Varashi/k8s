@@ -183,7 +183,14 @@ spec:
               # unmasked by #138 — `:#0xNN` stream-spec normalization,
               # bail-mode manifest_name rewrite, fontconfig cache
               # writability + Noto Sans bundle. =sha-ad1119b.
-              tag: v1.11.1
+              # v1.12.0 (2026-06-04): polymorphic stream-spec matching
+              # (#145, drops the upfront normalizer — argv stays pristine),
+              # seeked select=gte HW sub-burn modeling (#154), #141b
+              # progress-heartbeat liveness gate, fc-cache image-build fix
+              # (#175, unbroke the layered build). Live-validated on
+              # plex-test (Arc): qa_matrix 56/56 + T3 Web/Windows/Android.
+              # =sha-dffce8f.
+              tag: v1.12.0
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
