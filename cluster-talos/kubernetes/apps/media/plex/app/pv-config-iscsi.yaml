@@ -35,6 +35,11 @@ kind: PersistentVolumeClaim
 metadata:
   name: plex-config-iscsi
   namespace: plex
+  labels:
+    # node-manual iSCSI has no VolumeSnapshotClass, so Kasten must use file
+    # backup (Kanister), not a CSI snapshot. Without this the k8s-pms-backup
+    # policy fails at "Snapshotting Application Components".
+    k10.kasten.io/forceGenericVolumeBackup: "true"
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: ""
