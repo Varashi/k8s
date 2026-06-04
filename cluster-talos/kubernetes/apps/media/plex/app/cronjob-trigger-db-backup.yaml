@@ -13,6 +13,11 @@ kind: CronJob
 metadata:
   name: plex-trigger-db-backup
   namespace: plex
+  annotations:
+    # Mounts plex-config-iscsi (iSCSI, non-snapshottable). Every workload
+    # sharing that PVC must agree on generic file backup or K10 fails with
+    # "PVC has multiple workloads with conflicting backup annotations".
+    k10.kasten.io/forcegenericbackup: "true"
 spec:
   schedule: "0 2 * * *"
   concurrencyPolicy: Forbid

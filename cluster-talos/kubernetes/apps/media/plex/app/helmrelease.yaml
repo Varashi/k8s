@@ -19,12 +19,16 @@ spec:
     controllers:
       plex:
         replicas: 1
-        # NOTE: generic (file) backup of /config is driven by the PVC label
-        # k10.kasten.io/forceGenericVolumeBackup on plex-config-iscsi, NOT a
-        # workload annotation. The cronjobs below mount the same PVC and a
-        # workload-level annotation only on this Deployment makes K10 fail with
-        # "PVC has multiple workloads with conflicting backup annotations".
-        # The kanister-sidecar container below supplies kopia/kando for the move.
+        annotations:
+          # Generic (file) backup of the iSCSI /config volume. K10's RequiresGVS
+          # compares this signal across the PVC label
+          # (forceGenericVolumeBackup on plex-config-iscsi) AND every workload
+          # mounting the PVC — they must ALL agree or it fails with "PVC has
+          # multiple workloads with conflicting backup annotations". So this
+          # annotation must also be present on the 4 plex cronjobs that mount
+          # the same PVC. The kanister-sidecar container below supplies
+          # kopia/kando for the data move.
+          k10.kasten.io/forcegenericbackup: "true"
         pod:
           nodeSelector:
             intel.feature.node.kubernetes.io/gpu: "true"
