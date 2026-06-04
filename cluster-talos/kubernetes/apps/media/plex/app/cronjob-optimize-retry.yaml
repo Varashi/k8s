@@ -127,6 +127,11 @@ spec:
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   jobTemplate:
+    metadata:
+      annotations:
+        # Spawned Jobs mount plex-config-iscsi too; K10 RequiresGVS treats each
+        # Job as a workload and needs the signal consistent with the rest.
+        k10.kasten.io/forcegenericbackup: "true"
     spec:
       template:
         spec:
