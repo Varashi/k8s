@@ -19,16 +19,6 @@ spec:
     controllers:
       plex:
         replicas: 1
-        annotations:
-          # Generic (file) backup of the iSCSI /config volume. K10's RequiresGVS
-          # compares this signal across the PVC label
-          # (forceGenericVolumeBackup on plex-config-iscsi) AND every workload
-          # mounting the PVC — they must ALL agree or it fails with "PVC has
-          # multiple workloads with conflicting backup annotations". So this
-          # annotation must also be present on the 4 plex cronjobs that mount
-          # the same PVC. The kanister-sidecar container below supplies
-          # kopia/kando for the data move.
-          k10.kasten.io/forcegenericbackup: "true"
         pod:
           nodeSelector:
             intel.feature.node.kubernetes.io/gpu: "true"
@@ -79,24 +69,6 @@ spec:
                 memory: 4Gi
               limits:
                 gpu.intel.com/i915: 1
-          # Kanister sidecar for Kasten generic (file) backup of /config.
-          # The iSCSI config volume is node-manual (no VolumeSnapshotClass)
-          # AND a live RWO volume held by PMS, so Kasten's external data-mover
-          # can't mount it. With this sidecar + the forcegenericbackup
-          # annotation, Kasten exec's kopia into here to copy /config out.
-          # See the k8s-pms-backup K10 policy.
-          kanister-sidecar:
-            image:
-              repository: gcr.io/kasten-images/kanister-tools
-              tag: "8.5.11"
-            command: ["bash", "-c"]
-            args: ["tail -f /dev/null"]
-            resources:
-              requests:
-                cpu: 10m
-                memory: 64Mi
-              limits:
-                memory: 2Gi
 
       # scaleplex orchestrator — slim Go HTTP server: DNS-discovers
       # workers via the headless plex-worker Service, forwards the
@@ -365,10 +337,6 @@ spec:
         advancedMounts:
           plex:
             app:
-              - path: /config
-            # Kasten generic-backup sidecar mounts the same volume so kopia
-            # (exec'd by Kasten) can read /config for the file backup.
-            kanister-sidecar:
               - path: /config
       transcode:
         # Shared between the PMS (serves segments) and the scaleplex
