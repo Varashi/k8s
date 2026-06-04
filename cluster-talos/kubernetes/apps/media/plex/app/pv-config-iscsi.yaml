@@ -1,0 +1,44 @@
+# PMS config on a static vSAN-iSCSI LUN (democratic-csi node-manual). A
+# passthrough-GPU PMS node can't vSphere-HA-restart, so on a host crash its RWO
+# vsphere-csi VMDK can't be detached from the dead host (vCenter can't reach it)
+# → PVC deadlocks. In-guest iSCSI has no vCenter detach in the path; the LUN
+# reattaches on another GPU node. Crash failover automated by the fence
+# controller (Varashi/k8s#166). Prod = LUN 0 (plex-test = LUN 1) on the same
+# vSAN iSCSI target/VIP.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: plex-config-iscsi
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  claimRef:
+    namespace: plex
+    name: plex-config-iscsi
+  csi:
+    driver: org.democratic-csi.node-manual
+    readOnly: false
+    fsType: ext4
+    volumeHandle: plex-config-iscsi
+    volumeAttributes:
+      node_attach_driver: iscsi
+      provisioner_driver: node-manual
+      portal: "10.5.1.11:3260"
+      iqn: "iqn.1998-01.com.vmware:520d04f64ce53925-90b760c9dcf79bf5"
+      lun: "0"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: plex-config-iscsi
+  namespace: plex
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ""
+  volumeName: plex-config-iscsi
+  resources:
+    requests:
+      storage: 50Gi

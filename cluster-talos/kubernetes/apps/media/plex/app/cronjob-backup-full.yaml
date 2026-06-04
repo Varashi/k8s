@@ -93,7 +93,7 @@ spec:
           volumes:
             - name: config-pms
               persistentVolumeClaim:
-                claimName: plex-config-pms-vsan
+                claimName: plex-config-iscsi
                 readOnly: true
             - name: backup
               nfs:
