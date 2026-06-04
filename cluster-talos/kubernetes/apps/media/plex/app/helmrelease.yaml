@@ -19,10 +19,12 @@ spec:
     controllers:
       plex:
         replicas: 1
-        annotations:
-          # Tell Kasten to file-back-up this workload's volumes (the iSCSI
-          # /config can't be snapshotted) via the kanister-sidecar below.
-          k10.kasten.io/forcegenericbackup: "true"
+        # NOTE: generic (file) backup of /config is driven by the PVC label
+        # k10.kasten.io/forceGenericVolumeBackup on plex-config-iscsi, NOT a
+        # workload annotation. The cronjobs below mount the same PVC and a
+        # workload-level annotation only on this Deployment makes K10 fail with
+        # "PVC has multiple workloads with conflicting backup annotations".
+        # The kanister-sidecar container below supplies kopia/kando for the move.
         pod:
           nodeSelector:
             intel.feature.node.kubernetes.io/gpu: "true"
