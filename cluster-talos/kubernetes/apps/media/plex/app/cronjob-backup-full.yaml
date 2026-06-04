@@ -80,6 +80,14 @@ spec:
                     --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.blobs.db-wal" \
                     /config/ "$$DEST/"
 
+                  # rsync -a stamps "$$DEST" with /config's mtime, which the
+                  # iSCSI migration (2026-05-08) preserved as an old date. That
+                  # made every fresh snapshot look >14 days old, so the
+                  # retention find below deleted it in the SAME run — the full
+                  # backup silently self-destructed daily. Reset to now so the
+                  # snapshot is dated by when it was actually taken.
+                  touch "$$DEST"
+
                   # Retention: delete dated dirs older than 14 days
                   find /backup/full -maxdepth 1 -type d \
                     -name '20[0-9][0-9]-[01][0-9]-[0-9][0-9]' \
