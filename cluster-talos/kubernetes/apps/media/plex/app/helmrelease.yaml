@@ -322,6 +322,39 @@ spec:
             backendRefs:
               - identifier: plex
                 port: http
+          # TEMPORARY PROBE (Varashi/scaleplex#122). Plex for Apple TV 8.45
+          # "Enhanced Player" sends X-Plex-Client-Profile-Extra:
+          # add-transcode-target(...protocol=hls&container=mkv&replace=true),
+          # forcing PMS to decide HLS+MKV. tvOS's HLS player can't parse
+          # MKV-in-HLS -> transcoded titles spin forever / crash. Upstream
+          # Plex client bug (fixed in ATV 2025.31.x, not yet public).
+          # Strip the directive ONLY on the decision request, ONLY for the
+          # 8.45 build (Exact match on Product AND Version), so PMS falls
+          # back to its built-in tvOS profile (HLS+mpegts). Header-only +
+          # decision-only + version-pinned -> working Apple TV builds on any
+          # other version keep their full Enhanced Player caps untouched; the
+          # already-broken 8.45 client trades a crash for a playable (lower-
+          # cap) stream. This is a validation probe to confirm container is
+          # the cause -- the permanent fix is a surgical container rewrite
+          # that preserves the raised caps. Remove once confirmed / once Plex
+          # ships the public fix. start.m3u8 carries no profile-extra (only a
+          # session= token) so playback continuation is unaffected.
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /video/:/transcode/universal/decision
+                headers:
+                  - name: X-Plex-Product
+                    value: Plex for Apple TV
+                  - name: X-Plex-Version
+                    value: "8.45"
+            filters:
+              - type: RequestHeaderModifier
+                requestHeaderModifier:
+                  remove: ["X-Plex-Client-Profile-Extra"]
+            backendRefs:
+              - identifier: plex
+                port: http
           - matches:
               - path:
                   type: PathPrefix
