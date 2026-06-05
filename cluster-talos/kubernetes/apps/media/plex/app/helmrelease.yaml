@@ -178,7 +178,7 @@ spec:
               # Noto Sans bundled with Medium→Regular alias (closes
               # #143 visual-parity gap to stock Plex burns).
               # =sha-ad1119b.
-              tag: v1.11.1
+              tag: v1.12.0
             env:
               TZ: Europe/Brussels
               # Device retarget now in the fork (0116); pin the worker GPU.
