@@ -1,0 +1,30 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: vsphere-passthrough-node-controller
+  namespace: vsphere-passthrough-node
+spec:
+  interval: 1h
+  chartRef:
+    kind: OCIRepository
+    name: vsphere-passthrough-node-controller
+    namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    vcenter:
+      existingSecret: vsphere-credentials
+      caBundle:
+        configMapName: boeye-ca-bundle
+    # Crash-fence controller (separate Deployment). Start in dryRun so it logs
+    # "would fence" decisions against reality without tainting; flip dryRun:false
+    # once trusted. Trigger = node NotReady AND vCenter VM connectionState
+    # disconnected. See Varashi/k8s#166.
+    fence:
+      enabled: true
+      dryRun: true
