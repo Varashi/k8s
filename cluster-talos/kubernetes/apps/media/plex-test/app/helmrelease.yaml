@@ -75,11 +75,11 @@ spec:
               WORKERS_REFRESH_SECONDS: "5"
               WORKERS_PROBE_SECONDS: "5"
             probes:
-              liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3500 }, periodSeconds: 10 } }
-              readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3500 }, periodSeconds: 2, failureThreshold: 30 } }
+              liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 3500}, periodSeconds: 10}}
+              readiness: {enabled: true, custom: true, spec: {httpGet: {path: /readyz, port: 3500}, periodSeconds: 2, failureThreshold: 30}}
             resources:
-              requests: { cpu: 50m, memory: 64Mi }
-              limits: { memory: 128Mi }
+              requests: {cpu: 50m, memory: 64Mi}
+              limits: {memory: 128Mi}
         pod:
           securityContext:
             runAsNonRoot: true
@@ -217,9 +217,9 @@ spec:
               # pre-graph chunk buffer (Phase 2b).
               WORKER_DUMP_ARGV: "1"
             probes:
-              liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 10, failureThreshold: 3 } }
-              readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3501 }, periodSeconds: 2, failureThreshold: 60 } }
-              startup: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 1, failureThreshold: 30 } }
+              liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 3501}, periodSeconds: 10, failureThreshold: 3}}
+              readiness: {enabled: true, custom: true, spec: {httpGet: {path: /readyz, port: 3501}, periodSeconds: 2, failureThreshold: 60}}
+              startup: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 3501}, periodSeconds: 1, failureThreshold: 30}}
             resources:
               requests:
                 cpu: 200m
@@ -265,6 +265,38 @@ spec:
             prometheus.io/port: "3501"
             prometheus.io/path: /metrics
           terminationGracePeriodSeconds: 30
+
+      # scaleplex-clientfix — content-aware decision proxy fixing the
+      # Plex-for-Apple-TV-8.45 mkv-in-HLS re-encode bug (Varashi/scaleplex
+      # #122). The gateway routes ONLY the 8.45 ATV transcode decision
+      # request here; clientfix forwards to PMS, and IF PMS decided a
+      # re-encode it re-issues with container=mkv->mp4 so PMS serves fMP4
+      # (tvOS-playable). Copy/Direct-Stream decisions pass through
+      # untouched. See clientfix/cmd/clientfix/main.go.
+      clientfix:
+        replicas: 1
+        containers:
+          app:
+            image:
+              repository: ghcr.io/varashi/scaleplex_clientfix
+              tag: dev
+            env:
+              TZ: Europe/Brussels
+              CLIENTFIX_PMS_UPSTREAM: http://plex-test-pms.plex-test.svc.cluster.local:32400
+            probes:
+              liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 10}}
+              readiness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 5}}
+            resources:
+              requests: {cpu: 10m, memory: 24Mi}
+              limits: {memory: 64Mi}
+        pod:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          tolerations: []
 
     serviceAccount:
       pms:
@@ -338,6 +370,11 @@ spec:
         ports:
           http:
             port: 3501
+      clientfix:
+        controller: clientfix
+        ports:
+          http:
+            port: 8080
       plex-test-public:
         controller: pms
         type: ExternalName
@@ -373,6 +410,24 @@ spec:
                   remove: ["Range"]
             backendRefs:
               - identifier: pms
+                port: http
+          # Plex-for-Apple-TV-8.45 mkv-in-HLS re-encode bug (#122). Route
+          # ONLY that client's transcode decision request to clientfix,
+          # which forwards to PMS and rewrites container=mkv->mp4 only when
+          # PMS decided a re-encode (copy/Direct-Stream passes through). All
+          # other clients/versions/paths bypass to PMS. See the clientfix
+          # controller above + clientfix/cmd/clientfix/main.go in scaleplex.
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /video/:/transcode/universal/decision
+                headers:
+                  - name: X-Plex-Product
+                    value: Plex for Apple TV
+                  - name: X-Plex-Version
+                    value: "8.45"
+            backendRefs:
+              - identifier: clientfix
                 port: http
           - matches:
               - path:
