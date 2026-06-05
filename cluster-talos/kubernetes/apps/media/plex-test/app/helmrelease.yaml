@@ -75,11 +75,11 @@ spec:
               WORKERS_REFRESH_SECONDS: "5"
               WORKERS_PROBE_SECONDS: "5"
             probes:
-              liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3500 }, periodSeconds: 10 } }
-              readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3500 }, periodSeconds: 2, failureThreshold: 30 } }
+              liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 3500}, periodSeconds: 10}}
+              readiness: {enabled: true, custom: true, spec: {httpGet: {path: /readyz, port: 3500}, periodSeconds: 2, failureThreshold: 30}}
             resources:
-              requests: { cpu: 50m, memory: 64Mi }
-              limits: { memory: 128Mi }
+              requests: {cpu: 50m, memory: 64Mi}
+              limits: {memory: 128Mi}
         pod:
           securityContext:
             runAsNonRoot: true
@@ -217,9 +217,9 @@ spec:
               # pre-graph chunk buffer (Phase 2b).
               WORKER_DUMP_ARGV: "1"
             probes:
-              liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 10, failureThreshold: 3 } }
-              readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3501 }, periodSeconds: 2, failureThreshold: 60 } }
-              startup: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 1, failureThreshold: 30 } }
+              liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 3501}, periodSeconds: 10, failureThreshold: 3}}
+              readiness: {enabled: true, custom: true, spec: {httpGet: {path: /readyz, port: 3501}, periodSeconds: 2, failureThreshold: 60}}
+              startup: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 3501}, periodSeconds: 1, failureThreshold: 30}}
             resources:
               requests:
                 cpu: 200m
@@ -265,6 +265,35 @@ spec:
             prometheus.io/port: "3501"
             prometheus.io/path: /metrics
           terminationGracePeriodSeconds: 30
+
+      # Surgical mkv->mp4 rewriter for Plex-for-Apple-TV-8.45 (bench mirror
+      # of prod plex/atv-rewriter). See Varashi/scaleplex#122.
+      atv-rewriter:
+        replicas: 1
+        containers:
+          app:
+            image:
+              repository: docker.io/library/caddy
+              tag: 2-alpine
+            command: ["caddy"]
+            args: ["run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+            env:
+              XDG_DATA_HOME: /tmp
+              XDG_CONFIG_HOME: /tmp
+            probes:
+              liveness: {enabled: true, custom: true, spec: {tcpSocket: {port: 8080}, periodSeconds: 10}}
+              readiness: {enabled: true, custom: true, spec: {tcpSocket: {port: 8080}, periodSeconds: 5}}
+            resources:
+              requests: {cpu: 10m, memory: 32Mi}
+              limits: {memory: 64Mi}
+        pod:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          tolerations: []
 
     serviceAccount:
       pms:
@@ -338,6 +367,11 @@ spec:
         ports:
           http:
             port: 3501
+      atv-rewriter:
+        controller: atv-rewriter
+        ports:
+          http:
+            port: 8080
       plex-test-public:
         controller: pms
         type: ExternalName
@@ -373,6 +407,22 @@ spec:
                   remove: ["Range"]
             backendRefs:
               - identifier: pms
+                port: http
+          # Plex-for-Apple-TV-8.45 HLS+MKV bug (bench mirror of prod). Route
+          # ONLY that client's transcode decision request to the atv-rewriter
+          # proxy, which rewrites container mkv -> mp4 (fMP4) and forwards to
+          # PMS. See configmap-atv-rewriter.yaml + Varashi/scaleplex#122.
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /video/:/transcode/universal/decision
+                headers:
+                  - name: X-Plex-Product
+                    value: Plex for Apple TV
+                  - name: X-Plex-Version
+                    value: "8.45"
+            backendRefs:
+              - identifier: atv-rewriter
                 port: http
           - matches:
               - path:
@@ -455,4 +505,13 @@ spec:
                 readOnly: true
               - path: /etc/s6-overlay/s6-rc.d/user/contents.d/plex-log-tail
                 subPath: contents-marker
+                readOnly: true
+      atv-rewriter-config:
+        type: configMap
+        name: plex-test-atv-rewriter
+        advancedMounts:
+          atv-rewriter:
+            app:
+              - path: /etc/caddy/Caddyfile
+                subPath: Caddyfile
                 readOnly: true

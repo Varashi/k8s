@@ -1,0 +1,23 @@
+---
+# Caddy config for the plex-test-atv-rewriter proxy — bench mirror of the
+# prod plex/atv-rewriter. Surgically rewrites the Plex-for-Apple-TV-8.45
+# Enhanced Player HLS container mkv -> mp4 on the transcode decision
+# request so tvOS can parse it while preserving the raised caps. The
+# gateway routes ONLY that client's decision request here.
+# See Varashi/scaleplex#122 + the prod app's configmap-atv-rewriter.yaml.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plex-test-atv-rewriter
+  namespace: plex-test
+data:
+  Caddyfile: |-
+    {
+      admin off
+      auto_https off
+    }
+    :8080 {
+      reverse_proxy plex-test-pms.plex-test.svc.cluster.local:32400 {
+        header_up X-Plex-Client-Profile-Extra "container=mkv" "container=mp4"
+      }
+    }

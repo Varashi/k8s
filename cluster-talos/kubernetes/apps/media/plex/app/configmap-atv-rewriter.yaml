@@ -1,0 +1,44 @@
+---
+# Caddy config for the plex-atv-rewriter proxy.
+#
+# Why this exists (Varashi/scaleplex#122):
+#   Plex for Apple TV 8.45 "Enhanced Player" sends, on the transcode
+#   decision request, X-Plex-Client-Profile-Extra:
+#     add-transcode-target(...protocol=hls&container=mkv&replace=true)
+#   forcing PMS to decide HLS+MKV. tvOS's HLS player cannot parse
+#   MKV-in-HLS, so every transcoded title spins forever / crashes.
+#   Upstream Plex client bug (fixed in ATV 2025.31.x, not yet public).
+#
+# What it does:
+#   The gateway HTTPRoute routes ONLY the 8.45-Apple-TV transcode
+#   decision request to this proxy (Exact match on product + version).
+#   Caddy surgically rewrites the container substring mkv -> mp4 in that
+#   one header, then forwards to PMS. PMS then decides HLS + fMP4, which
+#   tvOS parses natively AND preserves the Enhanced Player's raised caps
+#   (4K / 10-bit / HEVC / multichannel) — strictly better than the
+#   built-in tvOS profile fallback. The scaleplex worker handles fMP4
+#   transparently (the rewriter touches the codec/filter/HW pipeline, not
+#   the muxer; validated on plex-test 2026-06-05, AV1->h264_vaapi HDR).
+#
+#   Only this one client's decision request ever reaches the proxy;
+#   all other clients, versions, paths, and media streaming bypass it.
+#   start.m3u8 carries only a session= token (no profile-extra), so
+#   playback continuation is unaffected.
+#
+# Remove the gateway rule + this proxy once Plex ships the public ATV fix.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plex-atv-rewriter
+  namespace: plex
+data:
+  Caddyfile: |-
+    {
+      admin off
+      auto_https off
+    }
+    :8080 {
+      reverse_proxy plex.plex.svc.cluster.local:32400 {
+        header_up X-Plex-Client-Profile-Extra "container=mkv" "container=mp4"
+      }
+    }
