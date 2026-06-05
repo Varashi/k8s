@@ -101,11 +101,11 @@ spec:
               WORKERS_REFRESH_SECONDS: "5"
               WORKERS_PROBE_SECONDS: "5"
             probes:
-              liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3500 }, periodSeconds: 10 } }
-              readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3500 }, periodSeconds: 2, failureThreshold: 30 } }
+              liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 3500}, periodSeconds: 10}}
+              readiness: {enabled: true, custom: true, spec: {httpGet: {path: /readyz, port: 3500}, periodSeconds: 2, failureThreshold: 30}}
             resources:
-              requests: { cpu: 50m, memory: 64Mi }
-              limits: { memory: 128Mi }
+              requests: {cpu: 50m, memory: 64Mi}
+              limits: {memory: 128Mi}
         pod:
           securityContext:
             runAsNonRoot: true
@@ -193,9 +193,9 @@ spec:
               # worker maps 1:1 to the VAAPI variant.
               WORKER_DUMP_ARGV: "1"
             probes:
-              liveness: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 10, failureThreshold: 3 } }
-              readiness: { enabled: true, custom: true, spec: { httpGet: { path: /readyz, port: 3501 }, periodSeconds: 2, failureThreshold: 60 } }
-              startup: { enabled: true, custom: true, spec: { httpGet: { path: /healthz, port: 3501 }, periodSeconds: 1, failureThreshold: 30 } }
+              liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 3501}, periodSeconds: 10, failureThreshold: 3}}
+              readiness: {enabled: true, custom: true, spec: {httpGet: {path: /readyz, port: 3501}, periodSeconds: 2, failureThreshold: 60}}
+              startup: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 3501}, periodSeconds: 1, failureThreshold: 30}}
             resources:
               requests:
                 cpu: 200m
@@ -235,6 +235,42 @@ spec:
             prometheus.io/path: /metrics
           terminationGracePeriodSeconds: 30
 
+      # scaleplex-clientfix — content-aware decision proxy fixing the
+      # Plex-for-Apple-TV-8.45 mkv-in-HLS re-encode bug (Varashi/scaleplex
+      # #122). The gateway routes ONLY the 8.45 ATV transcode decision
+      # request here; clientfix forwards to PMS and, IF PMS decided a
+      # re-encode, re-issues with container=mkv->mp4 so PMS serves fMP4
+      # (tvOS-playable). Copy/Direct-Stream decisions pass through
+      # untouched (Dennis's Optimize-version playback unaffected). Every
+      # other client/version/path bypasses to PMS. 2 replicas: the 8.45
+      # ATV decision request depends on this pool being up (decision 502s
+      # if it's down) — small blast radius (that one client) but kept
+      # redundant. See clientfix/ in scaleplex.
+      clientfix:
+        replicas: 2
+        containers:
+          app:
+            image:
+              repository: ghcr.io/varashi/scaleplex_clientfix
+              tag: sha-199af77
+            env:
+              TZ: Europe/Brussels
+              CLIENTFIX_PMS_UPSTREAM: http://plex.plex.svc.cluster.local:32400
+            probes:
+              liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 10}}
+              readiness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 5}}
+            resources:
+              requests: {cpu: 10m, memory: 24Mi}
+              limits: {memory: 64Mi}
+        pod:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          tolerations: []
+
     service:
       plex:
         controller: plex
@@ -260,6 +296,11 @@ spec:
         ports:
           http:
             port: 3501
+      clientfix:
+        controller: clientfix
+        ports:
+          http:
+            port: 8080
       plex-lb:
         type: LoadBalancer
         controller: plex
@@ -322,22 +363,16 @@ spec:
             backendRefs:
               - identifier: plex
                 port: http
-          # TEMPORARY PROBE (Varashi/scaleplex#122). Plex for Apple TV 8.45
-          # "Enhanced Player" sends X-Plex-Client-Profile-Extra:
-          # add-transcode-target(...protocol=hls&container=mkv&replace=true),
-          # forcing PMS to decide HLS+MKV. tvOS's HLS player can't parse
-          # MKV-in-HLS -> transcoded titles spin forever / crash. Strip the
-          # directive ONLY on the decision request, ONLY for the 8.45 build
-          # (Exact match on Product AND Version) -> PMS falls back to its
-          # built-in tvOS profile (HLS+mpegts). Version-pinned so working
-          # Apple TV builds keep their full Enhanced Player caps; the broken
-          # 8.45 build trades a crash for a playable (lower-cap) stream.
-          # start.m3u8 carries no profile-extra (only a session= token) so
-          # playback continuation is unaffected. Permanent fix = surgical
-          # container rewrite preserving caps. Remove once Plex ships the
-          # public ATV fix (2025.31.x). (First attempt looked inert only
-          # because Cilium's gateway-api controller was wedged 06-03..06-05;
-          # operator restarted 2026-06-05, rendering restored.)
+          # Plex-for-Apple-TV-8.45 mkv-in-HLS re-encode bug (#122). Route
+          # ONLY that client's transcode decision request to the clientfix
+          # content-aware proxy, which forwards to PMS and rewrites
+          # container=mkv->mp4 ONLY when PMS decided a re-encode (the broken
+          # case) -> PMS serves fMP4, which tvOS plays. Copy/Direct-Stream
+          # decisions (Dennis's Optimize-version playback) pass through
+          # untouched, full quality. Every other client/version/path
+          # bypasses to PMS. Replaces the earlier strip-rule probe (which
+          # forced everything to the 1080p/h264 base profile). See the
+          # clientfix controller above + clientfix/ in scaleplex.
           - matches:
               - path:
                   type: PathPrefix
@@ -347,12 +382,8 @@ spec:
                     value: Plex for Apple TV
                   - name: X-Plex-Version
                     value: "8.45"
-            filters:
-              - type: RequestHeaderModifier
-                requestHeaderModifier:
-                  remove: ["X-Plex-Client-Profile-Extra"]
             backendRefs:
-              - identifier: plex
+              - identifier: clientfix
                 port: http
           - matches:
               - path:
