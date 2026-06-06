@@ -119,7 +119,9 @@ spec:
               # v1.3.1 (scaleplex v1.11.0): shim queries local Plex API for
               # Pass state (#126/#127/#133); drops deferred Plex.tv roundtrip.
               # =sha-40fb784.
-              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:v1.3.1
+              # sha-ccccc30: bundles the clientfix decision proxy as an
+              # in-pod s6 longrun on :32401 (the pms Service targets it).
+              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-ccccc30
               # LOCAL_RELAY_PORT is read by scaleplex-relay (the s6 longrun
               # listens on it) + the shim's collectEnv() to derive
               # SCALEPLEX_PMS_BASE_URL for the rewriter's URL substitutions.
@@ -266,38 +268,6 @@ spec:
             prometheus.io/path: /metrics
           terminationGracePeriodSeconds: 30
 
-      # scaleplex-clientfix — content-aware decision proxy fixing the
-      # Plex-for-Apple-TV-8.45 mkv-in-HLS re-encode bug (Varashi/scaleplex
-      # #122). The gateway routes ONLY the 8.45 ATV transcode decision
-      # request here; clientfix forwards to PMS, and IF PMS decided a
-      # re-encode it re-issues with container=mkv->mp4 so PMS serves fMP4
-      # (tvOS-playable). Copy/Direct-Stream decisions pass through
-      # untouched. See clientfix/cmd/clientfix/main.go.
-      clientfix:
-        replicas: 1
-        containers:
-          app:
-            image:
-              repository: ghcr.io/varashi/scaleplex_clientfix
-              tag: dev
-            env:
-              TZ: Europe/Brussels
-              CLIENTFIX_PMS_UPSTREAM: http://plex-test-pms.plex-test.svc.cluster.local:32400
-            probes:
-              liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 10}}
-              readiness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 5}}
-            resources:
-              requests: {cpu: 10m, memory: 24Mi}
-              limits: {memory: 64Mi}
-        pod:
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 1000
-            runAsGroup: 1000
-            seccompProfile:
-              type: RuntimeDefault
-          tolerations: []
-
     serviceAccount:
       pms:
         forceRename: pms
@@ -328,6 +298,10 @@ spec:
         ports:
           http:
             port: 32400
+            # → clientfix (in-pod dockermod longrun), which forwards to
+            # PMS on 127.0.0.1:32400. So all pms-Service traffic is
+            # decision-proxied; the relay port (below) still hits PMS direct.
+            targetPort: 32401
           # scaleplex-relay listens here. Workers POST progress /
           # manifest / segment_list updates to plex-test-pms:32499;
           # relay forwards to 127.0.0.1:32400 so PMS sees a loopback
@@ -345,12 +319,13 @@ spec:
         ports:
           http:
             port: 32400
+            targetPort: 32401 # → in-pod clientfix → PMS 127.0.0.1:32400
           # 32401 mirrors WAN port-fwd. Single customConnections URL
           # (https://plex-test-svc.boeye.net:32401) works LAN + WAN —
           # avoids split-DNS port mismatch with the legacy plex on 32400.
           external:
             port: 32401
-            targetPort: 32400
+            targetPort: 32401 # → in-pod clientfix (was 32400/PMS direct)
           # scaleplex-relay, exposed off-cluster so EXTERNAL workers (e.g.
           # the NVIDIA worker on skw-d-frank) can reach it for progress /
           # manifest callbacks + the L3 Pass probe. In-cluster workers use
@@ -370,11 +345,6 @@ spec:
         ports:
           http:
             port: 3501
-      clientfix:
-        controller: clientfix
-        ports:
-          http:
-            port: 8080
       plex-test-public:
         controller: pms
         type: ExternalName
@@ -411,24 +381,10 @@ spec:
             backendRefs:
               - identifier: pms
                 port: http
-          # Plex-for-Apple-TV-8.45 mkv-in-HLS re-encode bug (#122). Route
-          # ONLY that client's transcode decision request to clientfix,
-          # which forwards to PMS and rewrites container=mkv->mp4 only when
-          # PMS decided a re-encode (copy/Direct-Stream passes through). All
-          # other clients/versions/paths bypass to PMS. See the clientfix
-          # controller above + clientfix/cmd/clientfix/main.go in scaleplex.
-          - matches:
-              - path:
-                  type: PathPrefix
-                  value: /video/:/transcode/universal/decision
-                headers:
-                  - name: X-Plex-Product
-                    value: Plex for Apple TV
-                  - name: X-Plex-Version
-                    value: "8.45"
-            backendRefs:
-              - identifier: clientfix
-                port: http
+          # clientfix (the ATV-8.45 mkv-in-HLS fix, #122) is now an in-pod
+          # dockermod longrun fronted by the pms Service (http→:32401), so
+          # no special decision route is needed — gateway traffic to the pms
+          # backend already flows through clientfix.
           - matches:
               - path:
                   type: PathPrefix
