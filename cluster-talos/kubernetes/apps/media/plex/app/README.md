@@ -15,43 +15,27 @@ plex/app/
 ├── namespace.yaml
 ├── pvc.yaml
 ├── helmrelease.yaml                       # plex + orchestrator + worker
-├── configmap-html-tv-app-profile.yaml     # client profile override (see below)
 ├── cronjob-backup-preferences.yaml
 ├── cronjob-backup-full.yaml
 ├── cronjob-trigger-db-backup.yaml
 └── cronjob-optimize-retry.yaml
 ```
 
-## HTML TV App profile override
+## HTML TV App profile override — REMOVED 2026-06-06
 
-`configmap-html-tv-app-profile.yaml` ships a patched copy of the bundled
-`/usr/lib/plexmediaserver/Resources/Profiles/HTML TV App.xml`, mounted into
-`/config/Library/Application Support/Plex Media Server/Profiles/HTML TV App.xml`
-(the user-config override path PMS reads ahead of the bundled profile).
+The custom `HTML TV App.xml` (AC3-first; ConfigMap + subPath mount) was
+removed. Its `audioCodec=ac3`-only HLS target forced an unnecessary
+**transcode** of mp3-audio content for an older-app LG client (Tim Noens):
+PMS logged `Cannot direct stream audio stream due to codec mp3 when profile
+only allows ac3` → full transcode + burned-sub down to 412x320. Newer LG
+apps map to the `Generic` profile and never touched this override.
 
-**Why:** PMS 1.43.1.10611 silently ignores the v2 Plex Web client's
-`X-Plex-Client-Profile-Extra` augmentation
-`add-transcode-target-audio-codec audioCodec=ac3 replace=true`, so PMS hands
-the player AAC for HLS even though the client only accepts AC3. The legacy
-v2 webOS Plex shell (older LGs running `app.plex.tv/tv-v2-webos`) refuses
-the decision and shows `H4` on screen ~23 s later — without ever fetching
-the manifest. Trips on every HLS transcode, independent of subtitles or
-source codec, and reproduces on stock PMS with scaleplex bypassed.
-
-**Fix:** put `audioCodec="ac3"` ahead of `aac` in the profile's HLS+mpegts
-target. PMS picks the first compatible entry, so the chosen encoder becomes
-AC3 — which the v2 client accepts. AAC target stays in the list as
-fall-through. Both LG TVs in the household advertise this profile name and
-natively decode AC3, so the swap is transparent for the v5 client (newer
-LGs) and unblocks the v2 one.
-
-**When to remove:** if a future PMS release honors the augmentation's
-`replace=true` flag, the override is no longer needed — drop the ConfigMap
-+ mount + kustomization entry and PMS falls back to the shipped profile
-automatically.
-
-Bisect history (and how to recognise the same pattern on a different
-client) is in memory `reference_pms_html_tv_app_ac3_override.md`.
+It originally worked around a PMS 1.43.x bug (v2 webOS Plex shell `H4` loop
+when PMS ignored the client's `audioCodec=ac3 replace=true` augmentation).
+If the `H4` loop returns on an old webOS client, prefer re-adding the
+profile with **both** `ac3` *and* `mp3,aac` in the HLS target (ac3 first
+for ordering, mp3/aac as direct-stream-compatible fall-through) rather than
+ac3-only. History: memory `reference_pms_html_tv_app_ac3_override.md`.
 
 ## HTTPRoute: strip `Range` on `/library/streams`
 
