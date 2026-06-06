@@ -368,6 +368,21 @@ spec:
             backendRefs:
               - identifier: plex
                 port: http
+          # Route the transcode DECISION through clientfix. ATV/non-web
+          # clients reach PMS via EITHER the LB (plex.direct -> port-forward,
+          # handled by the LB-front) OR this gateway (plex.boeye.net custom
+          # URL) — we've observed both. clientfix self-filters (only acts on
+          # the Plex-for-Apple-TV-8.45 re-encode decision; everything else
+          # streams straight through) and does the header+query profile-extra
+          # strip a gateway RequestHeaderModifier can't. Only the decision
+          # detours here; segments/start.m3u8 (cached decision) go direct.
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /video/:/transcode/universal/decision
+            backendRefs:
+              - identifier: clientfix
+                port: http
           - matches:
               - path:
                   type: PathPrefix
