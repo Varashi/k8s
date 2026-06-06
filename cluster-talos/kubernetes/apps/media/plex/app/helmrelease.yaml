@@ -239,6 +239,39 @@ spec:
             prometheus.io/path: /metrics
           terminationGracePeriodSeconds: 30
 
+      # scaleplex-clientfix — interim ATV-8.45 workaround. On the matched
+      # Plex-for-Apple-TV-8.45 transcode DECISION it strips
+      # X-Plex-Client-Profile-Extra (header+query) so PMS drops the Enhanced
+      # Player's hevc/4K target to the base tvOS profile (h264 1080p), which
+      # plays. The real fix is upstream (worker HEVC Rext->Main10, #189);
+      # this avoids the av1/4K crash until that lands. copy/Direct-Stream and
+      # all non-8.45 clients pass straight through. See clientfix/ in scaleplex.
+      clientfix:
+        replicas: 2
+        containers:
+          app:
+            image:
+              repository: ghcr.io/varashi/scaleplex_clientfix
+              tag: sha-7fe2b83
+            env:
+              TZ: Europe/Brussels
+              CLIENTFIX_PMS_UPSTREAM: http://plex.plex.svc.cluster.local:32400
+              CLIENTFIX_DECISION_MODE: strip
+            probes:
+              liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 10}}
+              readiness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 5}}
+            resources:
+              requests: {cpu: 10m, memory: 24Mi}
+              limits: {memory: 64Mi}
+        pod:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          tolerations: []
+
     service:
       plex:
         controller: plex
@@ -264,11 +297,18 @@ spec:
         ports:
           http:
             port: 3501
+      clientfix:
+        controller: clientfix
+        ports:
+          http:
+            port: 8080
       plex-lb:
         type: LoadBalancer
-        # WAN:32400 port-forward + LAN clients hit this LB directly -> PMS.
-        # externalTrafficPolicy Local preserves the real client source IP.
-        controller: plex
+        # WAN:32400 port-forward + LAN clients hit this LB, fronted by clientfix
+        # (-> PMS at plex.plex.svc:32400) so plex.direct/WAN ATV decisions are
+        # intercepted. externalTrafficPolicy Local preserves the client IP.
+        # Revert = controller back to `plex` + drop targetPort.
+        controller: clientfix
         externalTrafficPolicy: Local
         annotations:
           io.cilium/lb-ipam-ips: "172.16.4.104"
@@ -276,6 +316,7 @@ spec:
         ports:
           http:
             port: 32400
+            targetPort: 8080
       plex-public:
         # controller required: app-template can no longer auto-detect
         # it once the HR has multiple controllers (plex + orchestrator
@@ -327,6 +368,18 @@ spec:
                   remove: ["Range"]
             backendRefs:
               - identifier: plex
+                port: http
+          # ATV/non-web clients reach PMS via EITHER the LB (plex.direct,
+          # handled by the LB-front above) OR this gateway — route the
+          # transcode decision through clientfix on both. clientfix self-
+          # filters (only the Plex-for-Apple-TV-8.45 re-encode; else
+          # passthrough). Only the decision detours; segments go direct.
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /video/:/transcode/universal/decision
+            backendRefs:
+              - identifier: clientfix
                 port: http
           - matches:
               - path:
