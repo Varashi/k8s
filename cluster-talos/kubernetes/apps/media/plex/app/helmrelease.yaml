@@ -254,12 +254,15 @@ spec:
             env:
               TZ: Europe/Brussels
               CLIENTFIX_PMS_UPSTREAM: http://plex.plex.svc.cluster.local:32400
-              # CEILING TEST (scaleplex#185): mpegts keeps the client's
-              # hevc/4K/HDR caps and only swaps the Enhanced Player's mkv
-              # target -> mpegts. Does ATV 8.45 play hevc/4K in TS (restoring
-              # full quality)? If it fails, revert to "strip" (known-good
-              # h264 1080p). copy/Direct-Stream still pass through.
-              CLIENTFIX_DECISION_MODE: mpegts
+              # strip = drop X-Plex-Client-Profile-Extra on the ATV-8.45
+              # re-encode decision -> PMS base tvOS profile -> mpegts h264
+              # 1080p, which ATV plays. This is the KNOWN-GOOD ceiling: ATV
+              # 8.45 cannot play a re-encoded HEVC stream in ANY container
+              # (mkv/mp4/mpegts all fail, confirmed 2026-06-06), so 4K HEVC
+              # is off the table for transcoded content; h264 1080p is max.
+              # 4K only via non-transcode (copy/Direct Stream of an h264/hevc
+              # source the device can take). See scaleplex#185.
+              CLIENTFIX_DECISION_MODE: strip
             probes:
               liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 10}}
               readiness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 5}}
