@@ -235,6 +235,41 @@ spec:
             prometheus.io/path: /metrics
           terminationGracePeriodSeconds: 30
 
+      # scaleplex-clientfix — L7 proxy fronting PMS on the LB path (the only
+      # path ATV/non-web clients take: plex.direct -> WAN port-forward -> LB).
+      # For the matched Plex-for-Apple-TV-8.45 transcode DECISION it strips
+      # X-Plex-Client-Profile-Extra (header AND query) when PMS decided a
+      # re-encode, so PMS falls back to the base tvOS profile (h264 1080p)
+      # instead of the 8.45 Enhanced Player's hevc/4K/mkv target that av1
+      # sources can't play on ATV (scaleplex#184). copy/Direct-Stream
+      # decisions pass through untouched; everything else streams straight
+      # through. Mode is env-switchable (strip|mp4). See clientfix/ in scaleplex.
+      clientfix:
+        replicas: 2
+        containers:
+          app:
+            image:
+              repository: ghcr.io/varashi/scaleplex_clientfix
+              tag: sha-8e620a4
+            env:
+              TZ: Europe/Brussels
+              CLIENTFIX_PMS_UPSTREAM: http://plex.plex.svc.cluster.local:32400
+              CLIENTFIX_DECISION_MODE: strip
+            probes:
+              liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 10}}
+              readiness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 5}}
+            resources:
+              requests: {cpu: 10m, memory: 24Mi}
+              limits: {memory: 64Mi}
+        pod:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          tolerations: []
+
     service:
       plex:
         controller: plex
@@ -260,11 +295,19 @@ spec:
         ports:
           http:
             port: 3501
+      clientfix:
+        controller: clientfix
+        ports:
+          http:
+            port: 8080
       plex-lb:
         type: LoadBalancer
-        # WAN:32400 port-forward + LAN clients hit this LB directly -> PMS.
-        # externalTrafficPolicy Local preserves the real client source IP.
-        controller: plex
+        # WAN:32400 port-forward + LAN clients hit this LB, which fronts PMS
+        # via clientfix (-> PMS at plex.plex.svc:32400). This is the only path
+        # ATV/non-web clients take (plex.direct -> port-forward -> LB), so the
+        # decision strip must live here, not on the gateway. Revert = set
+        # controller back to `plex` + drop targetPort.
+        controller: clientfix
         externalTrafficPolicy: Local
         annotations:
           io.cilium/lb-ipam-ips: "172.16.4.104"
@@ -272,6 +315,7 @@ spec:
         ports:
           http:
             port: 32400
+            targetPort: 8080
       plex-public:
         # controller required: app-template can no longer auto-detect
         # it once the HR has multiple controllers (plex + orchestrator
@@ -321,32 +365,6 @@ spec:
               - type: RequestHeaderModifier
                 requestHeaderModifier:
                   remove: ["Range"]
-            backendRefs:
-              - identifier: plex
-                port: http
-          # DIAGNOSTIC (Varashi/scaleplex#184): av1-source titles fail to
-          # play on Plex-for-Apple-TV 8.45 (both Dennis + Tim devices) — the
-          # 8.45 "Enhanced Player" sends X-Plex-Client-Profile-Extra forcing
-          # an hevc/4K/mkv transcode target ATV can't consume. clientfix's
-          # mkv->mp4 swap alone didn't fix it. Strip the whole profile-extra
-          # on the 8.45 transcode DECISION so PMS falls back to the base
-          # tvOS.xml profile (h264 1080p) — a strict win for av1-only titles
-          # that fail completely today, and a probe: plays => enhanced-target
-          # was the problem (workaround found); still fails => worker can't
-          # decode av1 (real bug). Gateway-only (Tim's path); decision-only.
-          - matches:
-              - path:
-                  type: PathPrefix
-                  value: /video/:/transcode/universal/decision
-                headers:
-                  - name: X-Plex-Product
-                    value: Plex for Apple TV
-                  - name: X-Plex-Version
-                    value: "8.45"
-            filters:
-              - type: RequestHeaderModifier
-                requestHeaderModifier:
-                  remove: ["X-Plex-Client-Profile-Extra"]
             backendRefs:
               - identifier: plex
                 port: http
