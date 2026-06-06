@@ -324,6 +324,32 @@ spec:
             backendRefs:
               - identifier: plex
                 port: http
+          # DIAGNOSTIC (Varashi/scaleplex#184): av1-source titles fail to
+          # play on Plex-for-Apple-TV 8.45 (both Dennis + Tim devices) — the
+          # 8.45 "Enhanced Player" sends X-Plex-Client-Profile-Extra forcing
+          # an hevc/4K/mkv transcode target ATV can't consume. clientfix's
+          # mkv->mp4 swap alone didn't fix it. Strip the whole profile-extra
+          # on the 8.45 transcode DECISION so PMS falls back to the base
+          # tvOS.xml profile (h264 1080p) — a strict win for av1-only titles
+          # that fail completely today, and a probe: plays => enhanced-target
+          # was the problem (workaround found); still fails => worker can't
+          # decode av1 (real bug). Gateway-only (Tim's path); decision-only.
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /video/:/transcode/universal/decision
+                headers:
+                  - name: X-Plex-Product
+                    value: Plex for Apple TV
+                  - name: X-Plex-Version
+                    value: "8.45"
+            filters:
+              - type: RequestHeaderModifier
+                requestHeaderModifier:
+                  remove: ["X-Plex-Client-Profile-Extra"]
+            backendRefs:
+              - identifier: plex
+                port: http
           - matches:
               - path:
                   type: PathPrefix
