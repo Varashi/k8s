@@ -250,11 +250,16 @@ spec:
           app:
             image:
               repository: ghcr.io/varashi/scaleplex_clientfix
-              tag: sha-8e620a4
+              tag: sha-7fe2b83
             env:
               TZ: Europe/Brussels
               CLIENTFIX_PMS_UPSTREAM: http://plex.plex.svc.cluster.local:32400
-              CLIENTFIX_DECISION_MODE: strip
+              # CEILING TEST (scaleplex#185): mpegts keeps the client's
+              # hevc/4K/HDR caps and only swaps the Enhanced Player's mkv
+              # target -> mpegts. Does ATV 8.45 play hevc/4K in TS (restoring
+              # full quality)? If it fails, revert to "strip" (known-good
+              # h264 1080p). copy/Direct-Stream still pass through.
+              CLIENTFIX_DECISION_MODE: mpegts
             probes:
               liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 10}}
               readiness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 5}}
