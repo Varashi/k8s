@@ -182,7 +182,12 @@ spec:
               # Noto Sans bundled with Medium→Regular alias (closes
               # #143 visual-parity gap to stock Plex burns).
               # =sha-ad1119b.
-              tag: v1.12.0
+              # v1.13.0 (2026-06-06): HEVC Main10 profile pin on 10-bit HW
+              # encodes, all backends (#189) — fixes the ATV-8.45
+              # transcoded-HEVC crash (VAAPI was emitting Rext for p010,
+              # undecodable by Apple VideoToolbox). plex-test validated
+              # (ffprobe Main 10; live Android 4K HEVC). =sha-308cfe2.
+              tag: v1.13.0
             env:
               TZ: Europe/Brussels
               # Device retarget now in the fork (0116); pin the worker GPU.
