@@ -309,11 +309,12 @@ spec:
             port: 8080
       plex-lb:
         type: LoadBalancer
-        # WAN:32400 port-forward + LAN clients hit this LB, fronted by clientfix
-        # (-> PMS at plex.plex.svc:32400) so plex.direct/WAN ATV decisions are
-        # intercepted. externalTrafficPolicy Local preserves the client IP.
-        # Revert = controller back to `plex` + drop targetPort.
-        controller: clientfix
+        # WAN:32400 port-forward + LAN clients hit this LB directly -> PMS.
+        # clientfix bypassed now the worker emits HEVC Main10 (v1.13.0, #189) —
+        # ATV gets its native HEVC decision and plays. clientfix controller
+        # kept idle pending Dennis's confirm; teardown follows. Re-engage =
+        # controller: clientfix + targetPort 8080 + the /decision route.
+        controller: plex
         externalTrafficPolicy: Local
         annotations:
           io.cilium/lb-ipam-ips: "172.16.4.104"
@@ -321,7 +322,6 @@ spec:
         ports:
           http:
             port: 32400
-            targetPort: 8080
       plex-public:
         # controller required: app-template can no longer auto-detect
         # it once the HR has multiple controllers (plex + orchestrator
@@ -373,18 +373,6 @@ spec:
                   remove: ["Range"]
             backendRefs:
               - identifier: plex
-                port: http
-          # ATV/non-web clients reach PMS via EITHER the LB (plex.direct,
-          # handled by the LB-front above) OR this gateway — route the
-          # transcode decision through clientfix on both. clientfix self-
-          # filters (only the Plex-for-Apple-TV-8.45 re-encode; else
-          # passthrough). Only the decision detours; segments go direct.
-          - matches:
-              - path:
-                  type: PathPrefix
-                  value: /video/:/transcode/universal/decision
-            backendRefs:
-              - identifier: clientfix
                 port: http
           - matches:
               - path:
