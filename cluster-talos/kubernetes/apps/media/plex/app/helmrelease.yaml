@@ -252,7 +252,11 @@ spec:
           app:
             image:
               repository: ghcr.io/varashi/scaleplex_clientfix
-              tag: sha-199af77
+              # streaming front-proxy build — fronts ALL of PMS:32400 (the
+              # LB points here) so plex.direct/WAN clients are intercepted,
+              # not just gateway/custom-URL ones. Transparent stream for
+              # everything; buffered two-pass only on the 8.45 decision.
+              tag: sha-fc5a226
             env:
               TZ: Europe/Brussels
               CLIENTFIX_PMS_UPSTREAM: http://plex.plex.svc.cluster.local:32400
@@ -303,7 +307,13 @@ spec:
             port: 8080
       plex-lb:
         type: LoadBalancer
-        controller: plex
+        # Fronted by clientfix: the WAN:32400 port-forward + LAN clients
+        # hit this LB, which now routes to the clientfix proxy (-> PMS at
+        # plex.plex.svc:32400) so plex.direct/WAN decisions are intercepted.
+        # externalTrafficPolicy Local preserves the real client source IP to
+        # clientfix, which forwards it to PMS via X-Forwarded-For. Revert =
+        # set controller back to `plex` + drop targetPort.
+        controller: clientfix
         externalTrafficPolicy: Local
         annotations:
           io.cilium/lb-ipam-ips: "172.16.4.104"
@@ -311,6 +321,7 @@ spec:
         ports:
           http:
             port: 32400
+            targetPort: 8080
       plex-public:
         # controller required: app-template can no longer auto-detect
         # it once the HR has multiple controllers (plex + orchestrator
