@@ -122,6 +122,8 @@ spec:
               # sha-ccccc30: bundles the clientfix decision proxy as an
               # in-pod s6 longrun on :32401 (the pms Service targets it).
               DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-ccccc30
+              # clientfix listens here (NOT :32401 — Plex binds 32400 AND 32401)
+              CLIENTFIX_LISTEN_ADDR: ":8080"
               # LOCAL_RELAY_PORT is read by scaleplex-relay (the s6 longrun
               # listens on it) + the shim's collectEnv() to derive
               # SCALEPLEX_PMS_BASE_URL for the rewriter's URL substitutions.
@@ -301,7 +303,7 @@ spec:
             # → clientfix (in-pod dockermod longrun), which forwards to
             # PMS on 127.0.0.1:32400. So all pms-Service traffic is
             # decision-proxied; the relay port (below) still hits PMS direct.
-            targetPort: 32401
+            targetPort: 8080
           # scaleplex-relay listens here. Workers POST progress /
           # manifest / segment_list updates to plex-test-pms:32499;
           # relay forwards to 127.0.0.1:32400 so PMS sees a loopback
@@ -319,13 +321,13 @@ spec:
         ports:
           http:
             port: 32400
-            targetPort: 32401 # → in-pod clientfix → PMS 127.0.0.1:32400
+            targetPort: 8080 # → in-pod clientfix → PMS 127.0.0.1:32400
           # 32401 mirrors WAN port-fwd. Single customConnections URL
           # (https://plex-test-svc.boeye.net:32401) works LAN + WAN —
           # avoids split-DNS port mismatch with the legacy plex on 32400.
           external:
             port: 32401
-            targetPort: 32401 # → in-pod clientfix (was 32400/PMS direct)
+            targetPort: 8080 # → in-pod clientfix (was 32400/PMS direct)
           # scaleplex-relay, exposed off-cluster so EXTERNAL workers (e.g.
           # the NVIDIA worker on skw-d-frank) can reach it for progress /
           # manifest callbacks + the L3 Pass probe. In-cluster workers use
