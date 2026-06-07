@@ -117,7 +117,10 @@ spec:
   # Keep them out of the low-power overnight window.
   schedule: "0 8-19 * * *"
   timeZone: Europe/Brussels
-  suspend: false
+  # Suspended 2026-06-07: Plex Optimize automation being retired (Frank
+  # removing Optimize versions). The Tautulli plex_optimize trigger
+  # (notifier #4) is disabled too. Re-enable both if Optimize comes back.
+  suspend: true
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
