@@ -261,15 +261,16 @@ spec:
             env:
               TZ: Europe/Brussels
               CLIENTFIX_PMS_UPSTREAM: http://plex.plex.svc.cluster.local:32400
-              # mp4: rewrite container=mkv->mp4 keeping hevc/4K. Worker v1.13.0
-              # now emits HEVC Main10 (#189), so this yields hevc-Main10-fMP4 —
-              # the combo never yet tested on a real ATV (06-06 mp4 failed on
-              # Rext, pre-fix). Native mkv (clientfix bypassed) still failed for
-              # Dennis 2026-06-07 01:00 = the mkv re-encode demuxer bug (#122)
-              # is separate from Rext, so clientfix is NOT retirable. Fallback
-              # if this fails the real-ATV test: CLIENTFIX_DECISION_MODE=strip
-              # (known-good h264 1080p).
-              CLIENTFIX_DECISION_MODE: mp4
+              # strip: drop X-Plex-Client-Profile-Extra on the ATV-8.45
+              # re-encode decision -> PMS base tvOS profile -> h264 1080p mpegts.
+              # DEFINITIVE (2026-06-07): ATV-8.45 cannot play a TRANSCODED HEVC
+              # stream in ANY container/profile — tested mkv+mp4/fMP4+mpegts ×
+              # Rext+Main10 × 4K+1080p, all fail (Dennis 01:00 mkv-Main10; Tim
+              # 13:0x mp4-Main10). h264 is the only working transcode codec on
+              # this client. Worker v1.13.0 Main10 (#189) is still correct + helps
+              # non-ATV hevc clients, but does NOT unlock ATV. So clientfix STAYS
+              # in strip mode (NOT retirable). 4K on ATV only via copy/Direct-Play.
+              CLIENTFIX_DECISION_MODE: strip
             probes:
               liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 10}}
               readiness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 5}}
