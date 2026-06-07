@@ -419,6 +419,19 @@ spec:
           plex:
             app:
               - path: /backup
+      # Custom HTML TV App profile for old-webOS LG (Tim Noens) — ac3-first
+      # with mp3,aac direct-stream fall-through to kill the webOS H4 loop
+      # without force-transcoding mp3. subPath into the persistent Profiles
+      # dir; survives Plex updates. See configmap-html-tv-app-profile.yaml.
+      html-tv-app-profile:
+        type: configMap
+        name: plex-html-tv-app-profile
+        advancedMounts:
+          plex:
+            app:
+              - path: "/config/Library/Application Support/Plex Media Server/Profiles/HTML TV App.xml"
+                subPath: HTML_TV_App.xml
+                readOnly: true
       # s6-overlay longrun that tails PMS's file-based log into the
       # container's stdout, so request/decision detail (incl. anything
       # with LogVerbose=1) flows through fluent-bit → vcflogs alongside
