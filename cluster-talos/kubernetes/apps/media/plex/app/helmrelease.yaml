@@ -261,7 +261,15 @@ spec:
             env:
               TZ: Europe/Brussels
               CLIENTFIX_PMS_UPSTREAM: http://plex.plex.svc.cluster.local:32400
-              CLIENTFIX_DECISION_MODE: strip
+              # mp4: rewrite container=mkv->mp4 keeping hevc/4K. Worker v1.13.0
+              # now emits HEVC Main10 (#189), so this yields hevc-Main10-fMP4 —
+              # the combo never yet tested on a real ATV (06-06 mp4 failed on
+              # Rext, pre-fix). Native mkv (clientfix bypassed) still failed for
+              # Dennis 2026-06-07 01:00 = the mkv re-encode demuxer bug (#122)
+              # is separate from Rext, so clientfix is NOT retirable. Fallback
+              # if this fails the real-ATV test: CLIENTFIX_DECISION_MODE=strip
+              # (known-good h264 1080p).
+              CLIENTFIX_DECISION_MODE: mp4
             probes:
               liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 10}}
               readiness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 5}}
@@ -309,12 +317,12 @@ spec:
             port: 8080
       plex-lb:
         type: LoadBalancer
-        # WAN:32400 port-forward + LAN clients hit this LB directly -> PMS.
-        # clientfix bypassed now the worker emits HEVC Main10 (v1.13.0, #189) —
-        # ATV gets its native HEVC decision and plays. clientfix controller
-        # kept idle pending Dennis's confirm; teardown follows. Re-engage =
-        # controller: clientfix + targetPort 8080 + the /decision route.
-        controller: plex
+        # Fronted by clientfix again (mp4 mode): native HEVC-Main10-in-mkv still
+        # failed for ATV (the #122 mkv re-encode demuxer bug, separate from the
+        # now-fixed Rext), so clientfix rewrites the container off mkv. WAN/LAN
+        # clients hit this LB -> clientfix -> PMS. Bypass = controller: plex +
+        # drop targetPort + drop the /decision route.
+        controller: clientfix
         externalTrafficPolicy: Local
         annotations:
           io.cilium/lb-ipam-ips: "172.16.4.104"
@@ -322,6 +330,7 @@ spec:
         ports:
           http:
             port: 32400
+            targetPort: 8080
       plex-public:
         # controller required: app-template can no longer auto-detect
         # it once the HR has multiple controllers (plex + orchestrator
@@ -373,6 +382,16 @@ spec:
                   remove: ["Range"]
             backendRefs:
               - identifier: plex
+                port: http
+          # Route the ATV transcode decision through clientfix (it self-filters
+          # for Plex-for-Apple-TV-8.45). Both ingress paths covered: this gateway
+          # rule + the LB-front above. Only the decision detours; segments direct.
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /video/:/transcode/universal/decision
+            backendRefs:
+              - identifier: clientfix
                 port: http
           - matches:
               - path:
