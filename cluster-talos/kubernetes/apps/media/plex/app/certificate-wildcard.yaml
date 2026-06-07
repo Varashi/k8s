@@ -1,0 +1,16 @@
+# Wildcard *.boeye.net cert for the standalone clientfix SNI TLS front.
+# clientfix terminates our own custom-domain TLS (decision rewrite over HTTPS)
+# and passes plex.direct TLS straight through to PMS (probe rides PMS's real
+# cert → no remote-access flapping). cert-manager renews; clientfix hot-reloads.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: plex-wildcard
+  namespace: plex
+spec:
+  secretName: plex-wildcard-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - "*.${SECRET_DOMAIN}"

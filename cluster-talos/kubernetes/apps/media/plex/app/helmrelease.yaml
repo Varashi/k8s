@@ -257,7 +257,10 @@ spec:
           app:
             image:
               repository: ghcr.io/varashi/scaleplex_clientfix
-              tag: sha-7fe2b83
+              # v1.14.0 — SNI-aware TLS front: passthrough plex.direct (probe
+              # rides PMS's real cert → no remote-access flapping), terminate
+              # our *.boeye.net for the decision rewrite over HTTPS.
+              tag: sha-0e6edae
             env:
               TZ: Europe/Brussels
               CLIENTFIX_PMS_UPSTREAM: http://plex.plex.svc.cluster.local:32400
@@ -271,6 +274,11 @@ spec:
               # non-ATV hevc clients, but does NOT unlock ATV. So clientfix STAYS
               # in strip mode (NOT retirable). 4K on ATV only via copy/Direct-Play.
               CLIENTFIX_DECISION_MODE: strip
+              # SNI front: terminate our *.boeye.net wildcard (decision rewrite
+              # over HTTPS), pass plex.direct TLS through to PMS. Passthrough
+              # target defaults to CLIENTFIX_PMS_UPSTREAM host (plex.plex.svc).
+              CLIENTFIX_TLS_CERT: /tls/tls.crt
+              CLIENTFIX_TLS_KEY: /tls/tls.key
             probes:
               liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 10}}
               readiness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 5}}
@@ -410,6 +418,15 @@ spec:
           plex:
             app:
               - path: /config
+      # *.boeye.net wildcard for the standalone clientfix SNI TLS front.
+      clientfix-tls:
+        type: secret
+        name: plex-wildcard-tls
+        advancedMounts:
+          clientfix:
+            app:
+              - path: /tls
+                readOnly: true
       transcode:
         # Shared between the PMS (serves segments) and the scaleplex
         # worker (writes segments) — same NFS export, so the worker
