@@ -21,21 +21,27 @@ plex/app/
 └── cronjob-optimize-retry.yaml
 ```
 
-## HTML TV App profile override — REMOVED 2026-06-06
+## HTML TV App profile override — RE-IMPLEMENTED 2026-06-07
 
-The custom `HTML TV App.xml` (AC3-first; ConfigMap + subPath mount) was
-removed. Its `audioCodec=ac3`-only HLS target forced an unnecessary
-**transcode** of mp3-audio content for an older-app LG client (Tim Noens):
-PMS logged `Cannot direct stream audio stream due to codec mp3 when profile
-only allows ac3` → full transcode + burned-sub down to 412x320. Newer LG
-apps map to the `Generic` profile and never touched this override.
+The custom `HTML TV App.xml` (ConfigMap + subPath mount) works around a PMS
+1.43.x bug: the v2 webOS Plex shell loops with error **`H4`** when PMS
+ignores the client's `audioCodec=ac3 replace=true` augmentation. The profile
+promotes **ac3** in the HLS target to break the loop.
 
-It originally worked around a PMS 1.43.x bug (v2 webOS Plex shell `H4` loop
-when PMS ignored the client's `audioCodec=ac3 replace=true` augmentation).
-If the `H4` loop returns on an old webOS client, prefer re-adding the
-profile with **both** `ac3` *and* `mp3,aac` in the HLS target (ac3 first
-for ordering, mp3/aac as direct-stream-compatible fall-through) rather than
-ac3-only. History: memory `reference_pms_html_tv_app_ac3_override.md`.
+History:
+- 2026-05-17/18: added (ac3-first) + transcode cap raised to 4K/10-bit.
+- 2026-06-06 (#198): **removed** — the `audioCodec=ac3`-**only** HLS target
+  force-transcoded mp3-audio content for Tim Noens's old LG app
+  (`Cannot direct stream audio stream due to codec mp3 when profile only
+  allows ac3` → full transcode + burned-sub down to 412x320).
+- 2026-06-07: **re-added** — the `H4` loop returned (Tim, playing "'Allo
+  'Allo!"). Per the #198 tombstone, the HLS target is now
+  `audioCodec="ac3,mp3,aac"`: **ac3 first** (non-listed sources transcode
+  to it → kills the H4 loop) with **mp3,aac listed** so those direct-stream
+  instead of force-transcoding (avoids the original regression). Newer LG
+  apps use the `Generic` profile and never touch this.
+
+History: memory `reference_pms_html_tv_app_ac3_override.md`.
 
 ## HTTPRoute: strip `Range` on `/library/streams`
 
