@@ -121,11 +121,13 @@ spec:
               # =sha-40fb784.
               # sha-ccccc30: bundles the clientfix decision proxy as an
               # in-pod s6 longrun on :32401 (the pms Service targets it).
-              # sha-816cee8: clientfix SNI-aware TLS front — terminates our
-              # *.boeye.net cert (decision rewrite over HTTPS) and passes
-              # plex.direct TLS straight to loopback PMS so its reachability
-              # probe rides PMS's real cert (no remote-access flapping).
-              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-816cee8
+              # sha-0e6edae (scaleplex v1.14.0): clientfix SNI-aware TLS front —
+              # terminates our *.boeye.net cert (decision rewrite over HTTPS) and
+              # passes plex.direct TLS straight to loopback PMS so its
+              # reachability probe rides PMS's real cert (no remote-access
+              # flapping). Re-pinned from branch build sha-816cee8 to the
+              # released v1.14.0 image (identical behavior).
+              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-0e6edae
               # clientfix listens here (NOT :32401 — Plex binds 32400 AND 32401)
               CLIENTFIX_LISTEN_ADDR: ":8080"
               # SNI front: terminate our wildcard for the decision rewrite,
@@ -203,11 +205,12 @@ spec:
               # (#175, unbroke the layered build). Live-validated on
               # plex-test (Arc): qa_matrix 56/56 + T3 Web/Windows/Android.
               # =sha-dffce8f.
-              # sha-5d8cf64: HEVC Main10 profile pin on 10-bit hevc_vaapi
-              # (#189) — fixes ATV-8.45 transcoded-HEVC crash (VAAPI was
-              # defaulting to Rext for p010, undecodable by Apple
-              # VideoToolbox). plex-test validation only; prod still v1.12.0.
-              tag: sha-5d8cf64
+              # v1.13.0 (scaleplex v1.13.0): HEVC Main10 profile pin on 10-bit
+              # HW encodes, all backends (#189) — fixes the ATV-8.45
+              # transcoded-HEVC crash (VAAPI was defaulting to Rext for p010,
+              # undecodable by Apple VideoToolbox). Released image; was the
+              # pre-release sha-5d8cf64 here, now aligned with prod.
+              tag: v1.13.0
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
