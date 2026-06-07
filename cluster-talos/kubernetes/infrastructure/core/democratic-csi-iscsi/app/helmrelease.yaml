@@ -19,6 +19,18 @@ spec:
     # the iscsi target/lun in volumeAttributes (see plex-test config PV).
     csiDriver:
       name: org.democratic-csi.node-manual
+      # Network iSCSI attaches node-locally (NodeStage logs into the target),
+      # so the k8s VolumeAttachment / attach-detach-controller path is pure
+      # overhead — and it deadlocks RWO handoffs on a node change: a stale
+      # node.status.volumesAttached entry the controller won't release (node-
+      # manual ControllerUnpublish doesn't clear it, survives a KCM restart) →
+      # permanent "Multi-Attach" on the new node. attachRequired:false skips
+      # VolumeAttachments entirely → clean pod rolls AND clean dead-host
+      # failover (the static-PV comment's original intent). RWO is still
+      # enforced by the scheduler + Recreate strategy (one mount at a time).
+      # NOTE: attachRequired is IMMUTABLE — changing it needs the CSIDriver
+      # object deleted so helm recreates it.
+      attachRequired: false
     storageClasses: []
     volumeSnapshotClasses: []
 
@@ -26,11 +38,12 @@ spec:
       config:
         driver: node-manual
 
-    # node-manual needs only the attacher (VolumeAttachment lifecycle); there is
-    # nothing to dynamically provision/resize/snapshot.
+    # With attachRequired:false there are no VolumeAttachments to manage, and
+    # nothing to dynamically provision/resize/snapshot — the controller needs
+    # none of the external sidecars.
     controller:
       externalAttacher:
-        enabled: true
+        enabled: false
       externalProvisioner:
         enabled: false
       externalResizer:
