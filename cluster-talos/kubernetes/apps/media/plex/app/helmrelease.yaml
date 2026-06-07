@@ -56,7 +56,20 @@ spec:
               # for Pass state (#126/#127/#133) — drops the deferred Plex.tv
               # roundtrip. Byte-identical on already-active subs; only the
               # discovery path changed. =sha-40fb784.
-              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:v1.3.1
+              # sha-0e6edae (scaleplex v1.14.0): converge prod to the in-pod
+              # clientfix model (matches plex-test) — the dockermod now runs
+              # clientfix as an s6 longrun with the SNI TLS front. Replaces the
+              # standalone clientfix Deployment (removed below). Bundles the
+              # ATV-8.45 decision fix + passes plex.direct TLS through to PMS so
+              # its reachability probe rides PMS's real cert (no flapping).
+              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-0e6edae
+              # in-pod clientfix: listen :8080 (pms Service/LB target it),
+              # strip mode for ATV-8.45, terminate our *.boeye.net wildcard for
+              # the decision rewrite over HTTPS + pass plex.direct TLS through.
+              CLIENTFIX_LISTEN_ADDR: ":8080"
+              CLIENTFIX_DECISION_MODE: strip
+              CLIENTFIX_TLS_CERT: /tls/tls.crt
+              CLIENTFIX_TLS_KEY: /tls/tls.key
               # scaleplex-relay listens here; the shim's collectEnv()
               # also reads LOCAL_RELAY_PORT + PMS_SERVICE to derive the
               # per-session SCALEPLEX_PMS_BASE_URL for worker callbacks.
@@ -244,47 +257,10 @@ spec:
             prometheus.io/path: /metrics
           terminationGracePeriodSeconds: 30
 
-      # scaleplex-clientfix — interim ATV-8.45 workaround. On the matched
-      # Plex-for-Apple-TV-8.45 transcode DECISION it strips
-      # X-Plex-Client-Profile-Extra (header+query) so PMS drops the Enhanced
-      # Player's hevc/4K target to the base tvOS profile (h264 1080p), which
-      # plays. The real fix is upstream (worker HEVC Rext->Main10, #189);
-      # this avoids the av1/4K crash until that lands. copy/Direct-Stream and
-      # all non-8.45 clients pass straight through. See clientfix/ in scaleplex.
-      clientfix:
-        replicas: 2
-        containers:
-          app:
-            image:
-              repository: ghcr.io/varashi/scaleplex_clientfix
-              tag: sha-7fe2b83
-            env:
-              TZ: Europe/Brussels
-              CLIENTFIX_PMS_UPSTREAM: http://plex.plex.svc.cluster.local:32400
-              # strip: drop X-Plex-Client-Profile-Extra on the ATV-8.45
-              # re-encode decision -> PMS base tvOS profile -> h264 1080p mpegts.
-              # DEFINITIVE (2026-06-07): ATV-8.45 cannot play a TRANSCODED HEVC
-              # stream in ANY container/profile — tested mkv+mp4/fMP4+mpegts ×
-              # Rext+Main10 × 4K+1080p, all fail (Dennis 01:00 mkv-Main10; Tim
-              # 13:0x mp4-Main10). h264 is the only working transcode codec on
-              # this client. Worker v1.13.0 Main10 (#189) is still correct + helps
-              # non-ATV hevc clients, but does NOT unlock ATV. So clientfix STAYS
-              # in strip mode (NOT retirable). 4K on ATV only via copy/Direct-Play.
-              CLIENTFIX_DECISION_MODE: strip
-            probes:
-              liveness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 10}}
-              readiness: {enabled: true, custom: true, spec: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 5}}
-            resources:
-              requests: {cpu: 10m, memory: 24Mi}
-              limits: {memory: 64Mi}
-        pod:
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 1000
-            runAsGroup: 1000
-            seccompProfile:
-              type: RuntimeDefault
-          tolerations: []
+      # clientfix is no longer a standalone Deployment — it runs in-pod as a
+      # dockermod s6 longrun (see DOCKER_MODS + CLIENTFIX_* on the plex
+      # container above), matching plex-test. The pms Service / plex-lb target
+      # the in-pod clientfix (:8080), and the gateway route flows through it.
 
     service:
       plex:
@@ -292,6 +268,10 @@ spec:
         ports:
           http:
             port: 32400
+            # → in-pod clientfix (dockermod longrun) → PMS 127.0.0.1:32400.
+            # All pms-Service traffic is decision-proxied; relay (below) hits
+            # PMS direct.
+            targetPort: 8080
           # scaleplex-relay listens here. Workers POST progress /
           # manifest / segment_list updates to plex:32499; relay
           # forwards to 127.0.0.1:32400 so PMS sees a loopback source.
@@ -311,19 +291,13 @@ spec:
         ports:
           http:
             port: 3501
-      clientfix:
-        controller: clientfix
-        ports:
-          http:
-            port: 8080
       plex-lb:
         type: LoadBalancer
-        # Fronted by clientfix again (mp4 mode): native HEVC-Main10-in-mkv still
-        # failed for ATV (the #122 mkv re-encode demuxer bug, separate from the
-        # now-fixed Rext), so clientfix rewrites the container off mkv. WAN/LAN
-        # clients hit this LB -> clientfix -> PMS. Bypass = controller: plex +
-        # drop targetPort + drop the /decision route.
-        controller: clientfix
+        # WAN/LAN clients hit this LB → in-pod clientfix (:8080) → PMS. The
+        # in-pod clientfix carries the SNI TLS front: plex.direct + Plex's
+        # reachability probe pass through to PMS's real cert (no flapping);
+        # *.boeye.net is terminated for the ATV-8.45 decision rewrite.
+        controller: plex
         externalTrafficPolicy: Local
         annotations:
           io.cilium/lb-ipam-ips: "172.16.4.104"
@@ -384,16 +358,9 @@ spec:
             backendRefs:
               - identifier: plex
                 port: http
-          # Route the ATV transcode decision through clientfix (it self-filters
-          # for Plex-for-Apple-TV-8.45). Both ingress paths covered: this gateway
-          # rule + the LB-front above. Only the decision detours; segments direct.
-          - matches:
-              - path:
-                  type: PathPrefix
-                  value: /video/:/transcode/universal/decision
-            backendRefs:
-              - identifier: clientfix
-                port: http
+          # All gateway traffic flows through the in-pod clientfix via the plex
+          # backend (the pms Service targets clientfix:8080), so no separate
+          # decision route is needed — clientfix self-filters for ATV-8.45.
           - matches:
               - path:
                   type: PathPrefix
@@ -410,6 +377,15 @@ spec:
           plex:
             app:
               - path: /config
+      # *.boeye.net wildcard for the in-pod clientfix SNI TLS front.
+      clientfix-tls:
+        type: secret
+        name: plex-wildcard-tls
+        advancedMounts:
+          plex:
+            app:
+              - path: /tls
+                readOnly: true
       transcode:
         # Shared between the PMS (serves segments) and the scaleplex
         # worker (writes segments) — same NFS export, so the worker
