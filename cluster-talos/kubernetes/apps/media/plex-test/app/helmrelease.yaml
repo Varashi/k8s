@@ -121,9 +121,18 @@ spec:
               # =sha-40fb784.
               # sha-ccccc30: bundles the clientfix decision proxy as an
               # in-pod s6 longrun on :32401 (the pms Service targets it).
-              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-ccccc30
+              # sha-816cee8: clientfix SNI-aware TLS front — terminates our
+              # *.boeye.net cert (decision rewrite over HTTPS) and passes
+              # plex.direct TLS straight to loopback PMS so its reachability
+              # probe rides PMS's real cert (no remote-access flapping).
+              DOCKER_MODS: ghcr.io/varashi/scaleplex_pms_dockermod:sha-816cee8
               # clientfix listens here (NOT :32401 — Plex binds 32400 AND 32401)
               CLIENTFIX_LISTEN_ADDR: ":8080"
+              # SNI front: terminate our wildcard for the decision rewrite,
+              # pass plex.direct TLS through to PMS. Cert from cert-manager
+              # (plex-test-wildcard-tls), mounted at /tls, hot-reloaded.
+              CLIENTFIX_TLS_CERT: /tls/tls.crt
+              CLIENTFIX_TLS_KEY: /tls/tls.key
               # LOCAL_RELAY_PORT is read by scaleplex-relay (the s6 longrun
               # listens on it) + the shim's collectEnv() to derive
               # SCALEPLEX_PMS_BASE_URL for the rewriter's URL substitutions.
@@ -407,6 +416,15 @@ spec:
           pms:
             app:
               - path: /config
+      # *.boeye.net wildcard for the in-pod clientfix SNI TLS front.
+      clientfix-tls:
+        type: secret
+        name: plex-test-wildcard-tls
+        advancedMounts:
+          pms:
+            app:
+              - path: /tls
+                readOnly: true
       transcode:
         # Shared between PMS (serves segments) and worker (writes
         # segments). scaleplex-agent writes segments at the same paths

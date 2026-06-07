@@ -4,6 +4,7 @@ resources:
   - namespace.yaml
   - pvc.yaml
   - pv-config-iscsi.yaml
+  - certificate-wildcard.yaml
   - configmap-html-tv-app-profile.yaml
   - configmap-plex-log-tail.yaml
   - helmrelease.yaml
