@@ -21,25 +21,27 @@ plex/app/
 └── cronjob-optimize-retry.yaml
 ```
 
-## HTML TV App profile override — RE-IMPLEMENTED 2026-06-07
+## HTML TV App profile override — RE-IMPLEMENTED 2026-06-08
 
-The custom `HTML TV App.xml` (ConfigMap + subPath mount) works around a PMS
-1.43.x bug: the v2 webOS Plex shell loops with error **`H4`** when PMS
-ignores the client's `audioCodec=ac3 replace=true` augmentation. The profile
-promotes **ac3** in the HLS target to break the loop.
+The custom `HTML TV App.xml` (ConfigMap + subPath mount) **overwrites** the
+bundled `Resources/Profiles/HTML TV App.xml` by Client name (custom profiles
+in `<config>/.../Profiles/` fully **replace** the built-in — not a merge; the
+built-in has no DirectPlayProfiles, so nothing is lost). It works around a PMS
+1.43.x bug: the v2 webOS Plex shell loops with error **`H4`** when PMS ignores
+the client's `audioCodec=ac3 replace=true` augmentation and serves aac. The
+profile forces **ac3** on the HLS/mpegts target to break the loop.
 
 History:
 - 2026-05-17/18: added (ac3-first) + transcode cap raised to 4K/10-bit.
 - 2026-06-06 (#198): **removed** — the `audioCodec=ac3`-**only** HLS target
-  force-transcoded mp3-audio content for Tim Noens's old LG app
-  (`Cannot direct stream audio stream due to codec mp3 when profile only
-  allows ac3` → full transcode + burned-sub down to 412x320).
-- 2026-06-07: **re-added** — the `H4` loop returned (Tim, playing "'Allo
-  'Allo!"). Per the #198 tombstone, the HLS target is now
-  `audioCodec="ac3,mp3,aac"`: **ac3 first** (non-listed sources transcode
-  to it → kills the H4 loop) with **mp3,aac listed** so those direct-stream
-  instead of force-transcoding (avoids the original regression). Newer LG
-  apps use the `Generic` profile and never touch this.
+  force-transcoded mp3 content for Tim Noens's old LG app (→ 412x320).
+- 2026-06-07 (#209): **re-added** as `audioCodec="ac3,mp3,aac"` — but PMS
+  still picked **aac** from the combined list (verified by replaying Tim's
+  decision on "'Allo 'Allo!", an AV1+mp3 file), so the H4 loop persisted.
+- 2026-06-08: **corrected** — a **separate `ac3` VideoProfile entry FIRST**
+  (then aac) actually forces ac3, matching the original working structure. A
+  combined codec list does not. mp3 is intentionally **not** listed (old
+  webOS can't play mp3-in-mpegts, so it transcodes to ac3 anyway).
 
 History: memory `reference_pms_html_tv_app_ac3_override.md`.
 
