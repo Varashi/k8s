@@ -18,6 +18,15 @@ spec:
   values:
     controllers:
       plex:
+        # Auto-roll the PMS pod when these subPath-mounted configMaps change.
+        # subPath mounts are frozen at pod creation, so a ConfigMap content
+        # edit is otherwise a silent no-op (bit us on the HTML TV App profile
+        # 2026-06-08 — needed a manual rollout restart). Scoped, NOT
+        # `reloader.stakater.com/auto: true`, so cert-manager renewals of the
+        # plex-wildcard-tls secret don't needlessly roll PMS — the in-pod
+        # clientfix hot-reloads that cert (CLIENTFIX_TLS_RELOAD).
+        annotations:
+          configmap.reloader.stakater.com/reload: "plex-html-tv-app-profile,plex-log-tail"
         replicas: 1
         # RWO iSCSI /config — RollingUpdate would deadlock (surge pod can't
         # attach the volume held by the old pod). Recreate: old terminates +
