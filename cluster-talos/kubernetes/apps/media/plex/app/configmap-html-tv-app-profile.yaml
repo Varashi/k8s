@@ -3,25 +3,23 @@
 #
 # OVERWRITES the bundled Resources/Profiles/HTML TV App.xml by Client name
 # (custom profiles in <config>/.../Profiles/ fully REPLACE the built-in of the
-# same name — not a merge). The built-in has no DirectPlayProfiles, only aac
-# TranscodeTargets + a 1080p/8-bit cap, so this replacement loses nothing — it
-# just promotes ac3 on HLS and raises the cap.
+# same name — not a merge). It keeps the bundled aac HLS target and adds a
+# 4K/10-bit transcode cap.
 #
-# Why: PMS 1.43.x ignores the v2 webOS shell's `audioCodec=ac3 replace=true`
-# augmentation and serves aac instead → the shell loops with error "H4". The
-# fix is to make the profile itself force ac3 on the HLS/mpegts target via a
-# SEPARATE ac3 VideoProfile entry FIRST (a combined audioCodec="ac3,mp3,aac"
-# list does NOT work — PMS still picks aac out of it; verified by replaying
-# Tim's decision 2026-06-08). aac kept as a second entry for fallback.
+# AUDIO = aac-FIRST (ac3 second, fallback). The ac3-first theory ("webOS v2
+# needs ac3, PMS wrongly serves aac → H4 loop") is NOT supported by playback
+# evidence: Tautulli shows 5/5 successful LG sessions on this exact device
+# (LG 49UF640V-ZA), ALL transcoded to AAC, incl. 3 mp3->aac at 426x320 — and
+# ZERO successful sessions with ac3. The ac3-first profile (added 2026-05-17)
+# coincided with the LG going dark; the 2026-06-08 ac3-first re-add (#211)
+# force-transcoded Tim's mp3 'Allo 'Allo to ac3 -> 414x320 -> error/H4. So aac
+# is the proven-good audio for this client; ac3 kept only as a 2nd fallback.
+# (PMS picks the FIRST matching transcode target, so order = aac wins.)
 #
-# mp3 deliberately NOT listed: old webOS can't play mp3-in-mpegts, so mp3
-# audio must transcode anyway (→ ac3, the first target). Newer LG apps use
-# the Generic profile and never touch this.
-#
-# History: added 2026-05-17/18 (ac3-first + 4K/10-bit cap); removed #198
-# 2026-06-06 (ac3-only force-transcoded mp3 → 412x320); re-added #209
-# 2026-06-07 as ac3,mp3,aac (didn't force ac3 — H4 loop persisted);
-# corrected 2026-06-08 to separate ac3-first + aac.
+# History: added 2026-05-17/18 (ac3-first + 4K/10-bit cap; no LG success
+# after); removed #198 2026-06-06; re-added #209 2026-06-07 (ac3,mp3,aac);
+# #211 2026-06-08 separate ac3-first (broke Tim, verified via Tautulli);
+# 2026-06-08 REORDERED to aac-first per the playback evidence above.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -32,10 +30,10 @@ data:
     <?xml version="1.0" encoding="utf-8"?>
     <Client name="HTML TV App">
       <TranscodeTargets>
-        <VideoProfile protocol="hls" container="mpegts" videoCodec="h264" audioCodec="ac3" context="streaming">
+        <VideoProfile protocol="hls" container="mpegts" videoCodec="h264" audioCodec="aac" context="streaming">
           <Setting name="BreakNonKeyframes" value="true" />
         </VideoProfile>
-        <VideoProfile protocol="hls" container="mpegts" videoCodec="h264" audioCodec="aac" context="streaming">
+        <VideoProfile protocol="hls" container="mpegts" videoCodec="h264" audioCodec="ac3" context="streaming">
           <Setting name="BreakNonKeyframes" value="true" />
         </VideoProfile>
         <VideoProfile protocol="dash" container="mp4" videoCodec="h264" audioCodec="aac" context="streaming" />
