@@ -210,7 +210,13 @@ spec:
               # transcoded-HEVC crash (VAAPI was defaulting to Rext for p010,
               # undecodable by Apple VideoToolbox). Released image; was the
               # pre-release sha-5d8cf64 here, now aligned with prod.
-              tag: v1.13.0
+              # pr201-rc1 (2026-06-08, ad-hoc layered image): v1.13.0 base +
+              # PR #201 agent binary swapped in via `crane append`. Validates
+              # the scaleplex#200 tenBitOutput fix (filter-graph-modeled
+              # last-format= detection) on the 4K HDR HW HEVC + sub-burn
+              # shape that broke v1.13.0 in prod. Pre-release; re-pin to
+              # v1.13.1 once released.
+              tag: pr201-rc1
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
