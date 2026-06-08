@@ -1,14 +1,27 @@
-# Custom "HTML TV App" client profile for old-webOS LG (Tim Noens).
-# RE-IMPLEMENTED 2026-06-07 after the 2026-06-06 removal (#198) reopened the
-# webOS "H4" loop (PMS 1.43.x ignores the v2 webOS shell's audioCodec=ac3
-# replace=true augmentation → playback loops with error H4).
+# Custom "HTML TV App" client profile for old-webOS LG (Tim Noens, user
+# noen66 — LG 49UF640V-ZA, webOS 2.1.0, Plex for LG 4.29.9).
 #
-# Fix per the #198 tombstone: promote ac3 (kills the H4 loop) BUT also allow
-# mp3,aac in the HLS target so mp3-audio content still DIRECT-STREAMS instead
-# of being force-transcoded (that force-transcode + 412x320 sub-burn was why
-# the ac3-ONLY version was removed). ac3 first = the codec non-listed sources
-# (eac3/dts/…) transcode to; mp3/aac listed = direct-stream fall-through.
-# Newer LG apps use the Generic profile and never touch this.
+# OVERWRITES the bundled Resources/Profiles/HTML TV App.xml by Client name
+# (custom profiles in <config>/.../Profiles/ fully REPLACE the built-in of the
+# same name — not a merge). The built-in has no DirectPlayProfiles, only aac
+# TranscodeTargets + a 1080p/8-bit cap, so this replacement loses nothing — it
+# just promotes ac3 on HLS and raises the cap.
+#
+# Why: PMS 1.43.x ignores the v2 webOS shell's `audioCodec=ac3 replace=true`
+# augmentation and serves aac instead → the shell loops with error "H4". The
+# fix is to make the profile itself force ac3 on the HLS/mpegts target via a
+# SEPARATE ac3 VideoProfile entry FIRST (a combined audioCodec="ac3,mp3,aac"
+# list does NOT work — PMS still picks aac out of it; verified by replaying
+# Tim's decision 2026-06-08). aac kept as a second entry for fallback.
+#
+# mp3 deliberately NOT listed: old webOS can't play mp3-in-mpegts, so mp3
+# audio must transcode anyway (→ ac3, the first target). Newer LG apps use
+# the Generic profile and never touch this.
+#
+# History: added 2026-05-17/18 (ac3-first + 4K/10-bit cap); removed #198
+# 2026-06-06 (ac3-only force-transcoded mp3 → 412x320); re-added #209
+# 2026-06-07 as ac3,mp3,aac (didn't force ac3 — H4 loop persisted);
+# corrected 2026-06-08 to separate ac3-first + aac.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -18,16 +31,11 @@ data:
   HTML_TV_App.xml: |
     <?xml version="1.0" encoding="utf-8"?>
     <Client name="HTML TV App">
-      <!--
-       Plex Inc. (original) + Frank: ac3-first H4-loop workaround with
-       mp3,aac direct-stream fall-through, 4K/10-bit transcode cap.
-       2026-05-17: promote ac3 over aac for HLS+mpegts (PMS 1.43.x H4 loop).
-       2026-05-18: raise transcode cap 1080p/8-bit -> 4K/10-bit (sub-burn).
-       2026-06-06: removed (#198) — ac3-only force-transcoded mp3.
-       2026-06-07: re-added with ac3,mp3,aac (H4 loop returned; keep mp3 DS).
-      -->
       <TranscodeTargets>
-        <VideoProfile protocol="hls" container="mpegts" videoCodec="h264" audioCodec="ac3,mp3,aac" context="streaming">
+        <VideoProfile protocol="hls" container="mpegts" videoCodec="h264" audioCodec="ac3" context="streaming">
+          <Setting name="BreakNonKeyframes" value="true" />
+        </VideoProfile>
+        <VideoProfile protocol="hls" container="mpegts" videoCodec="h264" audioCodec="aac" context="streaming">
           <Setting name="BreakNonKeyframes" value="true" />
         </VideoProfile>
         <VideoProfile protocol="dash" container="mp4" videoCodec="h264" audioCodec="aac" context="streaming" />
