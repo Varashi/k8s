@@ -209,7 +209,17 @@ spec:
               # transcoded-HEVC crash (VAAPI was emitting Rext for p010,
               # undecodable by Apple VideoToolbox). plex-test validated
               # (ffprobe Main 10; live Android 4K HEVC). =sha-308cfe2.
-              tag: v1.13.0
+              # REVERTED to v1.12.0 2026-06-08: v1.13.0 Main10 pin fires on
+              # the upstream `scale_vaapi=format=p010` token even when the
+              # tonemap_opencl→nv12 chain converts to 8-bit before the
+              # encoder; iHD hevc_vaapi can't satisfy main10 on nv12 →
+              # "No usable encoding profile found", ffmpeg exit 218. Breaks
+              # every 4K HDR title transcoded with HW HEVC encode + HW
+              # sub-burn. PMS gives up after 3 retries, redecides libx264,
+              # client hits Shaka s3015 codec mismatch. Reopens ATV-8.45
+              # transcoded-HEVC crash until v1.13.1 lands the
+              # tonemap-aware tenBitOutput fix. =sha-7667f58.
+              tag: v1.12.0
             env:
               TZ: Europe/Brussels
               # Device retarget now in the fork (0116); pin the worker GPU.
