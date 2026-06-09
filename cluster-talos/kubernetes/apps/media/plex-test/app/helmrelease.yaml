@@ -219,7 +219,14 @@ spec:
               # profile found" on iHD). Live-validated on plex-test 4K HDR
               # PQ Boys S5E1 via the ad-hoc pr201-rc1 layered image; merged
               # PR #201 → release-please v1.14.1. =sha-5d4a712.
-              tag: v1.13.1
+              # v1.13.2 (scaleplex v1.14.2, 2026-06-09): composeBurn now
+              # preserves 10-bit on HDR-passthrough sub-burn (HDR source +
+              # Plex sent no tonemap + HEVC encoder) — the #200 Main10 pin
+              # was being contradicted by composeBurn's nv12 downconvert,
+              # same exit-218 symptom on a different shape. Hit live on
+              # LG webOS Plex S5E1; qa_matrix --quick 60/60 PASS on
+              # plex-test (#204, PR #203). =sha-2b9e195.
+              tag: v1.13.2
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
