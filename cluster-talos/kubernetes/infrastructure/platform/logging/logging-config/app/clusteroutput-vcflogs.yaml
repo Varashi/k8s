@@ -25,7 +25,7 @@ spec:
     # Aria appliance ships a self-signed cert; we accept it on the
     # internal network. Flip to true once the cert gets a real CA.
     ssl_verify: false
-    host: "skw-vcflogs.${SECRET_DOMAIN}"
+    host: "skw-vcflogs01.${SECRET_DOMAIN}"
     port: 9543
     # CFAPI's agent_id is an arbitrary tag the receiver records
     # against each event — not auth, just an identifier so vcflogs
