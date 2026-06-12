@@ -29,6 +29,28 @@ The sibling [`octodns/`](../octodns/) CronJob expects:
 Bootstrap script: `/tmp/netbox_create_dns_zone.py` (uses BW SM
 `SECRET_NETBOX_ADMIN_TOKEN`). Rerun after a full NetBox rebuild.
 
+## API tokens (v2 / peppered)
+
+NetBox 4.4+ supports v2 API tokens: stored as an HMAC digest peppered with
+`API_TOKEN_PEPPERS` (never plaintext at rest). Enabled here via secret key
+`api_token_peppers` (BW SM `SECRET_NETBOX_API_TOKEN_PEPPERS`, JSON
+`{"<id>":"<pepper>"}`) wired in `app/externalsecret.yaml`; the chart's
+projected `secrets` volume already mounts it and `configuration.py` reads it.
+Peppers load at Django startup — restart NetBox after changing them.
+
+`SECRET_NETBOX_ADMIN_TOKEN` (consumed by netbox-lb-sync + octodns) is a **v2**
+token: client string `nbt_<key>.<secret>`, sent as `Authorization: Bearer …`
+(not the legacy `Token …` scheme). pynetbox ≥7.5 auto-detects the `nbt_`
+prefix; the lb-sync curl script switches scheme on the prefix.
+
+Recreate after a full rebuild (peppers must already be configured):
+```
+POST /api/users/tokens/  {"version":2,"user":<admin id>}   # via Django shell
+# capture t.token (=secret) + t.key, store nbt_<key>.<secret> in BW SM
+```
+The chart-bootstrapped superuser token (`SECRET_NETBOX_SUPERUSER_API_TOKEN`)
+remains **v1** (unused break-glass; chart bootstrap doesn't emit v2).
+
 ## Other notes
 
 - Backing store: external CNPG (`netbox-pg-rw`); bundled postgres/valkey
