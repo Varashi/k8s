@@ -27,9 +27,13 @@ data:
     TAG_NAME="${TAG_NAME:-k8s-lb}"
     MASK="${MASK:-24}"
 
+    # v2 tokens (prefix nbt_) use Bearer; legacy v1 tokens use Token
+    AUTH_SCHEME="Token"
+    [[ "${NETBOX_API_TOKEN}" == nbt_* ]] && AUTH_SCHEME="Bearer"
+
     nb() {
       curl -sS --fail-with-body \
-        -H "Authorization: Token ${NETBOX_API_TOKEN}" \
+        -H "Authorization: ${AUTH_SCHEME} ${NETBOX_API_TOKEN}" \
         -H "Content-Type: application/json" \
         -H "Accept: application/json" \
         "$@"
