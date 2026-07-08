@@ -49,7 +49,12 @@ spec:
                 - /bin/sh
                 - -c
                 - |
-                  set -eu
+                  # NOTE: intentionally NO `set -e`. rsync of a LIVE /config
+                  # routinely returns non-zero for benign reasons (files that
+                  # vanish mid-copy, a single unreadable runtime file); aborting
+                  # on those skipped touch + retention, so partial snapshots
+                  # piled up unpruned. We capture rsync's rc and decide instead.
+                  set -u
                   DATE=$$(date +%Y-%m-%d)
                   DEST=/backup/full/$$DATE
                   mkdir -p "$$DEST"
@@ -66,7 +71,14 @@ spec:
                   fi
 
                   PMS="Library/Application Support/Plex Media Server"
+                  # plexmediaserver.pid is a live runtime file. Since the
+                  # 2026-06-13 iSCSI remount its dirent throws readlink_stat
+                  # errno 117 (EUCLEAN) on the ext4 /config, which made rsync
+                  # exit 23 ("partial transfer due to error") every single run —
+                  # the daily failure that stalled retention. Exclude it; a pid
+                  # file is never wanted in a backup regardless.
                   rsync -a --delete --stats $$LINK_OPT \
+                    --exclude="$$PMS/plexmediaserver.pid" \
                     --exclude="$$PMS/Cache/" \
                     --exclude="$$PMS/Crash Reports/" \
                     --exclude="$$PMS/Diagnostics/" \
@@ -79,19 +91,40 @@ spec:
                     --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.blobs.db-shm" \
                     --exclude="$$PMS/Plug-in Support/Databases/com.plexapp.plugins.library.blobs.db-wal" \
                     /config/ "$$DEST/"
+                  RC=$$?
 
-                  # rsync -a stamps "$$DEST" with /config's mtime, which the
-                  # iSCSI migration (2026-05-08) preserved as an old date. That
-                  # made every fresh snapshot look >14 days old, so the
-                  # retention find below deleted it in the SAME run — the full
-                  # backup silently self-destructed daily. Reset to now so the
-                  # snapshot is dated by when it was actually taken.
-                  touch "$$DEST"
+                  # rsync 24 = source files vanished mid-copy (benign on a live
+                  # /config): the snapshot is otherwise complete, treat as success.
+                  if [ "$$RC" -eq 24 ]; then
+                    echo "rsync: vanished-files (24) tolerated"
+                    RC=0
+                  fi
 
-                  # Retention: delete dated dirs older than 14 days
-                  find /backup/full -maxdepth 1 -type d \
-                    -name '20[0-9][0-9]-[01][0-9]-[0-9][0-9]' \
-                    -mtime +14 -print -exec rm -rf {} +
+                  if [ "$$RC" -ne 0 ]; then
+                    # Hard failure: drop the partial snapshot so it can't
+                    # masquerade as a good one or count toward retention.
+                    echo "rsync failed (rc=$$RC); discarding partial snapshot $$DEST"
+                    rm -rf "$$DEST"
+                  else
+                    # rsync -a stamps "$$DEST" with /config's (frozen) source
+                    # mtime; reset to now so the dir mtime reflects the run.
+                    touch "$$DEST"
+                  fi
+
+                  # Retention: keep the 14 most-recent dated snapshots, prune the
+                  # rest. Keyed on the YYYY-MM-DD dir NAME (via sort), NOT mtime:
+                  # rsync stamps every dir with /config's frozen source mtime, so
+                  # an mtime-based `find -mtime +14` saw the whole history as
+                  # "expired" and would delete all of it in one sweep.
+                  ls -1d /backup/full/20[0-9][0-9]-[01][0-9]-[0-9][0-9] 2>/dev/null \
+                    | sort -r | tail -n +15 | while IFS= read -r d; do
+                      echo "retention: removing $$(basename "$$d")"
+                      rm -rf "$$d"
+                    done
+
+                  # Surface real failures to the Job status (alerting) while
+                  # still having run retention above.
+                  exit "$$RC"
               volumeMounts:
                 - name: config-pms
                   mountPath: /config
