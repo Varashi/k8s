@@ -44,7 +44,7 @@ spec:
           init-config:
             image: &image
               repository: docker.io/owncloud/ocis
-              tag: 8.0.5
+              tag: 8.1.0
             command: ["/bin/sh", "-c"]
             args:
               - |
