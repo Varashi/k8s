@@ -339,7 +339,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: vsphere-syncer
-          image: registry.k8s.io/csi-vsphere/syncer:v3.7.1
+          image: registry.k8s.io/csi-vsphere/syncer:v3.7.3
           args:
             - "--leader-election"
             - "--leader-election-lease-duration=30s"
