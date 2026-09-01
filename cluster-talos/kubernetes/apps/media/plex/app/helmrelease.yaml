@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 5.0.1
+      version: 5.1.0
       interval: 30m
       sourceRef:
         kind: HelmRepository
@@ -46,7 +46,7 @@ spec:
           app:
             image:
               repository: ghcr.io/linuxserver/plex
-              tag: "1.43.2.10687-563d026ea-ls307"
+              tag: "1.43.3.10896-cb3ebc72d-ls322"
             env:
               TZ: Europe/Brussels
               VERSION: docker
@@ -219,7 +219,7 @@ spec:
               # client hits Shaka s3015 codec mismatch. Reopens ATV-8.45
               # transcoded-HEVC crash until v1.13.1 lands the
               # tonemap-aware tenBitOutput fix. =sha-7667f58.
-              tag: v1.12.0
+              tag: v1.13.2
             env:
               TZ: Europe/Brussels
               # Device retarget now in the fork (0116); pin the worker GPU.
