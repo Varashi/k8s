@@ -36,7 +36,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 5.0.1
+      version: 5.1.0
       interval: 30m
       sourceRef:
         kind: HelmRepository
@@ -101,7 +101,7 @@ spec:
           app:
             image:
               repository: ghcr.io/linuxserver/plex
-              tag: 1.43.2.10687-563d026ea-ls308
+              tag: 1.43.3.10896-cb3ebc72d-ls322
             env:
               TZ: Europe/Brussels
               VERSION: docker
