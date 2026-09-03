@@ -17,7 +17,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 5.0.1
+      version: 5.1.0
       interval: 30m
       sourceRef:
         kind: HelmRepository
@@ -30,7 +30,7 @@ spec:
           app:
             image:
               repository: onerahmet/openai-whisper-asr-webservice
-              tag: v1.9.1@sha256:03b402335881cdab2e4939b24620809df8d6ceec3bf2712217d41c8761a0f5d4
+              tag: v1.10.0@sha256:0616c3d5fc6924e9d59aa8a7a3a944fbe8f3a5d701e5fc1fa2ce5b933dfecb73
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
