@@ -60,7 +60,7 @@ spec:
           containers:
             - name: scale
               # renovate: datasource=docker depName=alpine/k8s versioning=docker
-              image: alpine/k8s:1.36.1
+              image: alpine/k8s:1.37.0
               imagePullPolicy: IfNotPresent
               command:
                 - kubectl
@@ -102,7 +102,7 @@ spec:
           containers:
             - name: scale
               # renovate: datasource=docker depName=alpine/k8s versioning=docker
-              image: alpine/k8s:1.36.1
+              image: alpine/k8s:1.37.0
               imagePullPolicy: IfNotPresent
               command:
                 - kubectl
