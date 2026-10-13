@@ -1,5 +1,5 @@
 # renovate: datasource=docker depName=docker.io/library/python
-ARG PYTHON_VERSION=3.14-slim
+ARG PYTHON_VERSION=3.15-slim
 FROM docker.io/library/python:${PYTHON_VERSION}
 
 # renovate: datasource=pypi depName=octodns
