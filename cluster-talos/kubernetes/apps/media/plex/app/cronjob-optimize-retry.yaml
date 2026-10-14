@@ -149,7 +149,7 @@ spec:
             runAsGroup: 0
           containers:
             - name: retry
-              image: python:3.14-slim
+              image: python:3.15-slim
               env:
                 - name: PLEX_URL
                   value: http://plex:32400
