@@ -10,7 +10,7 @@ spec:
     # `tuppr.home-operations.com/schematic` — CP/worker nodes get the CPU-only
     # schematic (vmtoolsd-guest-agent), GPU workers get the i915/iscsi-tools
     # schematic. Annotations applied out-of-band.
-    # renovate: datasource=docker depName=ghcr.io/siderolabs/installer
+    # renovate: datasource=docker depName=ghcr.io/siderolabs/talos
     version: v1.13.4
   policy:
     rebootMode: default
