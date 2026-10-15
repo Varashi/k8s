@@ -251,6 +251,12 @@ data:
         return out
 
 
+    def _n(v):
+        """Thousands-separated int, or '?' when the counter is absent
+        (e.g. vmxnet3 NICs lack rx_discards/rx_brb_discard)."""
+        return f"{v:,}" if isinstance(v, (int, float)) else "?"
+
+
     def render(current, deltas, alerts, since):
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         L = [f"# Network Health — {today}", "",
@@ -271,10 +277,10 @@ data:
                 if not isinstance(m, dict):
                     continue
                 L.append(f"| {sw.split('.')[0]} | {port} | "
-                         f"{m.get('rx-fcs-error', '?'):,} | "
-                         f"{m.get('rx-pause', '?'):,} | "
-                         f"{m.get('tx-pause', '?'):,} | "
-                         f"{m.get('tx-drop-packet', '?'):,} |")
+                         f"{_n(m.get('rx-fcs-error'))} | "
+                         f"{_n(m.get('rx-pause'))} | "
+                         f"{_n(m.get('tx-pause'))} | "
+                         f"{_n(m.get('tx-drop-packet'))} |")
         L.append("")
 
         L += ["## ESXi pNICs (deltas)", "",
@@ -287,9 +293,9 @@ data:
                 if not isinstance(m, dict):
                     continue
                 L.append(f"| {esxi.split('.')[0]} | {nic} | "
-                         f"{m.get('rx_dropped', '?'):,} | "
-                         f"{m.get('rx_errors', '?'):,} | "
-                         f"{m.get('rx_packets', '?'):,} |")
+                         f"{_n(m.get('rx_dropped'))} | "
+                         f"{_n(m.get('rx_errors'))} | "
+                         f"{_n(m.get('rx_packets'))} |")
         L.append("")
 
         L += ["## TrueNAS NICs (deltas)", "",
@@ -299,9 +305,9 @@ data:
             if not isinstance(m, dict):
                 continue
             L.append(f"| {nic} | "
-                     f"{m.get('rx_discards', '?'):,} | "
-                     f"{m.get('rx_brb_discard', '?'):,} | "
-                     f"{m.get('rx_csum_offload_errors', '?'):,} |")
+                     f"{_n(m.get('rx_discards'))} | "
+                     f"{_n(m.get('rx_brb_discard'))} | "
+                     f"{_n(m.get('rx_csum_offload_errors'))} |")
         L.append("")
 
         L += ["## OPNsense interfaces (deltas)", "",
@@ -311,10 +317,10 @@ data:
             if not isinstance(m, dict):
                 continue
             L.append(f"| {nic} | "
-                     f"{m.get('rx_errors', '?'):,} | "
-                     f"{m.get('rx_dropped', '?'):,} | "
-                     f"{m.get('tx_errors', '?'):,} | "
-                     f"{m.get('collisions', '?'):,} |")
+                     f"{_n(m.get('rx_errors'))} | "
+                     f"{_n(m.get('rx_dropped'))} | "
+                     f"{_n(m.get('tx_errors'))} | "
+                     f"{_n(m.get('collisions'))} |")
         L.append("")
         return "\n".join(L)
 
