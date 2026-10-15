@@ -5,7 +5,8 @@
   "prConcurrentLimit": 0,
   "branchConcurrentLimit": 0,
   "ignorePaths": [
-    "**/vars/cluster-secrets.yaml"
+    "**/vars/cluster-secrets.yaml",
+    "cluster-talos/kubernetes/bootstrap/flux-system/gotk-components.yaml"
   ],
   "kubernetes": {
     "managerFilePatterns": ["/^cluster-talos/.+\\.ya?ml$/"],
@@ -48,6 +49,15 @@
     },
     {
       "customType": "regex",
+      "description": "flux-operator distribution manifests artifact (sets the actual Flux controller version)",
+      "managerFilePatterns": ["/^cluster-talos/kubernetes/infrastructure/flux-system/flux-instance/app/helmrelease\\.yaml$/"],
+      "matchStrings": [
+        "artifact:\\s*oci://(?<depName>ghcr\\.io/controlplaneio-fluxcd/flux-operator-manifests):(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
       "description": "Pinned ARG versions in custom image Dockerfiles",
       "managerFilePatterns": [
         "/^cluster-talos/kubernetes/apps/.+/image/Dockerfile$/"
@@ -76,6 +86,12 @@
     {
       "matchManagers": ["flux"],
       "groupName": "helm charts",
+      "automerge": false
+    },
+    {
+      "description": "Flux operator + instance charts + distribution manifests move together, out of the big helm-charts group",
+      "matchPackageNames": ["ghcr.io/controlplaneio-fluxcd/**"],
+      "groupName": "flux operator",
       "automerge": false
     },
     {
