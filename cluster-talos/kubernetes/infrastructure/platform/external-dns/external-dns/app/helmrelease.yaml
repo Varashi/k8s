@@ -14,6 +14,11 @@ spec:
         name: external-dns
         namespace: flux-system
   values:
+    # external-dns >=0.22 defaults to the GA external-dns.kubernetes.io/ prefix with
+    # no fallback; our manifests still use the alpha prefix. Without this, sync
+    # policy deletes every record on upgrade.
+    annotationPrefix: external-dns.alpha.kubernetes.io/
+
     provider:
       name: rfc2136
 
