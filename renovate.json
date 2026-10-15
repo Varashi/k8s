@@ -95,20 +95,27 @@
       "automerge": false
     },
     {
+      "description": "Talos version pins (talm values + tuppr TalosUpgrade). ghcr.io/siderolabs/installer is no longer published from Talos 1.14, so tuppr tracks ghcr.io/siderolabs/talos",
       "matchDepNames": [
         "siderolabs/talos",
-        "ghcr.io/siderolabs/installer",
-        "cilium"
+        "ghcr.io/siderolabs/talos"
       ],
       "matchFileNames": ["cluster-talos/**"],
       "groupName": "cluster-talos infra",
       "automerge": false
     },
     {
+      "description": "Cilium (HelmRelease + bootstrap Makefile) on its own: upgrades need Gateway API CRD prereqs and per-minor stepping, never bundled with a Talos roll",
+      "matchDepNames": ["cilium"],
+      "matchFileNames": ["cluster-talos/**"],
+      "groupName": "cilium",
+      "automerge": false
+    },
+    {
       "description": "Cluster upgrade PRs must always come back, even after manual close",
       "matchDepNames": [
         "siderolabs/talos",
-        "ghcr.io/siderolabs/installer",
+        "ghcr.io/siderolabs/talos",
         "ghcr.io/siderolabs/kubelet"
       ],
       "recreateWhen": "always"
