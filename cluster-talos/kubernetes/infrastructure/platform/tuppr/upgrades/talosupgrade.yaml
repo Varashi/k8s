@@ -11,6 +11,21 @@ spec:
     # schematic (vmtoolsd-guest-agent), GPU workers get the i915/iscsi-tools
     # schematic. Annotations applied out-of-band.
     # renovate: datasource=docker depName=ghcr.io/siderolabs/talos
-    version: v1.13.4
+    version: v1.14.2
+    # Pull each node's installer before cordoning the first node.
+    prePull: true
   policy:
     rebootMode: default
+    # 11 CNPG primaries can sit on one worker → many switchovers per drain.
+    drainTimeout: 15m
+  healthChecks:
+    - apiVersion: v1
+      kind: Node
+      description: all nodes Ready
+      expr: object.status.conditions.exists(c, c.type == "Ready" && c.status == "True")
+      timeout: 10m
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      description: every CNPG cluster has all instances ready
+      expr: has(object.status.readyInstances) && object.status.readyInstances == object.spec.instances
+      timeout: 10m

@@ -8,13 +8,17 @@ cluster:
   # talm apply strips unknown fields — if omitted, Talos defaults to its bundled
   # kubelet version (v1.35.0 for Talos v1.13), silently downgrading nodes.
   kubernetesVersion: v1.36.1
+  # etcd image pin. Talos 1.14 defaults to etcd 3.7; pinned to the live 3.6
+  # for the 1.14 roll so CP nodes stay `talosctl rollback`-able. Bump to 3.7
+  # as a separate step once 1.14 is settled.
+  etcdImage: registry.k8s.io/etcd:v3.6.12
 
 # Installer image — schematic embeds vmtoolsd-guest-agent
 # Schematic: 903b2da78f99adef03cbbd4df6714563823f63218508800751560d3bc3557e40
 # Regenerate at: https://factory.talos.dev (POST /schematics with officialExtensions=[siderolabs/vmtoolsd-guest-agent])
 installer:
   image: factory.talos.dev/installer/903b2da78f99adef03cbbd4df6714563823f63218508800751560d3bc3557e40
-  version: v1.13.4
+  version: v1.14.2
   disk: /dev/sda
 
 machine:
