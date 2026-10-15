@@ -43,7 +43,7 @@ spec:
                   topologyKey: kubernetes.io/hostname
           containers:
             - name: trigger
-              image: alpine:3.23
+              image: alpine:3.24
               command:
                 - /bin/sh
                 - -c
