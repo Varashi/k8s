@@ -70,7 +70,6 @@ spec:
         type: LoadBalancer
         annotations:
           io.cilium/lb-ipam-ips: "172.16.4.105"
-          external-dns.alpha.kubernetes.io/hostname: smtp.${SECRET_DOMAIN}
           external-dns.kubernetes.io/hostname: smtp.${SECRET_DOMAIN}
         ports:
           smtp:

@@ -11,7 +11,7 @@ data:
   # entry, preferring the one carrying an external-dns hostname annotation):
   #   - address   = <ip>/24  (matches node-entry convention in SKW-K8S prefix)
   #   - status    = active
-  #   - dns_name  = first hostname from external-dns.alpha.kubernetes.io/hostname
+  #   - dns_name  = first hostname from external-dns.kubernetes.io/hostname
   #                 (skipped when annotation absent/empty)
   #   - description = "<app.kubernetes.io/name | svc name> load balancer"
   #   - tag       = k8s-lb  (auto-created once if missing)
@@ -60,7 +60,7 @@ data:
         | {
             ip: .status.loadBalancer.ingress[0].ip,
             app: (.metadata.labels["app.kubernetes.io/name"] // .metadata.name),
-            dns: (((.metadata.annotations // {})["external-dns.kubernetes.io/hostname"] // (.metadata.annotations // {})["external-dns.alpha.kubernetes.io/hostname"] // "")
+            dns: (((.metadata.annotations // {})["external-dns.kubernetes.io/hostname"] // "")
                    | split(",") | .[0] // "" | gsub("^\\s+|\\s+$"; ""))
           }
       ]

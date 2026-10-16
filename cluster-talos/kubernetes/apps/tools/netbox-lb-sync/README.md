@@ -31,7 +31,7 @@ Per distinct LB IP:
 |----------------|---------------------------------------------------------------------|
 | `address`      | `status.loadBalancer.ingress[0].ip` + `/24` (SKW-K8S mask)          |
 | `status`       | `active`                                                            |
-| `dns_name`     | first hostname from `external-dns.alpha.kubernetes.io/hostname` (comma-split); empty when annotation absent |
+| `dns_name`     | first hostname from `external-dns.kubernetes.io/hostname` (comma-split); empty when annotation absent |
 | `description`  | `<app.kubernetes.io/name \| svc name> load balancer`                |
 | `tags`         | `k8s-lb` (auto-created on first run)                                |
 

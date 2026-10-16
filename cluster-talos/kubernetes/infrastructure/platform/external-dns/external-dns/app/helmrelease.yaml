@@ -23,10 +23,7 @@ spec:
 
     txtOwnerId: k8s-talos
 
-    # TEMPORARY (#264 step 2/3): upsert-only while switching to the GA annotation
-    # prefix, so a missed annotation can only add records, never delete. Step 3
-    # restores sync.
-    policy: upsert-only
+    policy: sync
 
     extraArgs:
       # Ignore resources explicitly marked public; those belong to

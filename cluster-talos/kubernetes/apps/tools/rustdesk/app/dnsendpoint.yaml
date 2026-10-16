@@ -4,7 +4,6 @@ metadata:
   name: rustdesk-cloudflare
   namespace: rustdesk
   annotations:
-    external-dns.alpha.kubernetes.io/public: "true"
     external-dns.kubernetes.io/public: "true"
 spec:
   endpoints:
