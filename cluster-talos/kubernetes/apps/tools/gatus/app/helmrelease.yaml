@@ -141,7 +141,7 @@ spec:
                   - "[STATUS] < 500"
               - name: plex-web
                 group: media
-                url: http://plex-web.${SECRET_DOMAIN}:32400/identity
+                url: http://plex-svc.${SECRET_DOMAIN}:32400/identity
                 interval: 60s
                 conditions:
                   - "[STATUS] == 200"
