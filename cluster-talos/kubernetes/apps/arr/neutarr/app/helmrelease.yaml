@@ -44,7 +44,7 @@ spec:
           app:
             image:
               repository: iampuid0/neutarr
-              tag: latest
+              tag: 1.7.0@sha256:fe4667ffc023ad5dbb232abb26d62e64aecd0c2c092ea9fee21d928a3f96dcde
               pullPolicy: Always
             env:
               TZ: Europe/Brussels

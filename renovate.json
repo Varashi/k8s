@@ -77,6 +77,15 @@
     },
     {
       "customType": "regex",
+      "description": "cloudflared image pinned via ClusterTunnel deployPatch (operator default is :latest)",
+      "managerFilePatterns": ["/^cluster-talos/kubernetes/infrastructure/platform/cloudflare-operator-system/cloudflare-tunnel/app/clustertunnel\\.yaml$/"],
+      "matchStrings": [
+        "\"image\":\"(?<depName>docker\\.io/cloudflare/cloudflared):(?<currentValue>[^@\"]+)@(?<currentDigest>sha256:[a-f0-9]+)\""
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
       "description": "Pinned ARG versions in custom image Dockerfiles",
       "managerFilePatterns": [
         "/^cluster-talos/kubernetes/apps/.+/image/Dockerfile$/"

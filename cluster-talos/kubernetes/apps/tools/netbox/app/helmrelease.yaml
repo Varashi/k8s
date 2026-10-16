@@ -31,7 +31,8 @@ spec:
     image:
       registry: ghcr.io
       repository: varashi/netbox-plus
-      tag: latest
+      # Own image: Renovate proposes each new :latest build as a digest PR.
+      tag: latest@sha256:5ea541b886ce81876ba7ffa69f5f49fc810df3e92f1231f5bc0b50d2b74be07d
       pullPolicy: Always
 
     # Strip CPU limit — gunicorn workers spike sub-second to 750m default and
