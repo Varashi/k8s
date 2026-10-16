@@ -46,7 +46,7 @@ spec:
           app:
             image:
               repository: redis
-              tag: 8-alpine
+              tag: 8.6.2-alpine@sha256:885cba5f568cc9b05cbeb1fd7d41b860da06983c24bbb0d7027332a2e82def87
             args:
               - redis-server
               - --appendonly
@@ -63,7 +63,8 @@ spec:
           app:
             image:
               repository: ghcr.io/connorgallopo/tracearr
-              tag: latest
+              # Pinned (was :latest, frozen at 1.4.28 by spegel tag resolution). 2.x = separate reviewed upgrade.
+              tag: 1.4.28@sha256:ca93988326c26597e0d9c91d69c0f97e7ed23c517cf327c22bc7f188002af998
             envFrom:
               - secretRef:
                   name: tracearr-secrets

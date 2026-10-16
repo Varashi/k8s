@@ -11,3 +11,7 @@ spec:
     domain: ${SECRET_DOMAIN}
     secret: cloudflare-secrets
     accountId: ${SECRET_CLOUDFLARE_ACCOUNT_ID}
+  # Pin cloudflared (operator default is the floating :latest, which spegel
+  # tag resolution froze at 2026.5.0). Tracked by a Renovate regex manager.
+  deployPatch: |
+    {"spec":{"template":{"spec":{"containers":[{"name":"cloudflared","image":"docker.io/cloudflare/cloudflared:2026.5.0@sha256:59bab8d3aceec09bf6bdb07d6beca0225ca5cd7ab79436a87ea97978fe1dc4f9"}]}}}}

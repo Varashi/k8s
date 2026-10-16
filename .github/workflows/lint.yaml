@@ -32,3 +32,23 @@ jobs:
 
       - name: yamlfmt lint
         run: yamlfmt -lint
+
+  floating-tags:
+    name: no floating :latest images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Spegel resolves tags from peers, so a floating :latest freezes at whatever
+      # build a node first pulled (pullPolicy Always doesn't help) and Renovate
+      # can't track it. Require a version tag or tag@sha256 digest.
+      - name: Reject :latest without digest
+        run: |
+          hits=$(grep -rnE '^[^#]*((image:[[:space:]]*"?[^[:space:]"#]+:latest"?[[:space:]]*$)|(tag:[[:space:]]*"?latest"?[[:space:]]*$))' cluster-talos --include='*.yaml' --include='*.yml' || true)
+          if [ -n "$hits" ]; then
+            echo "::error::Floating :latest image tags found (pin a version or tag@sha256 digest):"
+            echo "$hits"
+            exit 1
+          fi
+          echo "No floating :latest tags."
