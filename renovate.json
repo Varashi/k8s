@@ -123,6 +123,12 @@
       "automerge": false
     },
     {
+      "description": "Tracearr on its own: releases migrate auth/user data with no downgrade (1.5.0 notes) - needs a DB backup and review, never bundled",
+      "matchPackageNames": ["ghcr.io/connorgallopo/tracearr"],
+      "groupName": "tracearr",
+      "automerge": false
+    },
+    {
       "description": "Flux operator + instance charts + distribution manifests move together, out of the big helm-charts group",
       "matchPackageNames": ["ghcr.io/controlplaneio-fluxcd/**"],
       "groupName": "flux operator",
