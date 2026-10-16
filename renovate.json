@@ -117,6 +117,12 @@
       "automerge": false
     },
     {
+      "description": "spegel on its own: CNI/containerd-mirror sensitive (0.8 drops hostPort, relies on Cilium serviceTopology); never bundle with app updates",
+      "matchPackageNames": ["ghcr.io/spegel-org/helm-charts/spegel"],
+      "groupName": "spegel",
+      "automerge": false
+    },
+    {
       "description": "Flux operator + instance charts + distribution manifests move together, out of the big helm-charts group",
       "matchPackageNames": ["ghcr.io/controlplaneio-fluxcd/**"],
       "groupName": "flux operator",
