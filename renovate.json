@@ -86,6 +86,15 @@
     },
     {
       "customType": "regex",
+      "description": "cnpg Cluster imageName (the kubernetes manager only reads image: keys)",
+      "managerFilePatterns": ["/^cluster-talos/kubernetes/apps/.+/cluster\\.yaml$/"],
+      "matchStrings": [
+        "imageName:\\s*(?<depName>[^:\\s]+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
       "description": "Pinned ARG versions in custom image Dockerfiles",
       "managerFilePatterns": [
         "/^cluster-talos/kubernetes/apps/.+/image/Dockerfile$/"
