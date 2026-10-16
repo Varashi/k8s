@@ -58,6 +58,17 @@
     },
     {
       "customType": "regex",
+      "description": "Sonarr upstream STABLE release tracker (GitHub releases; prereleases ignored) - signals when the sonarr image cap can be lifted",
+      "managerFilePatterns": ["/^cluster-talos/kubernetes/apps/arr/sonarr/app/helmrelease\\.yaml$/"],
+      "matchStrings": [
+        "#\\s*sonarr-upstream-stable:\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "Sonarr/Sonarr",
+      "versioningTemplate": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\.(?<build>\\d+)$"
+    },
+    {
+      "customType": "regex",
       "description": "Pinned ARG versions in custom image Dockerfiles",
       "managerFilePatterns": [
         "/^cluster-talos/kubernetes/apps/.+/image/Dockerfile$/"
@@ -144,6 +155,24 @@
       "matchPackageNames": ["ghcr.io/linuxserver/**"],
       "versioning": "loose",
       "allowedVersions": "/^\\d+\\.\\d+\\.\\d+(\\.\\d+)?(-[a-z0-9]+)*-ls\\d+$/"
+    },
+    {
+      "description": "Sonarr image: hold below v5 until v5 is a stable upstream release (home-operations tags v5 betas as plain 5.0.0). Remove once the Sonarr/Sonarr v5 tracker PR appears (#254).",
+      "matchPackageNames": ["ghcr.io/home-operations/sonarr"],
+      "allowedVersions": "<5.0.0"
+    },
+    {
+      "description": "Sonarr upstream tracker: only a new stable MAJOR matters (minor/patch handled by the image dep)",
+      "matchDepNames": ["Sonarr/Sonarr"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "enabled": false
+    },
+    {
+      "description": "Sonarr upstream tracker: stable new major published -> lift the image cap",
+      "matchDepNames": ["Sonarr/Sonarr"],
+      "matchUpdateTypes": ["major"],
+      "commitMessageTopic": "Sonarr stable major (lift image cap)",
+      "prBodyNotes": ["**Sonarr has a new STABLE major release.** To upgrade: remove the `allowedVersions: \"<5.0.0\"` rule for `ghcr.io/home-operations/sonarr` in `renovate.json` (Renovate then opens the image PR), review the v5 compatibility notes in #254, back up `sonarr-pg`/`sonarr-nl-pg`, canary on sonarr-nl first. Merging this PR only updates the tracker comment."]
     },
     {
       "description": "Auto-merge home-operations image digest rebuilds",
