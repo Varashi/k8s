@@ -44,6 +44,10 @@ spec:
       # Records otherwise get TTL 0 in AD: uncacheable for clients and stored
       # as 86400 by NetBox -> perpetual octodns churn (#294).
       - --rfc2136-min-ttl=300s
+      # Zone transfer lets external-dns list existing records so policy=sync can
+      # delete records it owns (TXT owner=k8s-talos) once their source is gone.
+      # AD permits AXFR from the pod CIDR (octodns uses it too).
+      - --rfc2136-axfr
 
     env:
       - name: EXTERNAL_DNS_RFC2136_HOST
