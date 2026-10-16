@@ -41,6 +41,9 @@ spec:
       - --rfc2136-kerberos-username=$(EXTERNAL_DNS_KERBEROS_USERNAME)
       - --rfc2136-kerberos-password=$(EXTERNAL_DNS_KERBEROS_PASSWORD)
       - --rfc2136-kerberos-realm=$(EXTERNAL_DNS_KERBEROS_REALM)
+      # Records otherwise get TTL 0 in AD: uncacheable for clients and stored
+      # as 86400 by NetBox -> perpetual octodns churn (#294).
+      - --rfc2136-min-ttl=300s
 
     env:
       - name: EXTERNAL_DNS_RFC2136_HOST

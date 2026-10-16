@@ -27,7 +27,20 @@ data:
     # Out-of-bailiwick glue (e.g. cloudflare NS A-records cached by AD for
     # the wan.boeye.net delegation) is stripped at the source by
     # octodns-sync-filtered (monkey-patches AxfrPopulate.zone_records).
+    processors:
+      # external-dns ownership/registry TXT records (old + external-dns 0.23
+      # "a-<host>" format) are bookkeeping, not useful in NetBox. external-dns
+      # writes them with TTL 0 which NetBox stores as 86400 -> perpetual
+      # 86400->0 diff (92 updates/run, #294). Filter on the source only
+      # (include_target: false) so octodns removes the copies already in NetBox.
+      external-dns-registry:
+        class: octodns.processor.filter.ValueRejectlistFilter
+        rejectlist:
+          - /heritage=external-dns/
+        include_target: false
+
     zones:
       boeye.net.:
         sources: [ad]
+        processors: [external-dns-registry]
         targets: [netbox]
