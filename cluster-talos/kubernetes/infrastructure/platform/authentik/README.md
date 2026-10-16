@@ -18,11 +18,10 @@ Bundled chart subcharts disabled:
 - **Postgres:** external CNPG `Cluster/authentik-db` (see
   `app/cluster.yaml`). CNPG handles backups via the infra-level
   barmanObjectStore.
-- **Redis:** bjw-s app-template `authentik-redis` StatefulSet with a
-  dedicated PVC (see `app/redis.yaml`).
+- **Redis:** none. authentik dropped Redis in 2025.10 (cache, tasks and
+  websockets live in Postgres); the old `authentik-redis` was removed in #262.
 
-The chart's `authentik.postgresql` + `authentik.redis` blocks point at
-the in-namespace services.
+The chart's `authentik.postgresql` block points at the in-namespace CNPG service.
 
 ## Secrets
 
@@ -61,7 +60,7 @@ repo:
 
 ### Recovery
 
-1. Kasten restores the `authentik` namespace PVCs → CNPG + Redis resume
+1. Kasten restores the `authentik` namespace PVCs → CNPG resumes
    with prior state, IdP objects intact. This is the preferred path.
 2. If CNPG is lost: `helm rollback` / re-install, then rebuild the
    objects above by hand. Shouldn't take more than ~15 min; the list is
