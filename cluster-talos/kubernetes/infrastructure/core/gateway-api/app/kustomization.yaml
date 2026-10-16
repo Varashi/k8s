@@ -1,4 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+# gateway-api-crds.yaml = pristine upstream standard-install.yaml (do not hand-edit).
+# Renovate bumps the version below and regenerates the file via postUpgradeTasks
+# (renovate.json, #274). Grouped with Cilium: Gateway API must match what the
+# running Cilium minor supports (Cilium checks *listed*, not *served*, CRD versions).
+# renovate: datasource=github-releases depName=kubernetes-sigs/gateway-api
+# gateway-api-version: v1.6.3
 resources:
   - gateway-api-crds.yaml
