@@ -55,6 +55,7 @@ spec:
         annotations:
           io.cilium/lb-ipam-ips: "172.16.4.107"
           external-dns.alpha.kubernetes.io/hostname: "rustdesk.${SECRET_DOMAIN},support.${SECRET_DOMAIN}"
+          external-dns.kubernetes.io/hostname: "rustdesk.${SECRET_DOMAIN},support.${SECRET_DOMAIN}"
         ports:
           hbbs-tcp:
             port: 21115

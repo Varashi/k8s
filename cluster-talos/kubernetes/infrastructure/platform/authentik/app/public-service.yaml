@@ -9,7 +9,9 @@ metadata:
   namespace: authentik
   annotations:
     external-dns.alpha.kubernetes.io/hostname: sso.${SECRET_DOMAIN}
+    external-dns.kubernetes.io/hostname: sso.${SECRET_DOMAIN}
     external-dns.alpha.kubernetes.io/public: "true"
+    external-dns.kubernetes.io/public: "true"
 spec:
   type: ExternalName
   externalName: skw.wan.${SECRET_DOMAIN}

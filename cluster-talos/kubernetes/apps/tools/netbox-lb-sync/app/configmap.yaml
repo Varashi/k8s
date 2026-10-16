@@ -60,7 +60,7 @@ data:
         | {
             ip: .status.loadBalancer.ingress[0].ip,
             app: (.metadata.labels["app.kubernetes.io/name"] // .metadata.name),
-            dns: (((.metadata.annotations // {})["external-dns.alpha.kubernetes.io/hostname"] // "")
+            dns: (((.metadata.annotations // {})["external-dns.kubernetes.io/hostname"] // (.metadata.annotations // {})["external-dns.alpha.kubernetes.io/hostname"] // "")
                    | split(",") | .[0] // "" | gsub("^\\s+|\\s+$"; ""))
           }
       ]

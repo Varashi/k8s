@@ -111,7 +111,9 @@ spec:
         externalName: skw.wan.${SECRET_DOMAIN}
         annotations:
           external-dns.alpha.kubernetes.io/hostname: files.${SECRET_DOMAIN}
+          external-dns.kubernetes.io/hostname: files.${SECRET_DOMAIN}
           external-dns.alpha.kubernetes.io/public: "true"
+          external-dns.kubernetes.io/public: "true"
         ports:
           http:
             port: 443
