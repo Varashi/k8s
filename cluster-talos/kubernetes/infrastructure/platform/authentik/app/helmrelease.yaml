@@ -35,10 +35,8 @@ spec:
         - secretRef:
             name: authentik-extra-env
 
-    # Bundled DB/cache are off; CNPG + app-template redis handle it.
+    # Bundled Postgres is off; CNPG handles it. authentik >= 2025.10 needs no Redis.
     postgresql:
-      enabled: false
-    redis:
       enabled: false
 
     authentik:
@@ -50,9 +48,6 @@ spec:
         name: authentik
         user: authentik
         port: 5432
-      redis:
-        host: authentik-redis.authentik.svc
-        port: 6379
 
     server:
       replicas: 1
