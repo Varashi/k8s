@@ -87,7 +87,7 @@ Cookies typically last a few days. Watch for `[VTM GO] HTTP 4xx` or `cookies exp
 
 ## Networking
 
-HTTPRoute on the shared `cilium/main` gateway, hostname `belgarr.${SECRET_DOMAIN}`. No `external-dns.alpha.kubernetes.io/public: "true"` annotation → internal AD DNS only, not published to Cloudflare.
+HTTPRoute on the shared `cilium/main` gateway, hostname `belgarr.${SECRET_DOMAIN}`. No `external-dns.kubernetes.io/public: "true"` annotation → internal AD DNS only, not published to Cloudflare.
 
 Homepage tile under group `Media`.
 

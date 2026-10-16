@@ -111,7 +111,6 @@ spec:
         type: LoadBalancer
         annotations:
           io.cilium/lb-ipam-ips: 172.16.4.109
-          external-dns.alpha.kubernetes.io/hostname: tdarr-svc.${SECRET_DOMAIN}
           external-dns.kubernetes.io/hostname: tdarr-svc.${SECRET_DOMAIN}
         ports:
           server:
