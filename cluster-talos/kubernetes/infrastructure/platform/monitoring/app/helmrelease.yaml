@@ -45,6 +45,14 @@ spec:
           memory: 4Gi
         limits:
           memory: 4Gi
+      # vsan PVC → keep off GPU workers (#275)
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: DoesNotExist
       tolerations:
         - key: node.cloudprovider.kubernetes.io/uninitialized
           operator: Exists

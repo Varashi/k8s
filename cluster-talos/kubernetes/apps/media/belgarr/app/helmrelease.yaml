@@ -22,6 +22,14 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
         supplementalGroups: [568]
+      # vsan PVC → keep off GPU workers (#275)
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: DoesNotExist
       imagePullSecrets:
         - name: ghcr-pull-secret
     controllers:
