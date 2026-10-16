@@ -14,11 +14,6 @@ spec:
         name: external-dns
         namespace: flux-system
   values:
-    # external-dns >=0.22 defaults to the GA external-dns.kubernetes.io/ prefix with
-    # no fallback; our manifests still use the alpha prefix. Without this, sync
-    # policy deletes every record on upgrade.
-    annotationPrefix: external-dns.alpha.kubernetes.io/
-
     provider:
       name: rfc2136
 
@@ -28,12 +23,15 @@ spec:
 
     txtOwnerId: k8s-talos
 
-    policy: sync
+    # TEMPORARY (#264 step 2/3): upsert-only while switching to the GA annotation
+    # prefix, so a missed annotation can only add records, never delete. Step 3
+    # restores sync.
+    policy: upsert-only
 
     extraArgs:
       # Ignore resources explicitly marked public; those belong to
       # external-dns-cloudflare.
-      - --annotation-filter=external-dns.alpha.kubernetes.io/public notin (true)
+      - --annotation-filter=external-dns.kubernetes.io/public notin (true)
       - --rfc2136-host=$(EXTERNAL_DNS_RFC2136_HOST)
       - --rfc2136-port=53
       - --rfc2136-zone=$(EXTERNAL_DNS_DOMAIN)
