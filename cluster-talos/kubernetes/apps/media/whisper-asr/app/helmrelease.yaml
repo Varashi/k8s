@@ -24,6 +24,15 @@ spec:
         name: bjw-s
         namespace: flux-system
   values:
+    # CPU faster_whisper + vsan PVC → keep off GPU workers (#275)
+    defaultPodOptions:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: DoesNotExist
     controllers:
       whisper-asr:
         containers:
