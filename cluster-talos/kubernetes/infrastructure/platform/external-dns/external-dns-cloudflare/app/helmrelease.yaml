@@ -21,16 +21,11 @@ spec:
       retries: 3
     cleanupOnFail: true
   values:
-    # external-dns >=0.22 defaults to the GA external-dns.kubernetes.io/ prefix with
-    # no fallback; our manifests still use the alpha prefix. Without this, sync
-    # policy deletes every record on upgrade.
-    annotationPrefix: external-dns.alpha.kubernetes.io/
-
     provider:
       name: cloudflare
 
     # Reads DNSEndpoint CRs (legacy) and HTTPRoutes carrying
-    # external-dns.alpha.kubernetes.io/public=true.
+    # external-dns.kubernetes.io/public=true.
     # rfc2136 instance (AD) ignores the same annotation via !=true filter.
     sources:
       - crd
@@ -43,12 +38,15 @@ spec:
 
     # Only act on resources explicitly marked public.
     extraArgs:
-      - --annotation-filter=external-dns.alpha.kubernetes.io/public=true
+      - --annotation-filter=external-dns.kubernetes.io/public=true
       # Distinct TXT prefix avoids collision with rfc2136 TXT registry.
       - --txt-prefix=cf-
 
     txtOwnerId: "ext-dns-talos-cf"
-    policy: sync
+    # TEMPORARY (#264 step 2/3): upsert-only while switching to the GA annotation
+    # prefix, so a missed annotation can only add records, never delete. Step 3
+    # restores sync.
+    policy: upsert-only
 
     domainFilters:
       - ${SECRET_DOMAIN}
