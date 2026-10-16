@@ -348,6 +348,7 @@ spec:
         annotations:
           io.cilium/lb-ipam-ips: "172.16.4.106"
           external-dns.alpha.kubernetes.io/hostname: "plex-test-svc.${SECRET_DOMAIN}"
+          external-dns.kubernetes.io/hostname: "plex-test-svc.${SECRET_DOMAIN}"
         externalTrafficPolicy: Local
         controller: pms
         ports:
@@ -385,7 +386,9 @@ spec:
         externalName: skw.wan.${SECRET_DOMAIN}
         annotations:
           external-dns.alpha.kubernetes.io/hostname: plex-test.${SECRET_DOMAIN},plex-test-svc.${SECRET_DOMAIN}
+          external-dns.kubernetes.io/hostname: plex-test.${SECRET_DOMAIN},plex-test-svc.${SECRET_DOMAIN}
           external-dns.alpha.kubernetes.io/public: "true"
+          external-dns.kubernetes.io/public: "true"
         ports:
           http:
             port: 32400
