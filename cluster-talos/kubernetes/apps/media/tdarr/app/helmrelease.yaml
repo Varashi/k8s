@@ -52,6 +52,8 @@ spec:
 
       tdarr-gpu-workers:
         type: daemonset
+        annotations:
+          reloader.stakater.com/auto: "true"
         containers:
           worker:
             image:
@@ -74,7 +76,10 @@ spec:
               - name: serverPort
                 value: "8266"
               - name: apiKey
-                value: tapi_fBPCHpc0u
+                valueFrom:
+                  secretKeyRef:
+                    name: tdarr-secrets
+                    key: TDARR_API_KEY
             resources:
               requests:
                 memory: 4096Mi
