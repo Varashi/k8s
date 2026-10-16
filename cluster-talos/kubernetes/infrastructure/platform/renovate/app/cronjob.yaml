@@ -22,6 +22,9 @@ spec:
                     secretKeyRef:
                       name: renovate-token
                       key: RENOVATE_TOKEN
+                # Only the Gateway API CRD regeneration (renovate.json postUpgradeTasks, #274).
+                - name: RENOVATE_ALLOWED_COMMANDS
+                  value: '["^curl -fsSL -o cluster-talos/kubernetes/infrastructure/core/gateway-api/app/gateway-api-crds\\.yaml https://github\\.com/kubernetes-sigs/gateway-api/releases/download/v[0-9]+\\.[0-9]+\\.[0-9]+/standard-install\\.yaml$"]'
                 - name: RENOVATE_PLATFORM
                   value: github
                 - name: RENOVATE_REPOSITORIES
