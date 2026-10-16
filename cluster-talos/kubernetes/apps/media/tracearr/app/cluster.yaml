@@ -6,7 +6,10 @@ metadata:
   namespace: tracearr
 spec:
   instances: 2
-  imageName: ghcr.io/imusmanmalik/timescaledb-postgis:17-3.5
+  # PG 17.11 + TimescaleDB 2.29.2 + Toolkit 1.25 + PostGIS 3.6.4 (Debian 13).
+  # Was the moving tag 17-3.5 (TS 2.26.2, below Tracearr 2.x's TS 2.28 floor).
+  # Collation is C, so the Debian 11 -> 13 glibc change needs no reindex.
+  imageName: ghcr.io/imusmanmalik/timescaledb-postgis:17.11-3.6.4-system-trixie@sha256:95895efbf9fa04ff5c851857a4d27e6d8535a9fd470209c6f25e1debd4a33e47
 
   postgresql:
     parameters:
