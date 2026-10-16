@@ -46,6 +46,9 @@ spec:
     loadBalancer:
       algorithm: maglev
       mode: dsr
+      # Honour Service trafficDistribution/topology hints (spegel 0.8 relies on
+      # PreferSameNode for node-local registry mirror; only spegel-registry uses it).
+      serviceTopology: true
 
     # eBPF masquerade
     bpf:

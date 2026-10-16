@@ -177,6 +177,7 @@ bootstrap-cilium:
 		--set ipam.operator.clusterPoolIPv4MaskSize=24 \
 		--set loadBalancer.algorithm=maglev \
 		--set loadBalancer.mode=dsr \
+		--set loadBalancer.serviceTopology=true \
 		--set bpf.masquerade=true \
 		--set hubble.enabled=true \
 		--set hubble.relay.enabled=true \
