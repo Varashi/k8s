@@ -91,6 +91,9 @@ cluster:
       name: none
     {{- include "k8s-talos.emptyClusterSubnets" . | nindent 4 }}
   etcd:
+    {{- with .Values.cluster.etcdImage }}
+    image: {{ . }}
+    {{- end }}
     advertisedSubnets:
       - 172.16.4.0/24
   proxy:
