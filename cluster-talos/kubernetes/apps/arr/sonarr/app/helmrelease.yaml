@@ -49,6 +49,11 @@ spec:
             image:
               repository: ghcr.io/home-operations/sonarr
               tag: 4.0.20
+              # Upstream stable-release gate (#254): image capped <5.0.0 in renovate.json
+              # (home-operations tags beta builds as plain 5.0.0). Renovate tracks the
+              # line below via GitHub releases (prereleases ignored) and opens a PR only
+              # when a STABLE new major (Sonarr v5) is published.
+              # sonarr-upstream-stable: v4.0.20.3014
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
