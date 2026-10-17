@@ -11,7 +11,7 @@ cluster:
   # etcd image pin (= Talos 1.14 default). Kept explicit so a future Talos
   # upgrade never bumps the etcd minor implicitly (minor bumps are one-way:
   # rollback = snapshot restore). Change deliberately, apply cp-3 → cp-2 → cp-1.
-  etcdImage: registry.k8s.io/etcd:v3.7.1
+  etcdImage: registry.k8s.io/etcd:v3.7.2
 
 # Installer image — schematic embeds vmtoolsd-guest-agent
 # Schematic: 903b2da78f99adef03cbbd4df6714563823f63218508800751560d3bc3557e40
