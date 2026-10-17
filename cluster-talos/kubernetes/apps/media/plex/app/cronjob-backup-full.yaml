@@ -109,6 +109,13 @@ spec:
                     # rsync -a stamps "$$DEST" with /config's (frozen) source
                     # mtime; reset to now so the dir mtime reflects the run.
                     touch "$$DEST"
+
+                    # Fixed-path mirror of the newest snapshot for Veeam (SKW
+                    # Files job excludes the dated dirs): stable paths mean
+                    # Veeam only uploads changed files instead of a "new" 245k-
+                    # file tree every day. Hardlinked into $$DEST, ~0 extra disk.
+                    # Not matched by the date globs, so retention ignores it.
+                    rsync -a --delete --link-dest="$$DEST" "$$DEST/" /backup/full/latest/
                   fi
 
                   # Retention: keep the 14 most-recent dated snapshots, prune the
