@@ -4,7 +4,10 @@ metadata:
   name: vsphere-csi-snapshot
   labels:
     velero.io/csi-volumesnapshot-class: "true"
-  annotations:
-    k10.kasten.io/is-snapshot-class: "true"
+  # No k10.kasten.io/is-snapshot-class annotation on purpose: with it + the vSphere
+  # infra profile, K10 >=9.0.5 runs "Hybrid" mode, whose VDDK export needs the
+  # csi.vsphere.volume/snapshot VolumeSnapshot annotation that only the Supervisor
+  # (WCP) CSI controller sets -> every export fails on vanilla vSphere CSI.
+  # Without it K10 uses FCD-native mode.
 driver: csi.vsphere.vmware.com
 deletionPolicy: Delete
