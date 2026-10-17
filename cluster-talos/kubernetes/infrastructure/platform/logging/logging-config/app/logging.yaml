@@ -6,8 +6,12 @@
 #
 # Pattern: lightweight per-node collectors → central aggregator(s)
 # that run the heavy output plugins. The vmware-loginsight gem
-# (fluent-plugin-vmware-loginsight 1.4.2) is bundled in
-# ghcr.io/kube-logging/fluentd:v1.17-5.0-full, so no custom image.
+# (fluent-plugin-vmware-loginsight 1.4.2) is bundled in the operator's
+# default `-full` fluentd image, so no custom image.
+#
+# Images = logging-operator's own defaults for its version (the config it
+# generates is tested against them), pinned by digest so spegel can't freeze
+# a rebuilt tag. Renovate tracks repository+tag@digest here (regex manager).
 apiVersion: logging.banzaicloud.io/v1beta1
 kind: Logging
 metadata:
@@ -28,11 +32,11 @@ spec:
 
   # ---------- Fluent Bit (per-node collector DaemonSet) ----------
   fluentbit:
-    # Use a recent stable Fluent Bit image. The Logging Operator
-    # generates the config; we tune resources + extra positions DB.
+    # Operator 6.9.0 default (DefaultFluentbitImageTag). The Logging
+    # Operator generates the config; we tune resources + extra positions DB.
     image:
-      repository: fluent/fluent-bit
-      tag: 3.1.10
+      repository: ghcr.io/fluent/fluent-bit
+      tag: 5.1.2@sha256:d792375ca8e53be72fc25716c28f291f32c6fc6f4f31d12d0d14bc78cefe9226
       pullPolicy: IfNotPresent
     resources:
       requests: {cpu: 50m, memory: 100Mi}
@@ -61,9 +65,10 @@ spec:
     # Image MUST be the `full` variant — it carries the
     # fluent-plugin-vmware-loginsight gem we need for CFAPI output.
     # `filters` variant only has filter plugins.
+    # Operator 6.9.0 default: <operator-version>-full (same loginsight 1.4.2).
     image:
-      repository: ghcr.io/kube-logging/fluentd
-      tag: v1.17-5.0-full
+      repository: ghcr.io/kube-logging/logging-operator/fluentd
+      tag: 6.9.0-full@sha256:49c3582940ad7c4770f27469241e40e4d5e33ecba084995d85f0925e0802fb79
       pullPolicy: IfNotPresent
     # HA: 2 replicas. Fluent Bit's forward output round-robins, so
     # losing one Fluentd pod doesn't drop logs.

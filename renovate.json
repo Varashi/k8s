@@ -95,6 +95,15 @@
     },
     {
       "customType": "regex",
+      "description": "logging-operator Logging CR images (repository + tag@digest blocks)",
+      "managerFilePatterns": ["/^cluster-talos/kubernetes/infrastructure/platform/logging/logging-config/app/logging\\.yaml$/"],
+      "matchStrings": [
+        "repository:\\s*(?<depName>\\S+)\\s*\\n\\s*tag:\\s*(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
       "description": "Pinned ARG versions in custom image Dockerfiles",
       "managerFilePatterns": [
         "/^cluster-talos/kubernetes/apps/.+/image/Dockerfile$/"
