@@ -14,7 +14,6 @@ Declarative K10 install + profiles + policies. All credentials via ESO ← Bitwa
 | `clusterrolebinding.yaml` | Admin user → `cluster-admin` (K10's `k10-admin` role lacks RBAC verbs) |
 | `profile-backblaze.yaml` | Location profile `backblaze` (B2 bucket `skw-talos-kasten`) |
 | `profile-vsphere.yaml` | Infra profile `skw-vcsa` |
-| `vbr-integration.yaml` | SA `kasten-sa` + CRB → `k10-admin` + long-lived token Secret for VBR registration |
 | `policy-dr.yaml` | `k10-disaster-recovery-policy` — daily×3, backup+export to B2 |
 
 ## BW SM secrets consumed

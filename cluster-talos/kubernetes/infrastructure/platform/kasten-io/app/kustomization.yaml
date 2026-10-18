@@ -7,6 +7,5 @@ resources:
   - helmrelease.yaml
   - httproute.yaml
   - clusterrolebinding.yaml
-  - vbr-integration.yaml
   - profile-backblaze.yaml
   - profile-vsphere.yaml
