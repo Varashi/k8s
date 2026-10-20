@@ -219,7 +219,11 @@ spec:
               # client hits Shaka s3015 codec mismatch. Reopens ATV-8.45
               # transcoded-HEVC crash until v1.13.1 lands the
               # tonemap-aware tenBitOutput fix. =sha-7667f58.
-              tag: v1.13.2
+              # v1.13.3 (scaleplex v1.14.3, 2026-10-20): Main10 pin runs on
+              # the FINAL graph; 10-bit SDR sub-burn keeps p010 (#214). Fixes
+              # exit-218 + client stall on 10-bit SDR AV1/HEVC + SRT burn →
+              # hevc_vaapi. Validated on plex-test. =sha-4a73169.
+              tag: v1.13.3
             env:
               TZ: Europe/Brussels
               # Device retarget now in the fork (0116); pin the worker GPU.
