@@ -226,7 +226,11 @@ spec:
               # same exit-218 symptom on a different shape. Hit live on
               # LG webOS Plex S5E1; qa_matrix --quick 60/60 PASS on
               # plex-test (#204, PR #203). =sha-2b9e195.
-              tag: v1.13.2
+              # sha-4a73169 (2026-10-20, pre-release, plex-test ONLY): Main10
+              # pin moved to the FINAL graph + 10-bit SDR sub-burn keeps p010
+              # (#214, PR #240). Prod hit exit-218 on 10-bit SDR AV1 + SRT
+              # burn → hevc_vaapi. Validate here, then release + roll prod.
+              tag: sha-4a73169@sha256:85763406d27d9b148f37a74b45a33486576365a2aa23a5678c45ef18730484c2
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this
