@@ -50,6 +50,21 @@ spec:
     disableWait: true
     remediation:
       retries: 3
+  # Worker rollout safety (scaleplex#242): app-template has no DaemonSet
+  # minReadySeconds, so patch it in. A worker pre-warms in ~100 ms, so without
+  # this the DaemonSet replaced the whole fleet in ~4 s — faster than the
+  # orchestrator's 5 s DNS refresh — and in-flight streams had no live worker
+  # to recover to. 30 s = one worker at a time, several orchestrator refreshes.
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: DaemonSet
+              name: plex-test-worker
+            patch: |
+              - op: add
+                path: /spec/minReadySeconds
+                value: 30
   values:
     controllers:
       orchestrator:
