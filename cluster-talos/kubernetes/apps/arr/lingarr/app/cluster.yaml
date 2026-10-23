@@ -1,0 +1,32 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: lingarr-pg
+  namespace: lingarr
+spec:
+  instances: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  storage:
+    size: 2Gi
+    storageClass: vsan
+  bootstrap:
+    initdb:
+      database: lingarr
+      owner: lingarr
+      secret:
+        name: lingarr-db-credentials
+  affinity:
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: intel.feature.node.kubernetes.io/gpu
+                operator: DoesNotExist

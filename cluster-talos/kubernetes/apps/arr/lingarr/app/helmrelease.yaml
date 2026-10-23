@@ -1,0 +1,131 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: lingarr
+  namespace: lingarr
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 5.3.0
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    defaultPodOptions:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: DoesNotExist
+      tolerations:
+        - key: node.cloudprovider.kubernetes.io/uninitialized
+          operator: Exists
+          effect: NoSchedule
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        supplementalGroups: [568]
+        seccompProfile:
+          type: RuntimeDefault
+    controllers:
+      lingarr:
+        containers:
+          app:
+            image:
+              repository: ghcr.io/lingarr-translate/lingarr
+              tag: 1.4.1@sha256:38592c3f6156d519a131aeeda3245f0a7765e7c541b801a7b527b7d731efdfce
+              pullPolicy: IfNotPresent
+            env:
+              TZ: Europe/Brussels
+              ASPNETCORE_URLS: http://+:9876
+              DB_CONNECTION: postgresql
+              DB_HOST: lingarr-pg-rw.lingarr.svc
+              DB_PORT: "5432"
+              DB_DATABASE: lingarr
+              DB_USERNAME: lingarr
+              DB_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: lingarr-db-credentials
+                    key: password
+              MAX_CONCURRENT_JOBS: "1"
+              TELEMETRY_ENABLED: "false"
+              SONARR_URL: http://sonarr.sonarr.svc:8989
+              SERVICE_TYPE: '["anthropic"]'
+              ANTHROPIC_MODEL: claude-haiku-5-5
+              ANTHROPIC_VERSION: "2023-06-01"
+              USE_BATCH_TRANSLATION: "true"
+              SOURCE_LANGUAGES: '[{"name":"English","code":"en"}]'
+              TARGET_LANGUAGES: '[{"name":"Dutch","code":"nl"}]'
+            envFrom:
+              - secretRef:
+                  name: lingarr-secret
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+    service:
+      app:
+        controller: lingarr
+        ports:
+          http:
+            port: 9876
+    route:
+      app:
+        annotations:
+          gatus.home-operations.com/endpoint: |
+            conditions: ["[STATUS] < 500"]
+            interval: 60s
+            group: arr
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/name: Lingarr
+          gethomepage.dev/description: Subtitle translation
+          gethomepage.dev/group: Arr
+          gethomepage.dev/weight: "75"
+          gethomepage.dev/icon: https://raw.githubusercontent.com/lingarr-translate/lingarr/main/Lingarr.Client/public/android-chrome-192x192.png
+          gethomepage.dev/href: https://lingarr.${SECRET_DOMAIN}
+        hostnames:
+          - lingarr.${SECRET_DOMAIN}
+        parentRefs:
+          - name: main
+            namespace: cilium
+            sectionName: https
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: app
+                port: http
+    persistence:
+      config:
+        type: persistentVolumeClaim
+        existingClaim: lingarr-config
+        globalMounts:
+          - path: /app/config
+      media:
+        type: nfs
+        server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
+        path: /mnt/DATA/mediapool
+        globalMounts:
+          - path: /mnt/skw-truenas-data
