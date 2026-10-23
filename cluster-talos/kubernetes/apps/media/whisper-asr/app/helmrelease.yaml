@@ -44,11 +44,11 @@ spec:
             env:
               TZ: Europe/Brussels
               ASR_ENGINE: faster_whisper
-              ASR_MODEL: small
+              ASR_MODEL: medium
             resources:
               requests:
                 cpu: 250m
-                memory: 2Gi
+                memory: 4Gi
               limits:
                 cpu: "2"
     service:
