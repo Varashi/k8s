@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - autobrr/ks.yaml
   - bazarr/ks.yaml
+  - lingarr/ks.yaml
   - neutarr/ks.yaml
   - prowlarr/ks.yaml
   - radarr/ks.yaml
