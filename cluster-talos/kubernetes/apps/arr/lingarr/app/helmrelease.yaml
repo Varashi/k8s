@@ -65,18 +65,11 @@ spec:
                   secretKeyRef:
                     name: lingarr-db-credentials
                     key: password
+              # Process-level only. In-app settings (Sonarr, translation service,
+              # model, languages, automation, scope, API keys) live in Lingarr's
+              # database and are managed via its UI/API: Lingarr re-applies any
+              # setting env var on every start, which would override UI changes.
               MAX_CONCURRENT_JOBS: "1"
-              TELEMETRY_ENABLED: "false"
-              SONARR_URL: http://sonarr.sonarr.svc:8989
-              SERVICE_TYPE: '["anthropic"]'
-              ANTHROPIC_MODEL: claude-haiku-5-5
-              ANTHROPIC_VERSION: "2023-06-01"
-              USE_BATCH_TRANSLATION: "true"
-              SOURCE_LANGUAGES: '[{"name":"English","code":"en"}]'
-              TARGET_LANGUAGES: '[{"name":"Dutch","code":"nl"}]'
-            envFrom:
-              - secretRef:
-                  name: lingarr-secret
             resources:
               requests:
                 cpu: 50m
