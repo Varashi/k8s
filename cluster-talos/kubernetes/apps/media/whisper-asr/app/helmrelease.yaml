@@ -24,17 +24,30 @@ spec:
         name: bjw-s
         namespace: flux-system
   values:
-    # CPU faster_whisper + vsan PVC → keep off GPU workers (#275)
-    defaultPodOptions:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: intel.feature.node.kubernetes.io/gpu
-                    operator: DoesNotExist
+    # Two pools behind one Service (round-robin across all pods):
+    # - whisper-asr: non-GPU workers, full 2 cores per pod
+    # - whisper-asr-gpu: GPU workers, CPU-only (faster_whisper has no Intel GPU
+    #   support), capped at 1 core + low priority so Plex/Tdarr transcodes and
+    #   kubelet keep headroom on the 4-vCPU GPU workers.
+    # Model cache is emptyDir (re-downloadable), so no PVC pins pods to a node.
     controllers:
       whisper-asr:
+        replicas: 2
+        pod:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: intel.feature.node.kubernetes.io/gpu
+                        operator: DoesNotExist
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: kubernetes.io/hostname
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: whisper-asr
+                      app.kubernetes.io/controller: whisper-asr
         containers:
           app:
             image:
@@ -51,14 +64,64 @@ spec:
                 memory: 4Gi
               limits:
                 cpu: "2"
-    service:
-      app:
-        controller: whisper-asr
-        ports:
-          http:
-            port: 9000
+      gpu:
+        replicas: 3
+        pod:
+          priorityClassName: background-low
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: intel.feature.node.kubernetes.io/gpu
+                        operator: Exists
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: kubernetes.io/hostname
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: whisper-asr
+                      app.kubernetes.io/controller: gpu
+          tolerations:
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: Equal
+              value: "true"
+              effect: PreferNoSchedule
+        containers:
+          app:
+            image:
+              repository: onerahmet/openai-whisper-asr-webservice
+              tag: v1.10.0@sha256:0616c3d5fc6924e9d59aa8a7a3a944fbe8f3a5d701e5fc1fa2ce5b933dfecb73
+              pullPolicy: IfNotPresent
+            env:
+              TZ: Europe/Brussels
+              ASR_ENGINE: faster_whisper
+              ASR_MODEL: medium
+            resources:
+              requests:
+                cpu: 250m
+                memory: 3Gi
+              limits:
+                cpu: "1"
+    rawResources:
+      service:
+        forceRename: whisper-asr
+        manifest:
+          apiVersion: v1
+          kind: Service
+          spec:
+            type: ClusterIP
+            selector:
+              app.kubernetes.io/name: whisper-asr
+              app.kubernetes.io/instance: whisper-asr
+            ports:
+              - name: http
+                port: 9000
+                targetPort: 9000
+                protocol: TCP
     persistence:
       cache:
-        existingClaim: whisper-asr-cache
+        type: emptyDir
+        sizeLimit: 6Gi
         globalMounts:
           - path: /root/.cache
