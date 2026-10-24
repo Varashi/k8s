@@ -5,7 +5,8 @@
 # overnight Bazarr searches that need ASR fail gracefully and retry next cycle
 # (adaptive_searching). Flux drift detection is off on the HR, so manual scale
 # survives reconcile; a genuine helm upgrade (e.g. renovate) resets to 1 until
-# the next scale-down cron — acceptable.
+# the next scale-down cron — acceptable. Scales both pools (whisper-asr 2,
+# whisper-asr-gpu 3).
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -63,10 +64,9 @@ spec:
               image: alpine/k8s:1.37.1
               imagePullPolicy: IfNotPresent
               command:
-                - kubectl
-                - scale
-                - deployment/whisper-asr
-                - --replicas=1
+                - sh
+                - -c
+                - kubectl scale deployment/whisper-asr --replicas=2 && kubectl scale deployment/whisper-asr-gpu --replicas=3
               securityContext:
                 runAsUser: 1000
                 runAsGroup: 1000
@@ -105,10 +105,9 @@ spec:
               image: alpine/k8s:1.37.1
               imagePullPolicy: IfNotPresent
               command:
-                - kubectl
-                - scale
-                - deployment/whisper-asr
-                - --replicas=0
+                - sh
+                - -c
+                - kubectl scale deployment/whisper-asr --replicas=0 && kubectl scale deployment/whisper-asr-gpu --replicas=0
               securityContext:
                 runAsUser: 1000
                 runAsGroup: 1000
