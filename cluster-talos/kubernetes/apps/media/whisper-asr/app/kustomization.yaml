@@ -5,4 +5,3 @@ resources:
   - namespace.yaml
   - priorityclass.yaml
   - helmrelease.yaml
-  - scale-cron.yaml
