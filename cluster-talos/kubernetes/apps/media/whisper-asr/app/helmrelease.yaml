@@ -58,6 +58,23 @@ spec:
               TZ: Europe/Brussels
               ASR_ENGINE: faster_whisper
               ASR_MODEL: medium
+            # whisper-asr serves one request at a time and stops answering while
+            # transcribing. Failing readiness while busy takes the pod out of the
+            # Service so new requests only hit idle pods (Bazarr throttles the
+            # whole whisperai provider on any connection error). No liveness
+            # probe on purpose: it would kill pods mid-transcription.
+            probes:
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /docs
+                    port: 9000
+                  periodSeconds: 5
+                  timeoutSeconds: 3
+                  failureThreshold: 1
+                  successThreshold: 1
             resources:
               requests:
                 cpu: 250m
@@ -97,6 +114,23 @@ spec:
               TZ: Europe/Brussels
               ASR_ENGINE: faster_whisper
               ASR_MODEL: medium
+            # whisper-asr serves one request at a time and stops answering while
+            # transcribing. Failing readiness while busy takes the pod out of the
+            # Service so new requests only hit idle pods (Bazarr throttles the
+            # whole whisperai provider on any connection error). No liveness
+            # probe on purpose: it would kill pods mid-transcription.
+            probes:
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /docs
+                    port: 9000
+                  periodSeconds: 5
+                  timeoutSeconds: 3
+                  failureThreshold: 1
+                  successThreshold: 1
             resources:
               requests:
                 cpu: 250m
