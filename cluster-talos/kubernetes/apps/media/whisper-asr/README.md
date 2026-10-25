@@ -1,38 +1,129 @@
 # whisper-asr
 
-[openai-whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice)
-(`faster_whisper`, `medium` model), used by Bazarr's `whisperai` provider to
-transcribe (or translate to English) episodes without any usable subtitle source.
+Speech-to-text for Bazarr's `whisperai` provider: it transcribes episodes that
+have no usable subtitle source, or translates them to English. Two pools of pods
+run behind one Service, `whisper-asr:9000`, which is the endpoint Bazarr uses.
 
 ## Layout
 
-| Controller | Nodes | Replicas | CPU limit | Notes |
+| Controller | Nodes | Replicas | Engine | Translate |
 |---|---|---|---|---|
-| `whisper-asr` | non-GPU workers | 2 (one per node) | 2 | |
-| `gpu` (`whisper-asr-gpu`) | GPU workers | 3 (one per node) | 1 | CPU only; `background-low` PriorityClass |
+| `whisper-asr` | non-GPU workers | 2 (one per node) | [openai-whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice), `faster_whisper` `medium` on CPU (2 cores) | yes |
+| `gpu` (`whisper-asr-gpu`) | GPU workers | 3 (one per node) | [whisper.cpp](https://github.com/ggml-org/whisper.cpp) `whisper-server`, `large-v3-turbo` q8_0 on the Intel GPU (Vulkan), plus an adapter | forwarded to the CPU pool |
 
-- `faster_whisper` uses CUDA only, so the Intel GPU workers contribute CPU, not
-  GPU. The 1-core cap leaves headroom for transcodes and kubelet on 4-vCPU nodes.
-- A single Service (`rawResources.service`) selects both controllers.
-- Model cache is an `emptyDir`: re-downloadable, and no PVC pins pods to a node
-  or blocks GPU-worker drains.
-- Runs 24/7; idle pods are cheap once the library backlog is processed.
+- `whisper-asr` Service (`rawResources.service`): selects both controllers. Bazarr's endpoint.
+- `whisper-asr-cpu` Service (`rawResources.service-cpu`): selects only the CPU pool. The GPU adapter forwards translate jobs here.
+- Models are cached in `emptyDir`s. They can be downloaded again, and no PVC pins pods to a node or blocks GPU-worker drains.
+- The GPU pods use the `background-low` PriorityClass, so they are the first to go under node pressure.
+- On the GPU pods, a 24-minute episode takes about 6-7 minutes and uses about 0.3 CPU core and about 1.1 GiB of VRAM. The CPU pool needs about 20 minutes for the same episode.
+
+### GPU pod
+
+| Container | Image | Role |
+|---|---|---|
+| `fetch-model` (init) | whisper.cpp `main-vulkan` | Downloads the model from the official `ggerganov/whisper.cpp` Hugging Face repo, pinned to a commit, and verifies its SHA-256. Skips the download if the file is already there and valid. |
+| `app` | whisper.cpp `main-vulkan` | `whisper-server` on `127.0.0.1:8080`, so it is not reachable from outside the pod. Uses one `gpu.intel.com/i915` device. |
+| `adapter` | official `python` slim | `adapter/whisper_adapter.py` (stdlib only), mounted from the `whisper-asr-adapter` ConfigMap. Serves the Bazarr API on `:9000`. |
+
+The adapter is a ConfigMap script on a stock image, so no image build or CI is
+needed. Reloader rolls the GPU pods when the script changes.
+
+## Adapter contract
+
+The adapter implements the parts of the webservice API that Bazarr calls:
+
+- `POST /asr?task=transcribe&language=<iso1>&output=srt&encode=false&video_file=<path>`
+  - Multipart field `audio_file` holds raw s16le 16 kHz mono PCM. That is what Bazarr sends with `encode=false`.
+  - The adapter adds a WAV header and calls `/inference` with the requested language and the decoding fields.
+  - It runs the clean-up filter and returns SRT.
+  - With `encode=true` the file is passed through as-is, so it must already be a WAV (the server does no ffmpeg conversion).
+  - `output` can also be `vtt`, `txt` or `json`. The filter only runs on `srt`.
+- `POST /detect-language`: same input.
+  - Only the first 30 s (`DETECT_SECONDS`) is sent, with `detect_language=true`.
+  - The adapter maps whisper.cpp's full language name to an ISO-639-1 code and returns `{"detected_language": "japanese", "language_code": "ja"}`.
+- `GET /ready`: returns 200 when the pod is idle and `whisper-server` has loaded the model, and 503 otherwise.
+- `GET /health`: returns 200 while the adapter process is running.
+
+When `/asr` fails, the adapter returns an error status with an **empty body**.
+Bazarr stores the response body as the subtitle without checking the status.
+It rejects an empty body as "Invalid subtitle" for that one download, and it
+does not throttle the provider.
+
+### Translate
+
+`large-v3-turbo` was trained without translation data, so it cannot translate.
+Most of Bazarr's whisperai jobs are translations to English (for example,
+Japanese-audio anime). For a `task=translate` request, the adapter:
+
+1. Forwards the whole request to `TRANSLATE_UPSTREAM` (the `whisper-asr-cpu` Service) and relays the response.
+   - The GPU pod stays Ready while it waits, because it is not doing the work.
+2. If the CPU pool has no ready pod, because both are busy, it returns `503` with an empty body. Bazarr skips that download and retries on a later search, without throttling the provider.
+3. If `TRANSLATE_UPSTREAM` is empty, it returns `501` with an empty body, with the same Bazarr behaviour as step 2.
+
+Translate capacity is therefore the 2 CPU pods only. Before this change, the GPU
+workers also ran faster-whisper on CPU and could translate.
+
+### Decoding settings
+
+- `-bs 5 -bo 5` gives beam search with best-of 5. Greedy decoding produced runs of empty cues.
+- `-mc 0` (max context 0) stops whisper from conditioning on previous text. This is what stops the repetition loops.
+- There is no VAD. Silero VAD lost dialogue, which raised the WER.
+
+`whisper-server` copies its command-line defaults for every request, and request
+fields override them. The adapter sends `WHISPER_FIELDS` (default
+`beam_size=5,best_of=5,max_context=0`) with every `/inference` call, so those
+fields win. Keep the server args and `WHISPER_FIELDS` in sync. The adapter also
+sends the requested `language` on every call, so the server's `-l en` is only a
+fallback.
+
+## Clean-up filter
+
+The filter runs inside the adapter on SRT output. Set `FILTER_ENABLED=false` to
+turn it off. Each change is logged at INFO with the file name, rule, cue time and
+removed text. The rules run in this order:
+
+1. **Phrase loop within a cue**
+   - What it does: a phrase of 2 or more words that repeats 4 or more times in a row inside one cue (`FILTER_REPEAT_PHRASE`) is collapsed to a single copy.
+   - What it keeps: repeats of a single word ("Baa baa baa", "No, no, no").
+2. **Repeated cues**
+   - What it does: 3 or more consecutive cues (`FILTER_REPEAT_CUES`) with the same normalised text are merged into one cue, from the first start to the last end.
+   - It also counts a cue whose text contains the other's ("P." / "P, but P.") as the same text.
+   - What it keeps: short real replies such as "Yes." / "Yes, sir.". The containment match needs at least 4 words in the shorter text (`FILTER_LOOP_MIN_WORDS`).
+3. **Filler**
+   - What it does: drops a cue that consists only of known filler ("Thank you.", "Thanks for watching", "The End", "We'll be right back", "Subtitles by...", and similar). It only drops it if the cue lasts longer than 5 s (`FILTER_FILLER_MAX_SECONDS`) or is the last cue.
+   - What it keeps: a short "Thank you." in the middle of an episode, which is real dialogue.
+4. **End clipping**
+   - What it does: clips cue ends to the audio duration, drops cues that start after it, drops empty cues, and renumbers the result.
 
 ## Readiness probe (important)
 
-The webservice handles one request at a time and does not answer while it is
-transcribing. Without a readiness probe, the Service routes new requests to busy
-pods; Bazarr treats the connection error as a provider failure and throttles
-`whisperai` for 5 minutes, leaving the idle pods unused. The `/docs` readiness
-probe removes busy pods from the endpoints. There is deliberately **no liveness
-probe** (it would kill pods mid-transcription).
+Both pools handle one request at a time. Without a readiness probe, the Service
+routes new requests to busy pods. Bazarr treats the resulting connection error as
+a provider failure and throttles `whisperai` for 5 minutes, leaving the idle pods
+unused.
+
+The probes take busy pods out of the endpoints:
+
+- CPU pool: `/docs`, which stops answering while the pod transcribes.
+- GPU pool: the adapter's `/ready`, which returns 503 while a job runs or waits.
+
+A request that arrives in the probe-period window waits for the current job
+instead of failing. There is deliberately **no liveness probe**, because it
+would kill pods mid-transcription.
+
+## Changing the model or flags
+
+- **Model:** change `MODEL_FILE`, `MODEL_URL` and `MODEL_SHA256` in the `fetch-model` init container, and `--model` in the `app` args.
+  - Use a model from the official repo (the SHA-256 is the LFS oid in the Hugging Face file listing).
+  - Raise the `models` emptyDir `sizeLimit` if the new model is larger.
+  - A model that can translate (for example, `medium` or `large-v3`) would let the GPU pool translate too. Clear `TRANSLATE_UPSTREAM` in that case.
+- **Decoding flags:** change both the `app` args and `WHISPER_FIELDS`. Any `whisper-server` multipart field works in `WHISPER_FIELDS`, for example `temperature_inc` or `no_speech_thold`.
+- **Filter:** change the `FILTER_*` env vars, or edit `adapter/whisper_adapter.py`. The kustomize `configMapGenerator` builds the ConfigMap from that file.
 
 ## Parallelism
 
 Requests only spread across pods when several are in flight. Bazarr runs at most
-`general.concurrent_jobs` jobs at once (set to 6), and its scheduled
-missing-subtitle search is a single job that processes episodes serially. For
-bulk work, trigger per-series searches (`PATCH /api/series` with
-`action=search-missing`) from several threads.
-
-Throughput with `medium`: ~20 minutes per 24-minute episode per pod.
+`general.concurrent_jobs` jobs at once, and its scheduled missing-subtitle search
+is a single job that processes episodes one after another. For bulk work,
+trigger per-series searches (`PATCH /api/series` with `action=search-missing`)
+from several threads.
