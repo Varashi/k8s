@@ -91,6 +91,13 @@ spec:
                 cpu: "2"
       gpu:
         replicas: 3
+        # Roll one pod at a time so Bazarr's Service never goes empty during a
+        # rollout (an empty Service makes Bazarr throttle whisperai for 5 min).
+        # No surge: pods are pinned one per GPU node by anti-affinity.
+        strategy: RollingUpdate
+        rollingUpdate:
+          unavailable: 1
+          surge: 0
         annotations:
           # the adapter script is a ConfigMap; roll the pods when it changes
           reloader.stakater.com/auto: "true"
