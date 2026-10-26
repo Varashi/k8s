@@ -41,7 +41,7 @@ The adapter implements the parts of the webservice API that Bazarr calls:
 - `POST /detect-language`: same input.
   - Only the first 30 s (`DETECT_SECONDS`) is sent, with `detect_language=true`.
   - The adapter maps whisper.cpp's full language name to an ISO-639-1 code and returns `{"detected_language": "japanese", "language_code": "ja"}`.
-- `GET /ready`: returns 200 when the pod is idle and `whisper-server` has loaded the model, and 503 otherwise.
+- `GET /ready`: returns 200 when `whisper-server` has loaded the model and answers, busy or not, and 503 otherwise. The body reports the number of running and queued jobs.
 - `GET /health`: returns 200 while the adapter process is running.
 
 When `/asr` fails, the adapter returns an error status with an **empty body**.
@@ -60,7 +60,7 @@ Japanese-audio anime). The adapter handles `task=translate` according to
   1. The adapter transcribes the audio on the GPU in the source language (the `language` query parameter; if it is missing, it detects the language first). This is the same path as `task=transcribe`, including the clean-up filter.
   2. It sends the cue texts to Lingarr's `POST /api/translate/content` (`LINGARR_URL`, in-cluster `lingarr.lingarr.svc:9876`), source language to `TRANSLATE_TARGET` (`en`). Each cue is one line (newlines inside a cue become spaces), with the cue index as its position. The title is `whisper-asr - <video file name>`. Lingarr uses its own configured translation service and batch size.
   3. It puts the translated lines back onto the original cue timings by position and returns the SRT. A cue that Lingarr returns no text for keeps its source text, and the adapter logs a warning with the count.
-  4. The pod stays busy (readiness 503) for the whole job, including the Lingarr call.
+  4. The job counts as running for the whole job, including the Lingarr call; the whisper lock is only held while whisper transcribes.
   5. If Lingarr fails, times out (`LINGARR_TIMEOUT`, default 1920 s, just above Lingarr's own 30-minute job timeout) or returns nothing usable, the adapter returns `503` with an empty body. Bazarr rejects that download as an invalid subtitle and retries on a later search, without throttling the provider.
   6. If the source language already is `TRANSLATE_TARGET`, the transcript is returned as-is.
 - **`forward`**: the adapter relays the whole request to `TRANSLATE_UPSTREAM` (the `whisper-asr-cpu` Service, where faster-whisper `medium` translates) and returns the response. The GPU pod stays Ready while it waits. If the CPU pool has no ready pod, it returns `503` with an empty body.
@@ -121,19 +121,24 @@ removed text. The rules run in this order:
 
 ## Readiness probe (important)
 
-Both pools handle one request at a time. Without a readiness probe, the Service
-routes new requests to busy pods. Bazarr treats the resulting connection error as
-a provider failure and throttles `whisperai` for 5 minutes, leaving the idle pods
-unused.
+Each GPU pod runs one whisper job at a time. Extra requests that reach a busy
+pod wait in the adapter's queue; Bazarr waits up to its `whisperai.timeout`
+(3 h) for the answer.
 
-The probes take busy pods out of the endpoints:
+Busy pods deliberately **stay ready**. With only 3 pods and up to 10 concurrent
+Bazarr jobs, taking busy pods out of the Service left it empty most of the time.
+Bazarr treats the resulting connection error as a provider failure and throttles
+`whisperai` for 5 minutes, so searches skipped whisper altogether.
 
-- CPU pool: `/docs`, which stops answering while the pod transcribes.
-- GPU pool: the adapter's `/ready`, which returns 503 while a job runs or waits.
+- GPU pool: the adapter's `/ready` returns 503 only when `whisper-server` is not
+  up (model still loading, or crashed). `whisper-server`'s own `/health`
+  answers while it transcribes.
+- CPU pool (0 replicas, `forward` fallback only): `/docs`, which stops answering
+  while the pod transcribes.
 
-A request that arrives in the probe-period window waits for the current job
-instead of failing. There is deliberately **no liveness probe**, because it
-would kill pods mid-transcription.
+Requests are spread over the ready pods by the Service, not by load, so a
+request can wait behind a running job while another pod is idle. There is
+deliberately **no liveness probe**, because it would kill pods mid-transcription.
 
 ## Changing the model or flags
 

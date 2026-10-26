@@ -6,8 +6,8 @@ metadata:
   namespace: whisper-asr
 spec:
   interval: 30m
-  # Don't wait for pod readiness: whisper pods report unready while they are
-  # busy with a job (that is how busy pods leave the Service), so a rollout
+  # Don't wait for pod readiness: a long first job (model fetch + transcribe)
+  # or a pod stuck on a busy GPU node shouldn't fail the release, so a rollout
   # during normal load never looks "ready" and Helm would fail and roll back.
   install:
     timeout: 15m
@@ -222,8 +222,10 @@ spec:
               # match the Bazarr whisperai timeout (long CPU translations can exceed 2 h)
               TRANSLATE_TIMEOUT: "10800"
               FILTER_ENABLED: "true"
-            # Same contract as the CPU pool: one job at a time, readiness fails
-            # while busy so new requests only hit idle pods. No liveness probe.
+            # One whisper job at a time per pod; extra requests queue in the
+            # adapter. Readiness only fails when whisper-server is down, so busy
+            # pods stay in the Service (an empty Service makes Bazarr throttle
+            # whisperai for 5 min). No liveness probe: it would kill long jobs.
             probes:
               readiness:
                 enabled: true
