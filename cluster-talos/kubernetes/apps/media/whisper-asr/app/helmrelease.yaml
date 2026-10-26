@@ -6,12 +6,17 @@ metadata:
   namespace: whisper-asr
 spec:
   interval: 30m
+  # Don't wait for pod readiness: whisper pods report unready while they are
+  # busy with a job (that is how busy pods leave the Service), so a rollout
+  # during normal load never looks "ready" and Helm would fail and roll back.
   install:
     timeout: 15m
+    disableWait: true
     remediation:
       retries: 2
   upgrade:
     timeout: 15m
+    disableWait: true
     remediation:
       retries: 2
   chart:
