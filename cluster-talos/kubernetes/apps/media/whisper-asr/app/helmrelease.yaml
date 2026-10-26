@@ -24,12 +24,13 @@ spec:
         name: bjw-s
         namespace: flux-system
   values:
-    # Two pools behind one Service (round-robin across all pods):
-    # - whisper-asr: non-GPU workers, full 2 cores per pod
-    # - whisper-asr-gpu: GPU workers, CPU-only (faster_whisper has no Intel GPU
-    #   support), capped at 1 core + low priority so Plex/Tdarr transcodes and
-    #   kubelet keep headroom on the 4-vCPU GPU workers.
-    # Model cache is emptyDir (re-downloadable), so no PVC pins pods to a node.
+    # Two pools behind one Service (round-robin across ready pods):
+    # - whisper-asr: non-GPU workers, faster_whisper medium on CPU (2 cores/pod).
+    #   The only pool that can translate.
+    # - gpu (whisper-asr-gpu): GPU workers, whisper.cpp large-v3-turbo on the
+    #   Intel GPU (Vulkan) behind a small adapter that speaks the webservice API
+    #   Bazarr uses. task=translate is forwarded to the CPU pool (whisper-asr-cpu).
+    # Models live in emptyDirs (re-downloadable), so no PVC pins pods to a node.
     controllers:
       whisper-asr:
         replicas: 2
@@ -83,8 +84,22 @@ spec:
                 cpu: "2"
       gpu:
         replicas: 3
+        annotations:
+          # the adapter script is a ConfigMap; roll the pods when it changes
+          reloader.stakater.com/auto: "true"
         pod:
           priorityClassName: background-low
+          enableServiceLinks: false
+          automountServiceAccountToken: false
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
+            runAsNonRoot: true
+            fsGroup: 65534
+            # render group, for /dev/dri
+            supplementalGroups: [44]
+            seccompProfile:
+              type: RuntimeDefault
           affinity:
             nodeAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:
@@ -104,39 +119,117 @@ spec:
               operator: Equal
               value: "true"
               effect: PreferNoSchedule
-        containers:
-          app:
-            image:
-              repository: onerahmet/openai-whisper-asr-webservice
-              tag: v1.10.0@sha256:0616c3d5fc6924e9d59aa8a7a3a944fbe8f3a5d701e5fc1fa2ce5b933dfecb73
+        initContainers:
+          # Fetch the model into the emptyDir, verify the checksum, skip if present.
+          fetch-model:
+            image: &wcpp
+              repository: ghcr.io/ggml-org/whisper.cpp
+              tag: main-vulkan@sha256:4e86e3b983e673a059dba44f7af014bcf3b48ddc0d4da3abb328ced49d0c593b
               pullPolicy: IfNotPresent
             env:
+              MODEL_FILE: &model ggml-large-v3-turbo-q8_0.bin
+              MODEL_URL: https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-large-v3-turbo-q8_0.bin
+              MODEL_SHA256: 317eb69c11673c9de1e1f0d459b253999804ec71ac4c23c17ecf5fbe24e259a1
+            command:
+              - bash
+              - -ec
+              - |
+                cd /models
+                if [ -s "$MODEL_FILE" ] && echo "$MODEL_SHA256  $MODEL_FILE" | sha256sum -c --quiet; then
+                  echo "$MODEL_FILE present, checksum ok"; exit 0
+                fi
+                rm -f "$MODEL_FILE" "$MODEL_FILE.part"
+                curl -fL --retry 5 --retry-delay 10 -sS -o "$MODEL_FILE.part" "$MODEL_URL"
+                echo "$MODEL_SHA256  $MODEL_FILE.part" | sha256sum -c
+                mv "$MODEL_FILE.part" "$MODEL_FILE"
+            securityContext: &secctx
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: [ALL]
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: "1"
+                memory: 512Mi
+        containers:
+          # whisper.cpp server on localhost only; the adapter is the pod's API.
+          # The decoding flags here are the server defaults; the adapter also
+          # sends them with every request (WHISPER_FIELDS), which wins.
+          app:
+            image: *wcpp
+            command: ["whisper-server"]
+            args:
+              - --model
+              - /models/ggml-large-v3-turbo-q8_0.bin
+              - --host
+              - 127.0.0.1
+              - --port
+              - "8080"
+              - --threads
+              - "2"
+              - --language
+              - en
+              - --beam-size
+              - "5"
+              - --best-of
+              - "5"
+              # no conditioning on previous text: stops repetition loops
+              - --max-context
+              - "0"
+            env:
               TZ: Europe/Brussels
-              ASR_ENGINE: faster_whisper
-              ASR_MODEL: medium
-            # whisper-asr serves one request at a time and stops answering while
-            # transcribing. Failing readiness while busy takes the pod out of the
-            # Service so new requests only hit idle pods (Bazarr throttles the
-            # whole whisperai provider on any connection error). No liveness
-            # probe on purpose: it would kill pods mid-transcription.
+              HOME: /tmp
+            securityContext: *secctx
+            resources:
+              requests:
+                cpu: 500m
+                memory: 2Gi
+                gpu.intel.com/i915: "1"
+              limits:
+                cpu: "2"
+                memory: 6Gi
+                gpu.intel.com/i915: "1"
+          adapter:
+            image:
+              repository: python
+              tag: 3.15.1-slim@sha256:533b0b2f9b5d46fd097091cf826f27902f1d6c3bca714b6dc74551356aa97a51
+              pullPolicy: IfNotPresent
+            command: ["python3", "-u", "/adapter/whisper_adapter.py"]
+            env:
+              TZ: Europe/Brussels
+              PYTHONDONTWRITEBYTECODE: "1"
+              LISTEN_PORT: "9000"
+              WHISPER_URL: http://127.0.0.1:8080
+              WHISPER_FIELDS: beam_size=5,best_of=5,max_context=0
+              # large-v3-turbo cannot translate: hand translate jobs to the CPU pool
+              TRANSLATE_UPSTREAM: http://whisper-asr-cpu.whisper-asr.svc:9000
+              # match the Bazarr whisperai timeout (long CPU translations can exceed 2 h)
+              TRANSLATE_TIMEOUT: "10800"
+              FILTER_ENABLED: "true"
+            # Same contract as the CPU pool: one job at a time, readiness fails
+            # while busy so new requests only hit idle pods. No liveness probe.
             probes:
               readiness:
                 enabled: true
                 custom: true
                 spec:
                   httpGet:
-                    path: /docs
+                    path: /ready
                     port: 9000
                   periodSeconds: 5
                   timeoutSeconds: 3
                   failureThreshold: 1
                   successThreshold: 1
+            securityContext: *secctx
             resources:
               requests:
-                cpu: 250m
-                memory: 3Gi
+                cpu: 50m
+                memory: 128Mi
               limits:
-                cpu: "1"
+                cpu: 500m
+                memory: 1Gi
     rawResources:
       service:
         forceRename: whisper-asr
@@ -153,9 +246,54 @@ spec:
                 port: 9000
                 targetPort: 9000
                 protocol: TCP
+      # CPU pool only: target for translate jobs forwarded by the GPU adapter
+      service-cpu:
+        forceRename: whisper-asr-cpu
+        manifest:
+          apiVersion: v1
+          kind: Service
+          spec:
+            type: ClusterIP
+            selector:
+              app.kubernetes.io/name: whisper-asr
+              app.kubernetes.io/instance: whisper-asr
+              app.kubernetes.io/controller: whisper-asr
+            ports:
+              - name: http
+                port: 9000
+                targetPort: 9000
+                protocol: TCP
     persistence:
       cache:
         type: emptyDir
         sizeLimit: 6Gi
-        globalMounts:
-          - path: /root/.cache
+        advancedMounts:
+          whisper-asr:
+            app:
+              - path: /root/.cache
+      models:
+        type: emptyDir
+        sizeLimit: 2Gi
+        advancedMounts:
+          gpu:
+            fetch-model:
+              - path: /models
+            app:
+              - path: /models
+                readOnly: true
+      tmp:
+        type: emptyDir
+        sizeLimit: 1Gi
+        advancedMounts:
+          gpu:
+            app:
+              - path: /tmp
+      adapter:
+        type: configMap
+        name: whisper-asr-adapter
+        defaultMode: 0444
+        advancedMounts:
+          gpu:
+            adapter:
+              - path: /adapter
+                readOnly: true

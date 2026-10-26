@@ -5,3 +5,10 @@ resources:
   - namespace.yaml
   - priorityclass.yaml
   - helmrelease.yaml
+configMapGenerator:
+  - name: whisper-asr-adapter
+    namespace: whisper-asr
+    files:
+      - whisper_adapter.py=./adapter/whisper_adapter.py
+generatorOptions:
+  disableNameSuffixHash: true
