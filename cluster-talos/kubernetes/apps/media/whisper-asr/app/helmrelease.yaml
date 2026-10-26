@@ -205,6 +205,8 @@ spec:
               WHISPER_FIELDS: beam_size=5,best_of=5,max_context=0
               # large-v3-turbo cannot translate: hand translate jobs to the CPU pool
               TRANSLATE_UPSTREAM: http://whisper-asr-cpu.whisper-asr.svc:9000
+              # match the Bazarr whisperai timeout (long CPU translations can exceed 2 h)
+              TRANSLATE_TIMEOUT: "10800"
               FILTER_ENABLED: "true"
             # Same contract as the CPU pool: one job at a time, readiness fails
             # while busy so new requests only hit idle pods. No liveness probe.
