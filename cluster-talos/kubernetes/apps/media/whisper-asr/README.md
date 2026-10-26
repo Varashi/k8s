@@ -137,7 +137,9 @@ Bazarr treats the resulting connection error as a provider failure and throttles
   while the pod transcribes.
 
 Requests are spread over the ready pods by the Service, not by load, so a
-request can wait behind a running job while another pod is idle. There is
+request can wait behind a running job while another pod is idle. The adapter
+answers every `POST` with `Connection: close`, so a client that keeps
+connections alive doesn't send all its jobs to the same pod. There is
 deliberately **no liveness probe**, because it would kill pods mid-transcription.
 
 ## Changing the model or flags

@@ -462,6 +462,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
+        if self.command == "POST":
+            # One job per connection: a kept-alive client connection would send
+            # its next job to this same pod, so queues pile up on one pod while
+            # others idle. Closing makes the Service place every job afresh.
+            self.send_header("Connection", "close")
         for k, v in (headers or {}).items():
             self.send_header(k, v)
         self.end_headers()
