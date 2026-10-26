@@ -8,11 +8,11 @@ run behind one Service, `whisper-asr:9000`, which is the endpoint Bazarr uses.
 
 | Controller | Nodes | Replicas | Engine | Translate |
 |---|---|---|---|---|
-| `whisper-asr` | non-GPU workers | 2 (one per node) | [openai-whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice), `faster_whisper` `medium` on CPU (2 cores) | yes |
-| `gpu` (`whisper-asr-gpu`) | GPU workers | 3 (one per node) | [whisper.cpp](https://github.com/ggml-org/whisper.cpp) `whisper-server`, `large-v3-turbo` q8_0 on the Intel GPU (Vulkan), plus an adapter | forwarded to the CPU pool |
+| `whisper-asr` | non-GPU workers | 2 (one per node) | [openai-whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice), `faster_whisper` `medium` on CPU (2 cores) | whisper itself |
+| `gpu` (`whisper-asr-gpu`) | GPU workers | 3 (one per node) | [whisper.cpp](https://github.com/ggml-org/whisper.cpp) `whisper-server`, `large-v3-turbo` q8_0 on the Intel GPU (Vulkan), plus an adapter | transcribes, then [Lingarr](https://github.com/lingarr-translate/lingarr) translates |
 
 - `whisper-asr` Service (`rawResources.service`): selects both controllers. Bazarr's endpoint.
-- `whisper-asr-cpu` Service (`rawResources.service-cpu`): selects only the CPU pool. The GPU adapter forwards translate jobs here.
+- `whisper-asr-cpu` Service (`rawResources.service-cpu`): selects only the CPU pool. The GPU adapter forwards translate jobs here when it runs with `TRANSLATE_MODE=forward`.
 - Models are cached in `emptyDir`s. They can be downloaded again, and no PVC pins pods to a node or blocks GPU-worker drains.
 - The GPU pods use the `background-low` PriorityClass, so they are the first to go under node pressure.
 - On the GPU pods, a 24-minute episode takes about 6-7 minutes and uses about 0.3 CPU core and about 1.1 GiB of VRAM. The CPU pool needs about 20 minutes for the same episode.
@@ -53,15 +53,38 @@ does not throttle the provider.
 
 `large-v3-turbo` was trained without translation data, so it cannot translate.
 Most of Bazarr's whisperai jobs are translations to English (for example,
-Japanese-audio anime). For a `task=translate` request, the adapter:
+Japanese-audio anime). The adapter handles `task=translate` according to
+`TRANSLATE_MODE`:
 
-1. Forwards the whole request to `TRANSLATE_UPSTREAM` (the `whisper-asr-cpu` Service) and relays the response.
-   - The GPU pod stays Ready while it waits, because it is not doing the work.
-2. If the CPU pool has no ready pod, because both are busy, it returns `503` with an empty body. Bazarr skips that download and retries on a later search, without throttling the provider.
-3. If `TRANSLATE_UPSTREAM` is empty, it returns `501` with an empty body, with the same Bazarr behaviour as step 2.
+- **`lingarr`** (default): whisper only transcribes, Lingarr translates.
+  1. The adapter transcribes the audio on the GPU in the source language (the `language` query parameter; if it is missing, it detects the language first). This is the same path as `task=transcribe`, including the clean-up filter.
+  2. It sends the cue texts to Lingarr's `POST /api/translate/content` (`LINGARR_URL`, in-cluster `lingarr.lingarr.svc:9876`), source language to `TRANSLATE_TARGET` (`en`). Each cue is one line (newlines inside a cue become spaces), with the cue index as its position. The title is `whisper-asr - <video file name>`. Lingarr uses its own configured translation service and batch size.
+  3. It puts the translated lines back onto the original cue timings by position and returns the SRT. A cue that Lingarr returns no text for keeps its source text, and the adapter logs a warning with the count.
+  4. The pod stays busy (readiness 503) for the whole job, including the Lingarr call.
+  5. If Lingarr fails, times out (`LINGARR_TIMEOUT`, default 1920 s, just above Lingarr's own 30-minute job timeout) or returns nothing usable, the adapter returns `503` with an empty body. Bazarr rejects that download as an invalid subtitle and retries on a later search, without throttling the provider.
+  6. If the source language already is `TRANSLATE_TARGET`, the transcript is returned as-is.
+- **`forward`**: the adapter relays the whole request to `TRANSLATE_UPSTREAM` (the `whisper-asr-cpu` Service, where faster-whisper `medium` translates) and returns the response. The GPU pod stays Ready while it waits. If the CPU pool has no ready pod, it returns `503` with an empty body.
+- **`reject`** (or `forward` without `TRANSLATE_UPSTREAM`): `501` with an empty body.
 
-Translate capacity is therefore the 2 CPU pods only. Before this change, the GPU
-workers also ran faster-whisper on CPU and could translate.
+Per job, the adapter logs the file, source language, cue count, transcribe
+seconds, translate seconds and the number of untranslated cues.
+
+Lingarr keeps a translation request per title and language pair. It answers
+`409` while an identical request is still running (the adapter then returns
+`503`), and it reuses a completed request when the same lines come in again.
+
+| Env var | Default | Used by |
+|---|---|---|
+| `TRANSLATE_MODE` | `lingarr` | all |
+| `TRANSLATE_TARGET` | `en` | `lingarr` |
+| `LINGARR_URL` | `http://lingarr.lingarr.svc:9876` | `lingarr` |
+| `LINGARR_TIMEOUT` | `1920` | `lingarr` |
+| `LINGARR_API_KEY` | empty (sent as `X-Api-Key` when set) | `lingarr` |
+| `TRANSLATE_UPSTREAM` | empty | `forward` |
+| `TRANSLATE_TIMEOUT` | `7200` (HelmRelease: `10800`) | `forward` |
+
+The CPU pool keeps serving transcriptions (and translations sent to it
+directly through the shared Service) as overflow capacity.
 
 ### Decoding settings
 
@@ -116,7 +139,7 @@ would kill pods mid-transcription.
 - **Model:** change `MODEL_FILE`, `MODEL_URL` and `MODEL_SHA256` in the `fetch-model` init container, and `--model` in the `app` args.
   - Use a model from the official repo (the SHA-256 is the LFS oid in the Hugging Face file listing).
   - Raise the `models` emptyDir `sizeLimit` if the new model is larger.
-  - A model that can translate (for example, `medium` or `large-v3`) would let the GPU pool translate too. Clear `TRANSLATE_UPSTREAM` in that case.
+  - A model that can translate (for example, `medium` or `large-v3`) could translate on the GPU itself; the adapter would need a mode that passes `translate` to `whisper-server`.
 - **Decoding flags:** change both the `app` args and `WHISPER_FIELDS`. Any `whisper-server` multipart field works in `WHISPER_FIELDS`, for example `temperature_inc` or `no_speech_thold`.
 - **Filter:** change the `FILTER_*` env vars, or edit `adapter/whisper_adapter.py`. The kustomize `configMapGenerator` builds the ConfigMap from that file.
 
