@@ -24,9 +24,10 @@ spec:
         name: bjw-s
         namespace: flux-system
   values:
-    # Two pools behind one Service (round-robin across ready pods):
+    # Two pools; Bazarr's Service (whisper-asr) only selects the GPU pool:
     # - whisper-asr: non-GPU workers, faster_whisper medium on CPU (2 cores/pod).
-    #   Overflow capacity; translates with whisper itself.
+    #   Scaled to 0. Only reachable through whisper-asr-cpu, as the target for
+    #   TRANSLATE_MODE=forward; scale up (2) before switching to that mode.
     # - gpu (whisper-asr-gpu): GPU workers, whisper.cpp large-v3-turbo on the
     #   Intel GPU (Vulkan) behind a small adapter that speaks the webservice API
     #   Bazarr uses. task=translate: the adapter transcribes in the source
@@ -34,7 +35,7 @@ spec:
     # Models live in emptyDirs (re-downloadable), so no PVC pins pods to a node.
     controllers:
       whisper-asr:
-        replicas: 2
+        replicas: 0
         pod:
           affinity:
             nodeAffinity:
@@ -246,9 +247,12 @@ spec:
           kind: Service
           spec:
             type: ClusterIP
+            # GPU pool only: every Bazarr job (transcribe and translate) goes to
+            # the GPU adapter, which has Lingarr do the translating
             selector:
               app.kubernetes.io/name: whisper-asr
               app.kubernetes.io/instance: whisper-asr
+              app.kubernetes.io/controller: gpu
             ports:
               - name: http
                 port: 9000
