@@ -1,18 +1,18 @@
 # whisper-asr
 
 Speech-to-text for Bazarr's `whisperai` provider: it transcribes episodes that
-have no usable subtitle source, or translates them to English. Two pools of pods
-run behind one Service, `whisper-asr:9000`, which is the endpoint Bazarr uses.
+have no usable subtitle source, or translates them to English. Bazarr's endpoint is the
+`whisper-asr:9000` Service, which only selects the GPU pool.
 
 ## Layout
 
 | Controller | Nodes | Replicas | Engine | Translate |
 |---|---|---|---|---|
-| `whisper-asr` | non-GPU workers | 2 (one per node) | [openai-whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice), `faster_whisper` `medium` on CPU (2 cores) | whisper itself |
+| `whisper-asr` | non-GPU workers | 0 (2 when used, one per node) | [openai-whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice), `faster_whisper` `medium` on CPU (2 cores) | whisper itself |
 | `gpu` (`whisper-asr-gpu`) | GPU workers | 3 (one per node) | [whisper.cpp](https://github.com/ggml-org/whisper.cpp) `whisper-server`, `large-v3-turbo` q8_0 on the Intel GPU (Vulkan), plus an adapter | transcribes, then [Lingarr](https://github.com/lingarr-translate/lingarr) translates |
 
-- `whisper-asr` Service (`rawResources.service`): selects both controllers. Bazarr's endpoint.
-- `whisper-asr-cpu` Service (`rawResources.service-cpu`): selects only the CPU pool. The GPU adapter forwards translate jobs here when it runs with `TRANSLATE_MODE=forward`.
+- `whisper-asr` Service (`rawResources.service`): selects only the GPU pool. Bazarr's endpoint.
+- `whisper-asr-cpu` Service (`rawResources.service-cpu`): selects only the CPU pool. The GPU adapter forwards translate jobs here when it runs with `TRANSLATE_MODE=forward`. The CPU pool is scaled to 0; set its `replicas` back to 2 before switching to `forward`.
 - Models are cached in `emptyDir`s. They can be downloaded again, and no PVC pins pods to a node or blocks GPU-worker drains.
 - The GPU pods use the `background-low` PriorityClass, so they are the first to go under node pressure.
 - On the GPU pods, a 24-minute episode takes about 6-7 minutes and uses about 0.3 CPU core and about 1.1 GiB of VRAM. The CPU pool needs about 20 minutes for the same episode.
@@ -83,8 +83,9 @@ Lingarr keeps a translation request per title and language pair. It answers
 | `TRANSLATE_UPSTREAM` | empty | `forward` |
 | `TRANSLATE_TIMEOUT` | `7200` (HelmRelease: `10800`) | `forward` |
 
-The CPU pool keeps serving transcriptions (and translations sent to it
-directly through the shared Service) as overflow capacity.
+The CPU pool is not part of Bazarr's Service, so every translation goes through
+the GPU adapter and Lingarr. It is kept (at 0 replicas) only as the `forward`
+fallback.
 
 ### Decoding settings
 
