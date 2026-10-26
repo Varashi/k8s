@@ -10,7 +10,7 @@ provider uses, so the GPU pool can sit behind the same Service as the CPU pool:
                          task=translate (TRANSLATE_MODE=lingarr): transcribe in the
                          source language, translate the cues with Lingarr, return SRT
   POST /detect-language  same input; returns {detected_language, language_code}
-  GET  /ready            200 when idle and whisper-server is up, 503 otherwise
+  GET  /ready            200 when whisper-server is up (busy or not), 503 otherwise
   GET  /health           200 while the adapter process runs
 
 Error responses to /asr carry an EMPTY body: Bazarr stores the body as the
@@ -433,13 +433,13 @@ def upstream_healthy():
 
 class State:
     lock = threading.Lock()      # one whisper-server job at a time
-    pending = 0                  # running + queued jobs; /ready fails while > 0
+    pending = 0                  # running + queued jobs (reported by /ready)
     pending_lock = threading.Lock()
 
 
 @contextlib.contextmanager
 def busy():
-    """Mark the pod busy (readiness fails) for the duration of the block. Nests."""
+    """Count a running or queued job for the duration of the block. Nests."""
     with State.pending_lock:
         State.pending += 1
     try:
@@ -476,12 +476,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == "/health":
             self.reply(200, b"ok")
         elif path == "/ready":
-            if State.pending:
-                self.reply(503, b"busy")
-            elif not upstream_healthy():
+            # Busy pods stay ready: extra requests queue on State.lock instead of
+            # failing. A pod with no endpoint left makes Bazarr throttle whisperai.
+            if not upstream_healthy():
                 self.reply(503, b"whisper-server not ready")
             else:
-                self.reply(200, b"ready")
+                self.reply(200, f"ready ({State.pending} jobs)".encode())
         else:
             self.reply(404, b"")
 
