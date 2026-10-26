@@ -11,7 +11,7 @@ spec:
     # schematic (vmtoolsd-guest-agent), GPU workers get the i915/iscsi-tools
     # schematic. Annotations applied out-of-band.
     # renovate: datasource=docker depName=ghcr.io/siderolabs/talos
-    version: v1.14.2
+    version: v1.14.5
     # Pull each node's installer before cordoning the first node.
     prePull: true
   policy:
