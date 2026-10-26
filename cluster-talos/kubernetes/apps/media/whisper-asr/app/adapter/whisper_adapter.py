@@ -7,6 +7,8 @@ provider uses, so the GPU pool can sit behind the same Service as the CPU pool:
   POST /asr              query: task, language, output, encode, video_file
                          multipart field `audio_file`: raw s16le 16 kHz mono PCM
                          (encode=false, what Bazarr sends) or a WAV (encode=true)
+                         task=translate (TRANSLATE_MODE=lingarr): transcribe in the
+                         source language, translate the cues with Lingarr, return SRT
   POST /detect-language  same input; returns {detected_language, language_code}
   GET  /ready            200 when idle and whisper-server is up, 503 otherwise
   GET  /health           200 while the adapter process runs
@@ -18,6 +20,7 @@ subtitle without checking the status, and an empty body is rejected as
 Python stdlib only (runs from a ConfigMap on the official python image).
 """
 
+import contextlib
 import http.client
 import http.server
 import json
@@ -43,9 +46,21 @@ WHISPER_TIMEOUT = float(os.environ.get("WHISPER_TIMEOUT", "7200"))
 # defaults per request and lets request fields override them, so these pin the
 # decoding even if the server args drift. Comma-separated key=value.
 WHISPER_FIELDS = os.environ.get("WHISPER_FIELDS", "beam_size=5,best_of=5,max_context=0")
-# Where to send task=translate (the turbo model cannot translate). Empty: reject.
+# task=translate handling (the turbo model cannot translate itself):
+#   lingarr  transcribe here in the source language, translate the cue texts with
+#            Lingarr's /api/translate/content, return the English SRT (default)
+#   forward  relay the whole request to TRANSLATE_UPSTREAM (a pool that can translate)
+#   reject   501 with an empty body
+TRANSLATE_MODE = os.environ.get("TRANSLATE_MODE", "lingarr").strip().lower()
 TRANSLATE_UPSTREAM = os.environ.get("TRANSLATE_UPSTREAM", "").rstrip("/")
 TRANSLATE_TIMEOUT = float(os.environ.get("TRANSLATE_TIMEOUT", "7200"))
+TRANSLATE_TARGET = os.environ.get("TRANSLATE_TARGET", "en")
+LINGARR_URL = os.environ.get("LINGARR_URL", "http://lingarr.lingarr.svc:9876").rstrip("/")
+LINGARR_API_KEY = os.environ.get("LINGARR_API_KEY", "")
+# Lingarr's own job timeout is 30 min; wait a bit longer so its error reaches us.
+LINGARR_TIMEOUT = float(os.environ.get("LINGARR_TIMEOUT", "1920"))
+# whisper ISO-639-1 code -> Lingarr language code, where they differ (as Bazarr maps them)
+LINGARR_LANGUAGES = {"zh": "zh-CN"}
 DETECT_SECONDS = float(os.environ.get("DETECT_SECONDS", "30"))
 MAX_BODY_BYTES = int(os.environ.get("MAX_BODY_BYTES", str(1 << 30)))
 
@@ -257,6 +272,68 @@ def clean_srt(srt, duration=None, name="-", log=LOG):
     return render_srt(kept), changes
 
 
+# --------------------------------------------------------------------------- translation (Lingarr)
+
+def cue_line(text):
+    """One cue's text as a single line for Lingarr: newlines and runs of spaces -> one space."""
+    return " ".join(text.split())
+
+
+def srt_to_lines(cues):
+    """Lingarr `lines` payload: one entry per non-empty cue, position = cue index."""
+    return [{"position": i, "line": cue_line(c[2])} for i, c in enumerate(cues) if cue_line(c[2])]
+
+
+def apply_translation(cues, results):
+    """Put translated lines back onto the cue timings by position.
+    Returns (cues, missing): cues without a usable translation keep the source text."""
+    by_pos = {}
+    for item in results if isinstance(results, list) else []:
+        if isinstance(item, dict) and isinstance(item.get("position"), int) and isinstance(item.get("line"), str):
+            by_pos[item["position"]] = item["line"]
+    out, missing = [], 0
+    for i, (start, end, text) in enumerate(cues):
+        if not cue_line(text):
+            continue
+        # no blank lines inside a cue (they would end the SRT block)
+        new = "\n".join(x.strip() for x in by_pos.get(i, "").splitlines() if x.strip())
+        if not new:
+            missing += 1
+            new = text
+        out.append([start, end, new])
+    return out, missing
+
+
+def lingarr_translate(lines, source, target, title, timeout=None):
+    """POST the lines to Lingarr; returns the parsed JSON list. Raises OSError / ValueError."""
+    u = urllib.parse.urlsplit(LINGARR_URL)
+    payload = json.dumps({
+        "arrMediaId": 0,
+        "title": title,
+        "sourceLanguage": LINGARR_LANGUAGES.get(source, source),
+        "targetLanguage": LINGARR_LANGUAGES.get(target, target),
+        "mediaType": "Episode",
+        "lines": lines,
+    }).encode()
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
+    if LINGARR_API_KEY:
+        headers["X-Api-Key"] = LINGARR_API_KEY
+    conn = http.client.HTTPConnection(u.hostname, u.port or 80, timeout=timeout or LINGARR_TIMEOUT)
+    try:
+        conn.request("POST", (u.path or "") + "/api/translate/content", body=payload, headers=headers)
+        r = conn.getresponse()
+        data = r.read()
+    finally:
+        conn.close()
+    if r.status != 200:
+        # 409: Lingarr is still working on an identical request (same title + languages)
+        raise ValueError(f"HTTP {r.status}: {data[:300]!r}")
+    results = json.loads(data)
+    if not isinstance(results, list):
+        raise ValueError(f"unexpected response: {data[:300]!r}")
+    return results
+
+
 # --------------------------------------------------------------------------- audio / http helpers
 
 def wav_header(n_bytes):
@@ -356,8 +433,20 @@ def upstream_healthy():
 
 class State:
     lock = threading.Lock()      # one whisper-server job at a time
-    pending = 0                  # running + queued local jobs
+    pending = 0                  # running + queued jobs; /ready fails while > 0
     pending_lock = threading.Lock()
+
+
+@contextlib.contextmanager
+def busy():
+    """Mark the pod busy (readiness fails) for the duration of the block. Nests."""
+    with State.pending_lock:
+        State.pending += 1
+    try:
+        yield
+    finally:
+        with State.pending_lock:
+            State.pending -= 1
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -425,14 +514,46 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return [part], wav_duration(part)  # must already be WAV (no ffmpeg conversion)
 
     def run_local(self, fields, chunks):
-        with State.pending_lock:
-            State.pending += 1
-        try:
+        """One whisper-server call; the pod counts as busy while it runs or waits."""
+        with busy():
             with State.lock:
                 return post_multipart(WHISPER_URL, "/inference", fields, chunks, WHISPER_TIMEOUT)
-        finally:
-            with State.pending_lock:
-                State.pending -= 1
+
+    def detect(self, chunks, raw):
+        """Language of the first DETECT_SECONDS: (whisper name, ISO-639-1 code or None).
+        Raises OSError / ValueError."""
+        if raw:
+            n = min(len(chunks[1]), int(DETECT_SECONDS * BYTES_PER_SECOND))
+            chunks = [wav_header(n), chunks[1][:n]]
+        fields = {"language": "auto", "detect_language": "true", "response_format": "json"}
+        status, result = self.run_local(fields, chunks)
+        lang = json.loads(result).get("language", "") if status == 200 else ""
+        return lang, LANGUAGES.get(lang)
+
+    def transcribe(self, chunks, duration, lang, output, name):
+        """Transcribe on whisper-server, filter SRT output; returns the text or None on error."""
+        fields = decode_fields()
+        fields.update(language=lang, response_format=OUTPUT_FORMATS[output])
+        dur = f"{duration:.0f}s" if duration else "?"
+        LOG.info("asr start file=%s language=%s output=%s audio=%s", name, lang, output, dur)
+        t0 = time.monotonic()
+        try:
+            status, result = self.run_local(fields, chunks)
+        except OSError as e:
+            LOG.error("asr file=%s: whisper-server error: %s", name, e)
+            return None
+        if status != 200:
+            LOG.error("asr file=%s: whisper-server HTTP %d: %s", name, status, result[:300])
+            return None
+        text = result.decode("utf-8", "replace")
+        n_changes = 0
+        if output == "srt" and FILTER_ENABLED:
+            text, changes = clean_srt(text, duration, name)
+            n_changes = len(changes)
+        elapsed = time.monotonic() - t0
+        LOG.info("asr done file=%s elapsed=%.0fs audio=%s rtf=%s filter_changes=%d", name, elapsed, dur,
+                 f"{elapsed / duration:.2f}" if duration else "?", n_changes)
+        return text
 
     # -- endpoints
 
@@ -445,42 +566,82 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if body is None:
             LOG.warning("asr file=%s: missing or too large body", name)
             return self.reply(413, b"")
-        if task == "translate":
-            return self.handle_translate(body, u, name, lang)
-        if task != "transcribe" or output not in OUTPUT_FORMATS:
+        if task == "translate" and TRANSLATE_MODE == "forward":
+            return self.handle_forward(body, u, name, lang)
+        if task == "translate" and TRANSLATE_MODE != "lingarr":
+            LOG.info("asr file=%s: task=translate rejected (TRANSLATE_MODE=%s)", name, TRANSLATE_MODE)
+            return self.reply(501, b"", headers={"X-Error": "translate not supported"})
+        formats = ("srt",) if task == "translate" else OUTPUT_FORMATS
+        if task not in ("transcribe", "translate") or output not in formats:
             LOG.warning("asr file=%s: unsupported task=%s output=%s", name, task, output)
             return self.reply(400, b"")
         chunks, duration = self.audio(body, q)
         if chunks is None:
             LOG.warning("asr file=%s: no audio_file field", name)
             return self.reply(400, b"")
-        fields = decode_fields()
-        fields.update(language=lang, response_format=OUTPUT_FORMATS[output])
-        dur = f"{duration:.0f}s" if duration else "?"
-        LOG.info("asr start file=%s language=%s output=%s audio=%s", name, lang, output, dur)
-        t0 = time.monotonic()
-        try:
-            status, result = self.run_local(fields, chunks)
-        except OSError as e:
-            LOG.error("asr file=%s: whisper-server error: %s", name, e)
+        if task == "translate":
+            status, srt = self.translate_lingarr(chunks, duration, q, name, lang)
+            return self.reply(status, srt.encode("utf-8"), CONTENT_TYPES["srt"],
+                              headers=None if status == 200 else {"X-Error": "translate failed"})
+        text = self.transcribe(chunks, duration, lang, output, name)
+        if text is None:
             return self.reply(502, b"")
-        del body, chunks
-        if status != 200:
-            LOG.error("asr file=%s: whisper-server HTTP %d: %s", name, status, result[:300])
-            return self.reply(502, b"")
-        text = result.decode("utf-8", "replace")
-        n_changes = 0
-        if output == "srt" and FILTER_ENABLED:
-            text, changes = clean_srt(text, duration, name)
-            n_changes = len(changes)
-        LOG.info("asr done file=%s elapsed=%.0fs audio=%s rtf=%s filter_changes=%d", name,
-                 time.monotonic() - t0, dur,
-                 f"{(time.monotonic() - t0) / duration:.2f}" if duration else "?", n_changes)
         self.reply(200, text.encode("utf-8"), CONTENT_TYPES[output])
 
-    def handle_translate(self, body, u, name, lang):
+    def translate_lingarr(self, chunks, duration, q, name, lang):
+        """Transcribe in the source language here, translate the cue texts with Lingarr.
+        Returns (status, srt); srt is empty on errors."""
+        t_job = time.monotonic()
+        # busy for the whole job, Lingarr call included: the pod stays out of the
+        # Service until the translated SRT is back
+        with busy():
+            if lang in ("", "auto"):
+                try:
+                    whisper_name, code = self.detect(chunks, q.get("encode", "true").lower() == "false")
+                except (OSError, ValueError) as e:
+                    LOG.error("translate file=%s: language detection failed: %s", name, e)
+                    return 502, ""
+                if not code:
+                    LOG.error("translate file=%s: language detection returned %r", name, whisper_name)
+                    return 502, ""
+                LOG.info("translate file=%s: no language given, detected %s", name, code)
+                lang = code
+            t0 = time.monotonic()
+            srt = self.transcribe(chunks, duration, lang, "srt", name)
+            t_transcribe = time.monotonic() - t0
+            if srt is None:
+                return 502, ""
+            cues = parse_srt(srt)
+            lines = srt_to_lines(cues)
+            if lang == TRANSLATE_TARGET or not lines:
+                LOG.info("translate file=%s: source=%s cues=%d, nothing to translate", name, lang, len(lines))
+                return 200, srt
+            title = f"whisper-asr - {name}"
+            LOG.info("translate file=%s: source=%s cues=%d transcribe=%.0fs, sending to lingarr",
+                     name, lang, len(lines), t_transcribe)
+            t1 = time.monotonic()
+            try:
+                results = lingarr_translate(lines, lang, TRANSLATE_TARGET, title)
+            except (OSError, ValueError, http.client.HTTPException) as e:
+                LOG.error("translate file=%s: lingarr failed after %.0fs (%s): %s", name,
+                          time.monotonic() - t1, type(e).__name__, e)
+                return 503, ""
+            t_translate = time.monotonic() - t1
+        out, missing = apply_translation(cues, results)
+        if missing >= len(lines):
+            LOG.error("translate file=%s: lingarr returned no usable lines (%d results)", name, len(results))
+            return 503, ""
+        if missing:
+            LOG.warning("translate file=%s: %d of %d cues not translated, kept the source text",
+                        name, missing, len(lines))
+        LOG.info("translate done file=%s source=%s target=%s cues=%d transcribe=%.0fs translate=%.0fs "
+                 "total=%.0fs missing=%d", name, lang, TRANSLATE_TARGET, len(lines), t_transcribe,
+                 t_translate, time.monotonic() - t_job, missing)
+        return 200, render_srt(out)
+
+    def handle_forward(self, body, u, name, lang):
         if not TRANSLATE_UPSTREAM:
-            LOG.info("asr file=%s: task=translate rejected (model cannot translate, no TRANSLATE_UPSTREAM)", name)
+            LOG.info("asr file=%s: task=translate rejected (TRANSLATE_MODE=forward, no TRANSLATE_UPSTREAM)", name)
             return self.reply(501, b"", headers={"X-Error": "translate not supported"})
         t = urllib.parse.urlsplit(TRANSLATE_UPSTREAM)
         LOG.info("asr file=%s: task=translate language=%s forwarded to %s", name, lang, t.netloc)
@@ -507,17 +668,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         chunks, _ = self.audio(body, q)
         if chunks is None:
             return self.reply_json(400, empty)
-        if q.get("encode", "true").lower() == "false":
-            n = min(len(chunks[1]), int(DETECT_SECONDS * BYTES_PER_SECOND))
-            chunks = [wav_header(n), chunks[1][:n]]
-        fields = {"language": "auto", "detect_language": "true", "response_format": "json"}
         try:
-            status, result = self.run_local(fields, chunks)
-            lang = json.loads(result).get("language", "") if status == 200 else ""
+            lang, code = self.detect(chunks, q.get("encode", "true").lower() == "false")
         except (OSError, ValueError) as e:
             LOG.error("detect file=%s: whisper-server error: %s", name, e)
             return self.reply_json(502, empty)
-        code = LANGUAGES.get(lang)
         LOG.info("detect file=%s: language=%r code=%s", name, lang, code)
         if not code:
             return self.reply_json(502, empty)
@@ -532,8 +687,14 @@ class Server(http.server.ThreadingHTTPServer):
 def main():
     logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"),
                         format="%(asctime)s %(levelname)s %(message)s")
+    if TRANSLATE_MODE == "lingarr":
+        translate = f"lingarr {LINGARR_URL} -> {TRANSLATE_TARGET}"
+    elif TRANSLATE_MODE == "forward" and TRANSLATE_UPSTREAM:
+        translate = f"forward {TRANSLATE_UPSTREAM}"
+    else:
+        translate = "rejected"
     LOG.info("listening on :%d, whisper-server %s, fields %s, filter %s, translate %s", LISTEN_PORT,
-             WHISPER_URL, decode_fields(), "on" if FILTER_ENABLED else "off", TRANSLATE_UPSTREAM or "rejected")
+             WHISPER_URL, decode_fields(), "on" if FILTER_ENABLED else "off", translate)
     Server(("", LISTEN_PORT), Handler).serve_forever()
 
 

@@ -26,10 +26,11 @@ spec:
   values:
     # Two pools behind one Service (round-robin across ready pods):
     # - whisper-asr: non-GPU workers, faster_whisper medium on CPU (2 cores/pod).
-    #   The only pool that can translate.
+    #   Overflow capacity; translates with whisper itself.
     # - gpu (whisper-asr-gpu): GPU workers, whisper.cpp large-v3-turbo on the
     #   Intel GPU (Vulkan) behind a small adapter that speaks the webservice API
-    #   Bazarr uses. task=translate is forwarded to the CPU pool (whisper-asr-cpu).
+    #   Bazarr uses. task=translate: the adapter transcribes in the source
+    #   language and has Lingarr translate the cues to English.
     # Models live in emptyDirs (re-downloadable), so no PVC pins pods to a node.
     controllers:
       whisper-asr:
@@ -203,7 +204,14 @@ spec:
               LISTEN_PORT: "9000"
               WHISPER_URL: http://127.0.0.1:8080
               WHISPER_FIELDS: beam_size=5,best_of=5,max_context=0
-              # large-v3-turbo cannot translate: hand translate jobs to the CPU pool
+              # large-v3-turbo cannot translate. lingarr: transcribe here in the
+              # source language, then Lingarr translates the cue texts (default).
+              # forward: relay translate jobs to TRANSLATE_UPSTREAM. reject: 501.
+              TRANSLATE_MODE: lingarr
+              LINGARR_URL: http://lingarr.lingarr.svc:9876
+              # Lingarr's own job timeout is 30 min; wait a bit longer for its error
+              LINGARR_TIMEOUT: "1920"
+              # used by TRANSLATE_MODE=forward only (the CPU pool can translate)
               TRANSLATE_UPSTREAM: http://whisper-asr-cpu.whisper-asr.svc:9000
               # match the Bazarr whisperai timeout (long CPU translations can exceed 2 h)
               TRANSLATE_TIMEOUT: "10800"
@@ -246,7 +254,8 @@ spec:
                 port: 9000
                 targetPort: 9000
                 protocol: TCP
-      # CPU pool only: target for translate jobs forwarded by the GPU adapter
+      # CPU pool only: target for translate jobs when the GPU adapter runs
+      # with TRANSLATE_MODE=forward
       service-cpu:
         forceRename: whisper-asr-cpu
         manifest:
