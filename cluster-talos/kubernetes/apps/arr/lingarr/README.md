@@ -1,6 +1,6 @@
 # Lingarr
 
-Subtitle translation (English → Dutch), scoped per show.
+Subtitle translation (English → Dutch): all movies, TV scoped per show.
 
 ## Where configuration lives
 
@@ -19,6 +19,7 @@ After a fresh install, complete onboarding (auth disabled — internal-only rout
 | Setting | Value |
 |---|---|
 | `sonarr_url` | in-cluster Sonarr service URL |
+| `radarr_url` | in-cluster Radarr service URL |
 | `service_type` | `["anthropic"]` |
 | `anthropic_model` | `claude-haiku-5-5` |
 | `anthropic_version` | `2023-06-01` |
@@ -27,16 +28,17 @@ After a fresh install, complete onboarding (auth disabled — internal-only rout
 | `use_batch_translation` | `true` |
 | `max_batch_size` | `100` (0 = whole file in one request → truncated output) |
 | `anthropic_request_template` | `{"model":"{model}","max_tokens":16000,"output_config":{"effort":"low"},"system":"{systemPrompt}","messages":[{"role":"user","content":"{userMessage}"}]}` |
-| `automation_enabled` / `max_translations_per_run` | `true` / `50` (schedule `0 4 * * *`, runs in UTC) |
+| `automation_enabled` / `max_translations_per_run` | `true` / `500` (schedule `0 4 * * *`, runs in UTC) |
 | `telemetry_enabled` | `false` |
 | `sonarr_default_include` | `false` (only explicitly included shows are translated) |
+| `radarr_default_include` | `true` (all movies are translated) |
 
 API keys come from the `lingarr-secret` ExternalSecret and are written through the
-encrypted-setting endpoint (keys `sonarr_api_key`, `anthropic_api_key`):
+encrypted-setting endpoint (keys `sonarr_api_key`, `radarr_api_key`, `anthropic_api_key`):
 
 ```bash
 kubectl -n lingarr port-forward svc/lingarr 9876 &
-for k in ANTHROPIC_API_KEY:anthropic_api_key SONARR_API_KEY:sonarr_api_key; do
+for k in ANTHROPIC_API_KEY:anthropic_api_key SONARR_API_KEY:sonarr_api_key RADARR_API_KEY:radarr_api_key; do
   v=$(kubectl -n lingarr get secret lingarr-secret -o jsonpath="{.data.${k%%:*}}" | base64 -d)
   curl -s -X POST -H 'Content-Type: application/json' \
     -d "{\"key\":\"${k##*:}\",\"value\":\"$v\"}" http://localhost:9876/api/setting/encrypted
