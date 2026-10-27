@@ -59,6 +59,13 @@ LINGARR_URL = os.environ.get("LINGARR_URL", "http://lingarr.lingarr.svc:9876").r
 LINGARR_API_KEY = os.environ.get("LINGARR_API_KEY", "")
 # Lingarr's own job timeout is 30 min; wait a bit longer so its error reaches us.
 LINGARR_TIMEOUT = float(os.environ.get("LINGARR_TIMEOUT", "1920"))
+# Sonarr/Radarr lookups so Lingarr requests carry the real media id (id 0 makes
+# Lingarr log a Sonarr 404 per request). Unset key = skip that lookup.
+SONARR_URL = os.environ.get("SONARR_URL", "http://sonarr.sonarr.svc:8989").rstrip("/")
+SONARR_API_KEY = os.environ.get("SONARR_API_KEY", "")
+RADARR_URL = os.environ.get("RADARR_URL", "http://radarr.radarr.svc:7878").rstrip("/")
+RADARR_API_KEY = os.environ.get("RADARR_API_KEY", "")
+ARR_TIMEOUT = float(os.environ.get("ARR_TIMEOUT", "10"))
 # whisper ISO-639-1 code -> Lingarr language code, where they differ (as Bazarr maps them)
 LINGARR_LANGUAGES = {"zh": "zh-CN"}
 DETECT_SECONDS = float(os.environ.get("DETECT_SECONDS", "30"))
@@ -304,15 +311,58 @@ def apply_translation(cues, results):
     return out, missing
 
 
-def lingarr_translate(lines, source, target, title, timeout=None):
+def arr_parse(base_url, api_key, title):
+    """GET <arr>/api/v3/parse?title=...; returns the parsed JSON dict or None."""
+    u = urllib.parse.urlsplit(base_url)
+    conn = http.client.HTTPConnection(u.hostname, u.port or 80, timeout=ARR_TIMEOUT)
+    try:
+        conn.request("GET", (u.path or "") + "/api/v3/parse?" + urllib.parse.urlencode({"title": title}),
+                     headers={"X-Api-Key": api_key, "Accept": "application/json"})
+        r = conn.getresponse()
+        data = r.read()
+    finally:
+        conn.close()
+    if r.status != 200 or not data:
+        return None
+    return json.loads(data)
+
+
+def in_folder(path, folder):
+    return bool(folder) and path.startswith(folder.rstrip("/") + "/")
+
+
+def arr_media(video_path):
+    """(mediaType, id) for Lingarr: the Sonarr episode id or Radarr movie id of the
+    video, matched by file name and accepted only when the file sits in that
+    series/movie folder. ("Episode", 0) when unknown."""
+    if not video_path or not video_path.startswith("/"):
+        return "Episode", 0
+    title = os.path.basename(video_path)
+    try:
+        if SONARR_API_KEY:
+            d = arr_parse(SONARR_URL, SONARR_API_KEY, title) or {}
+            episodes = d.get("episodes") or []
+            if episodes and in_folder(video_path, (d.get("series") or {}).get("path")):
+                return "Episode", int(episodes[0]["id"])
+        if RADARR_API_KEY:
+            d = arr_parse(RADARR_URL, RADARR_API_KEY, title) or {}
+            movie = d.get("movie") or {}
+            if movie.get("id") and in_folder(video_path, movie.get("path")):
+                return "Movie", int(movie["id"])
+    except (OSError, ValueError, KeyError, TypeError, http.client.HTTPException) as e:
+        LOG.warning("arr lookup file=%s failed: %s", title, e)
+    return "Episode", 0
+
+
+def lingarr_translate(lines, source, target, title, media=("Episode", 0), timeout=None):
     """POST the lines to Lingarr; returns the parsed JSON list. Raises OSError / ValueError."""
     u = urllib.parse.urlsplit(LINGARR_URL)
     payload = json.dumps({
-        "arrMediaId": 0,
+        "arrMediaId": media[1],
         "title": title,
         "sourceLanguage": LINGARR_LANGUAGES.get(source, source),
         "targetLanguage": LINGARR_LANGUAGES.get(target, target),
-        "mediaType": "Episode",
+        "mediaType": media[0],
         "lines": lines,
     }).encode()
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
@@ -622,11 +672,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 LOG.info("translate file=%s: source=%s cues=%d, nothing to translate", name, lang, len(lines))
                 return 200, srt
             title = f"whisper-asr - {name}"
-            LOG.info("translate file=%s: source=%s cues=%d transcribe=%.0fs, sending to lingarr",
-                     name, lang, len(lines), t_transcribe)
+            media = arr_media(q.get("video_file") or "")
+            LOG.info("translate file=%s: source=%s cues=%d transcribe=%.0fs, sending to lingarr (%s %d)",
+                     name, lang, len(lines), t_transcribe, media[0], media[1])
             t1 = time.monotonic()
             try:
-                results = lingarr_translate(lines, lang, TRANSLATE_TARGET, title)
+                results = lingarr_translate(lines, lang, TRANSLATE_TARGET, title, media)
             except (OSError, ValueError, http.client.HTTPException) as e:
                 LOG.error("translate file=%s: lingarr failed after %.0fs (%s): %s", name,
                           time.monotonic() - t1, type(e).__name__, e)

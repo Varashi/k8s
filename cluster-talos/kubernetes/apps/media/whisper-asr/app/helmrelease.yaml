@@ -229,6 +229,12 @@ spec:
               # match the Bazarr whisperai timeout (long CPU translations can exceed 2 h)
               TRANSLATE_TIMEOUT: "10800"
               FILTER_ENABLED: "true"
+              # Sonarr/Radarr lookups give Lingarr the real episode/movie id
+              SONARR_URL: http://sonarr.sonarr.svc:8989
+              RADARR_URL: http://radarr.radarr.svc:7878
+            envFrom:
+              - secretRef:
+                  name: whisper-asr-arr
             # One whisper job at a time per pod; extra requests queue in the
             # adapter. Readiness only fails when whisper-server is down, so busy
             # pods stay in the Service (an empty Service makes Bazarr throttle

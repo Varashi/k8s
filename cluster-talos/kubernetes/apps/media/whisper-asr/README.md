@@ -58,7 +58,7 @@ Japanese-audio anime). The adapter handles `task=translate` according to
 
 - **`lingarr`** (default): whisper only transcribes, Lingarr translates.
   1. The adapter transcribes the audio on the GPU in the source language (the `language` query parameter; if it is missing, it detects the language first). This is the same path as `task=transcribe`, including the clean-up filter.
-  2. It sends the cue texts to Lingarr's `POST /api/translate/content` (`LINGARR_URL`, in-cluster `lingarr.lingarr.svc:9876`), source language to `TRANSLATE_TARGET` (`en`). Each cue is one line (newlines inside a cue become spaces), with the cue index as its position. The title is `whisper-asr - <video file name>`. Lingarr uses its own configured translation service and batch size.
+  2. It sends the cue texts to Lingarr's `POST /api/translate/content` (`LINGARR_URL`, in-cluster `lingarr.lingarr.svc:9876`), source language to `TRANSLATE_TARGET` (`en`). Each cue is one line (newlines inside a cue become spaces), with the cue index as its position. The title is `whisper-asr - <video file name>`. The request carries the video's Sonarr episode id or Radarr movie id: the adapter parses the file name with Sonarr's, then Radarr's, `GET /api/v3/parse` and keeps the match only when the file is inside that series or movie folder. No match sends id `0`, which Lingarr logs as a Sonarr 404 but otherwise ignores. Lingarr uses its own configured translation service and batch size.
   3. It puts the translated lines back onto the original cue timings by position and returns the SRT. A cue that Lingarr returns no text for keeps its source text, and the adapter logs a warning with the count.
   4. The job counts as running for the whole job, including the Lingarr call; the whisper lock is only held while whisper transcribes.
   5. If Lingarr fails, times out (`LINGARR_TIMEOUT`, default 1920 s, just above Lingarr's own 30-minute job timeout) or returns nothing usable, the adapter returns `503` with an empty body. Bazarr rejects that download as an invalid subtitle and retries on a later search, without throttling the provider.
@@ -80,6 +80,8 @@ Lingarr keeps a translation request per title and language pair. It answers
 | `LINGARR_URL` | `http://lingarr.lingarr.svc:9876` | `lingarr` |
 | `LINGARR_TIMEOUT` | `1920` | `lingarr` |
 | `LINGARR_API_KEY` | empty (sent as `X-Api-Key` when set) | `lingarr` |
+| `SONARR_URL` / `RADARR_URL` | `http://sonarr.sonarr.svc:8989` / `http://radarr.radarr.svc:7878` | `lingarr` |
+| `SONARR_API_KEY` / `RADARR_API_KEY` | empty (lookup skipped); HelmRelease: from the `whisper-asr-arr` ExternalSecret | `lingarr` |
 | `TRANSLATE_UPSTREAM` | empty | `forward` |
 | `TRANSLATE_TIMEOUT` | `7200` (HelmRelease: `10800`) | `forward` |
 
