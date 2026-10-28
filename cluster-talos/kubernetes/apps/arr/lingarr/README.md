@@ -26,8 +26,8 @@ After a fresh install, complete onboarding (auth disabled — internal-only rout
 | `source_languages` | `[{"name":"English","code":"en"}]` |
 | `target_languages` | `[{"name":"Dutch","code":"nl"}]` |
 | `use_batch_translation` | `true` |
-| `max_batch_size` | `100` (0 = whole file in one request → truncated output) |
-| `anthropic_request_template` | `{"model":"{model}","max_tokens":16000,"output_config":{"effort":"low"},"system":"{systemPrompt}","messages":[{"role":"user","content":"{userMessage}"}]}` |
+| `max_batch_size` | `50` (0 = whole file in one request → truncated output; 100 still hit `max_tokens` occasionally) |
+| `anthropic_request_template` | `{"model":"{model}","max_tokens":32000,"output_config":{"effort":"low"},"system":"{systemPrompt}","messages":[{"role":"user","content":"{userMessage}"}]}` |
 | `automation_enabled` / `max_translations_per_run` | `true` / `500` (schedule `0 4 * * *`, runs in UTC) |
 | `telemetry_enabled` | `false` |
 | `sonarr_default_include` | `false` (only explicitly included shows are translated) |
@@ -55,6 +55,9 @@ The data-protection keys for that encryption live on the `lingarr-config` PVC.
   a per-workspace spend limit and usage view).
 - **Default request template** uses `max_tokens: 1024`; with batch size 0 the
   response is cut off (`stop_reason: max_tokens`). Use the template above.
+  Haiku's thinking tokens count toward `max_tokens` too. Check the template
+  is still in place when long translations start failing: it was found reset
+  to the default once (cause unknown).
 - **Stale job lock after a pod restart.** If the pod is replaced while a
   Hangfire job holds a distributed lock, the next job of that type hangs without
   logging. Check `hangfire.lock` in the `lingarr` database and delete rows older
