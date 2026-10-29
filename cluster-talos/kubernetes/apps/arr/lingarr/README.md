@@ -1,6 +1,6 @@
 # Lingarr
 
-Subtitle translation (English → Dutch): all movies, TV scoped per show.
+Subtitle translation (English → Dutch), scoped per show and per movie.
 
 ## Where configuration lives
 
@@ -29,9 +29,10 @@ After a fresh install, complete onboarding (auth disabled — internal-only rout
 | `max_batch_size` | `50` (0 = whole file in one request → truncated output; 100 still hit `max_tokens` occasionally) |
 | `anthropic_request_template` | `{"model":"{model}","max_tokens":32000,"output_config":{"effort":"low"},"system":"{systemPrompt}","messages":[{"role":"user","content":"{userMessage}"}]}` |
 | `automation_enabled` / `max_translations_per_run` | `true` / `500` (schedule `0 4 * * *`, runs in UTC) |
+| `ignore_captions` | `true` (any existing `nl`, `nl.hi` or `nl.forced` counts as translated; plain `en` preferred over `en.hi` as source) |
 | `telemetry_enabled` | `false` |
 | `sonarr_default_include` | `false` (only explicitly included shows are translated) |
-| `radarr_default_include` | `true` (all movies are translated) |
+| `radarr_default_include` | `false` (include only the movies Bazarr reports as missing Dutch) |
 
 API keys come from the `lingarr-secret` ExternalSecret and are written through the
 encrypted-setting endpoint (keys `sonarr_api_key`, `radarr_api_key`, `anthropic_api_key`):
