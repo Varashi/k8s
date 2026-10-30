@@ -5,6 +5,6 @@ kind: Kustomization
 # (renovate.json, #274). Grouped with Cilium: Gateway API must match what the
 # running Cilium minor supports (Cilium checks *listed*, not *served*, CRD versions).
 # renovate: datasource=github-releases depName=kubernetes-sigs/gateway-api
-# gateway-api-version: v1.6.3
+# gateway-api-version: v1.7.0
 resources:
   - gateway-api-crds.yaml
