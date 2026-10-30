@@ -81,10 +81,11 @@ spec:
               # can't be Ready w/o a worker; PUSH worker can't register w/o the
               # orchestrator being Ready in the LB). v1.4.0 base: capability-aware
               # routing (PREFER_HW + LB_STRATEGY). =sha-4ee6996.
-              # sha-bedf0e8 (2026-10-30, pre-release, plex-test ONLY): dead-worker
+              # sha-bedf0e8 (2026-10-30): dead-worker
               # fall-through, recovery re-resolves + waits for a healthy worker,
               # per-upstream checkpoint/accounting (#219, #242, PR #243).
-              tag: sha-bedf0e8@sha256:97629c4142a0a1e6199bb975e6a9172fd898e0e75ea8eb418f94ee2b1d1c96e5
+              # Released as v1.4.2 (scaleplex v1.14.4) = sha-bedf0e8.
+              tag: v1.4.2
             env:
               TZ: Europe/Brussels
               LISTEN_ADDR: ":3500"
@@ -249,9 +250,10 @@ spec:
               # (#214, PR #240). Prod hit exit-218 on 10-bit SDR AV1 + SRT
               # burn → hevc_vaapi. Validate here, then release + roll prod.
               # Released as v1.13.3 (scaleplex v1.14.3) = sha-4a73169.
-              # sha-bedf0e8 (2026-10-30, pre-release, plex-test ONLY): SIGTERM drain
+              # sha-bedf0e8 (2026-10-30): SIGTERM drain
               # + /capability ready/draining (#242, PR #243).
-              tag: sha-bedf0e8@sha256:a1a58ab1975ea5ecc531099d9f0a235aa16c32d3eb7843950b73da5a9ce14bed
+              # Released as v1.13.4 (scaleplex v1.14.4) = sha-bedf0e8.
+              tag: v1.13.4
             env:
               TZ: Europe/Brussels
               # Device retarget now lives in the fork (patch 0116); this

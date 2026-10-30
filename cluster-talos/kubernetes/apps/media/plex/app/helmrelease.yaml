@@ -133,7 +133,10 @@ spec:
               # presence (#93 push-only-fleet deadlock fix). No-op on prod's
               # DNS-only Arc fleet (always has workers → always Ready); ships for
               # consistency + future push workers. =sha-4ee6996.
-              tag: v1.4.1
+              # v1.4.2 (scaleplex v1.14.4, 2026-10-30): dead-worker fall-through,
+              # rollout-safe recovery (re-resolve + wait for healthy), per-upstream
+              # accounting (#219, #242). =sha-bedf0e8.
+              tag: v1.4.2
             env:
               TZ: Europe/Brussels
               LISTEN_ADDR: ":3500"
@@ -238,7 +241,10 @@ spec:
               # the FINAL graph; 10-bit SDR sub-burn keeps p010 (#214). Fixes
               # exit-218 + client stall on 10-bit SDR AV1/HEVC + SRT burn →
               # hevc_vaapi. Validated on plex-test. =sha-4a73169.
-              tag: v1.13.3
+              # v1.13.4 (scaleplex v1.14.4, 2026-10-30): SIGTERM drain + /capability
+              # ready/draining (#242). Validated on plex-test: worker rollout
+              # mid-transcode, one move, no client hitch. =sha-bedf0e8.
+              tag: v1.13.4
             env:
               TZ: Europe/Brussels
               # Device retarget now in the fork (0116); pin the worker GPU.
