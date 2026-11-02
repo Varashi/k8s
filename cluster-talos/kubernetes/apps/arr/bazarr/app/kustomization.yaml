@@ -6,3 +6,10 @@ resources:
   - cluster.yaml
   - externalsecret.yaml
   - helmrelease.yaml
+configMapGenerator:
+  - name: bazarr-scripts
+    namespace: bazarr
+    files:
+      - subtitle-lang-rename.py=./subtitle-lang-rename.py
+generatorOptions:
+  disableNameSuffixHash: true
