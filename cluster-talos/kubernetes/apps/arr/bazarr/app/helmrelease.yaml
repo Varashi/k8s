@@ -67,6 +67,38 @@ spec:
                 cpu: 100m
               limits:
                 cpu: 1000m
+      # Adds the language code to subtitle files imported without one
+      # (`<video>.hi.srt` -> `<video>.en.hi.srt`), using Bazarr's own guess,
+      # so name-based tools (Lingarr, Plex) see the language too. Runs before
+      # Lingarr's nightly translation run.
+      subtitle-rename:
+        type: cronjob
+        cronjob:
+          schedule: "30 3 * * *"
+          timeZone: Europe/Brussels
+          concurrencyPolicy: Forbid
+          ttlSecondsAfterFinished: 172800
+          backoffLimit: 0
+        containers:
+          app:
+            image:
+              repository: python
+              tag: 3.15.1-slim@sha256:533b0b2f9b5d46fd097091cf826f27902f1d6c3bca714b6dc74551356aa97a51
+              pullPolicy: IfNotPresent
+            command: ["python3", "-u", "/scripts/subtitle-lang-rename.py"]
+            env:
+              TZ: Europe/Brussels
+              PYTHONDONTWRITEBYTECODE: "1"
+              BAZARR_URL: http://bazarr.bazarr.svc:6767
+              BAZARR_API_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: bazarr-api
+                    key: BAZARR_API_KEY
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
     service:
       app:
         controller: bazarr
@@ -108,8 +140,10 @@ spec:
       config:
         type: persistentVolumeClaim
         existingClaim: bazarr-config
-        globalMounts:
-          - path: /config
+        advancedMounts:
+          bazarr:
+            app:
+              - path: /config
       media:
         type: nfs
         server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
@@ -120,5 +154,15 @@ spec:
         type: nfs
         server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/DATA/backup/bazarr
-        globalMounts:
-          - path: /config/backup
+        advancedMounts:
+          bazarr:
+            app:
+              - path: /config/backup
+      scripts:
+        type: configMap
+        name: bazarr-scripts
+        defaultMode: 0555
+        advancedMounts:
+          subtitle-rename:
+            app:
+              - path: /scripts
