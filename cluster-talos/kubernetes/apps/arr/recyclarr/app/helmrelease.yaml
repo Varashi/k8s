@@ -97,3 +97,6 @@ spec:
           - path: /config/custom-formats/sonarr/cf-anime-time-exempt.json
             subPath: cf-anime-time-exempt.json
             readOnly: true
+          - path: /config/custom-formats/sonarr/cf-anime-en-ja-audio.json
+            subPath: cf-anime-en-ja-audio.json
+            readOnly: true

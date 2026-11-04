@@ -14,5 +14,6 @@ configMapGenerator:
       - cf-anime-non-english-dual.json=./config/cf-anime-non-english-dual.json
       - cf-anime-non-english-dual-groups.json=./config/cf-anime-non-english-dual-groups.json
       - cf-anime-time-exempt.json=./config/cf-anime-time-exempt.json
+      - cf-anime-en-ja-audio.json=./config/cf-anime-en-ja-audio.json
 generatorOptions:
   disableNameSuffixHash: true

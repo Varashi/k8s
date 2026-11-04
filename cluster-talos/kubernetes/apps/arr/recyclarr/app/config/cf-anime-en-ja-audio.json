@@ -1,0 +1,9 @@
+{
+  "trash_id": "local-anime-en-ja-audio",
+  "name": "Anime EN+JA Audio",
+  "includeCustomFormatWhenRenaming": false,
+  "specifications": [
+    {"name": "English", "implementation": "LanguageSpecification", "negate": false, "required": true, "fields": {"value": 1}},
+    {"name": "Japanese", "implementation": "LanguageSpecification", "negate": false, "required": true, "fields": {"value": 8}}
+  ]
+}

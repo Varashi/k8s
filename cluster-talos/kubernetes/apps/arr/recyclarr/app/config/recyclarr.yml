@@ -427,6 +427,13 @@ sonarr:
         assign_scores_to:
           - name: SD to 4K Anime
             score: 10000
+      - trash_ids:
+          # Reward actual EN+JA audio tracks. Anime Dual Audio only matches the release title, so
+          # dual-audio files named without "Dual Audio" scored below JA-only CR releases (566).
+          - local-anime-en-ja-audio	#	Anime EN+JA Audio (local, by language)
+        assign_scores_to:
+          - name: SD to 4K Anime
+            score: 2000
 
   sonarr-nl:
     base_url: https://nlsonarr.${SECRET_DOMAIN}
