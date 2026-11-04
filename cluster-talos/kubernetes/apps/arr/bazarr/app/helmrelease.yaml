@@ -44,10 +44,14 @@ spec:
           type: RuntimeDefault
     controllers:
       bazarr:
+        annotations:
+          reloader.stakater.com/auto: "true"
         containers:
           app:
             image:
               repository: ghcr.io/home-operations/bazarr
+              # whisperai.py is overridden by ./whisperai.py (bazarr-patches);
+              # re-copy it from the new image and re-apply the patch on upgrade
               tag: 1.6.2
               pullPolicy: IfNotPresent
             env:
@@ -166,3 +170,13 @@ spec:
           subtitle-rename:
             app:
               - path: /scripts
+      # Local patch: whisperai movie matches also claim "year" (see whisperai.py)
+      patches:
+        type: configMap
+        name: bazarr-patches
+        advancedMounts:
+          bazarr:
+            app:
+              - path: /app/bin/custom_libs/subliminal_patch/providers/whisperai.py
+                subPath: whisperai.py
+                readOnly: true

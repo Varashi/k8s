@@ -11,5 +11,9 @@ configMapGenerator:
     namespace: bazarr
     files:
       - subtitle-lang-rename.py=./subtitle-lang-rename.py
+  - name: bazarr-patches
+    namespace: bazarr
+    files:
+      - whisperai.py=./whisperai.py
 generatorOptions:
   disableNameSuffixHash: true
