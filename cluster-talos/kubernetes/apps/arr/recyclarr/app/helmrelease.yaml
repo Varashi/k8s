@@ -85,3 +85,15 @@ spec:
           - path: /config/recyclarr.yml
             subPath: recyclarr.yml
             readOnly: true
+          - path: /config/settings.yml
+            subPath: settings.yml
+            readOnly: true
+          - path: /config/custom-formats/sonarr/cf-anime-non-english-dual.json
+            subPath: cf-anime-non-english-dual.json
+            readOnly: true
+          - path: /config/custom-formats/sonarr/cf-anime-non-english-dual-groups.json
+            subPath: cf-anime-non-english-dual-groups.json
+            readOnly: true
+          - path: /config/custom-formats/sonarr/cf-anime-time-exempt.json
+            subPath: cf-anime-time-exempt.json
+            readOnly: true

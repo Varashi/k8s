@@ -1,0 +1,6 @@
+---
+resource_providers:
+  - name: local-sonarr-cfs
+    type: custom-formats
+    path: /config/custom-formats/sonarr
+    service: sonarr

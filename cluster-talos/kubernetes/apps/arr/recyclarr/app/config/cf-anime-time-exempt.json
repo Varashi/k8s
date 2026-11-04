@@ -1,0 +1,8 @@
+{
+  "trash_id": "local-anime-time-exempt",
+  "name": "Anime Time Exempt",
+  "includeCustomFormatWhenRenaming": false,
+  "specifications": [
+    {"name": "Anime Time", "implementation": "ReleaseTitleSpecification", "negate": false, "required": false, "fields": {"value": "\\b(Anime[ .-]?Time)\\b"}}
+  ]
+}

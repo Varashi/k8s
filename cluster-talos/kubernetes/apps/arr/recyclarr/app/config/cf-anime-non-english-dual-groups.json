@@ -1,0 +1,8 @@
+{
+  "trash_id": "local-anime-non-english-dual-groups",
+  "name": "Anime Non-English Dual Groups",
+  "includeCustomFormatWhenRenaming": false,
+  "specifications": [
+    {"name": "PT/ES dual-audio groups", "implementation": "ReleaseTitleSpecification", "negate": false, "required": false, "fields": {"value": "\\b(CartoonNOW|YDMGX|Franceira)\\b"}}
+  ]
+}
