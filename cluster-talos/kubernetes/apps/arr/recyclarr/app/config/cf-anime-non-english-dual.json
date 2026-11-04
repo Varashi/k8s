@@ -3,11 +3,50 @@
   "name": "Anime Non-English Dual",
   "includeCustomFormatWhenRenaming": false,
   "specifications": [
-    {"name": "Portuguese", "implementation": "LanguageSpecification", "negate": false, "required": false, "fields": {"value": 18}},
-    {"name": "Portuguese (Brazil)", "implementation": "LanguageSpecification", "negate": false, "required": false, "fields": {"value": 33}},
-    {"name": "Spanish", "implementation": "LanguageSpecification", "negate": false, "required": false, "fields": {"value": 3}},
-    {"name": "Spanish (Latino)", "implementation": "LanguageSpecification", "negate": false, "required": false, "fields": {"value": 34}},
-    {"name": "Italian", "implementation": "LanguageSpecification", "negate": false, "required": false, "fields": {"value": 5}},
-    {"name": "Not English", "implementation": "LanguageSpecification", "negate": true, "required": true, "fields": {"value": 1}}
+    {
+      "name": "Portuguese",
+      "implementation": "LanguageSpecification",
+      "negate": false,
+      "required": false,
+      "fields": {
+        "value": 18
+      }
+    },
+    {
+      "name": "Portuguese (Brazil)",
+      "implementation": "LanguageSpecification",
+      "negate": false,
+      "required": false,
+      "fields": {
+        "value": 33
+      }
+    },
+    {
+      "name": "Spanish",
+      "implementation": "LanguageSpecification",
+      "negate": false,
+      "required": false,
+      "fields": {
+        "value": 3
+      }
+    },
+    {
+      "name": "Spanish (Latino)",
+      "implementation": "LanguageSpecification",
+      "negate": false,
+      "required": false,
+      "fields": {
+        "value": 34
+      }
+    },
+    {
+      "name": "Italian",
+      "implementation": "LanguageSpecification",
+      "negate": false,
+      "required": false,
+      "fields": {
+        "value": 5
+      }
+    }
   ]
 }
