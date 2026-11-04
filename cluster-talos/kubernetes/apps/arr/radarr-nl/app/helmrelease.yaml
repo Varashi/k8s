@@ -53,7 +53,6 @@ spec:
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
-              RADARR__SERVER__TRUSTEDNETWORKS: 10.244.0.0/16  # Cilium Gateway envoy (pod CIDR) — trusted X-Forwarded-For source
               RADARR__POSTGRES__USER: radarr_nl
               RADARR__POSTGRES__HOST: radarr-nl-pg-rw.radarr-nl.svc
               RADARR__POSTGRES__PORT: "5432"

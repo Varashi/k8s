@@ -48,7 +48,6 @@ spec:
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
-              PROWLARR__SERVER__TRUSTEDNETWORKS: 10.244.0.0/16  # Cilium Gateway envoy (pod CIDR) — trusted X-Forwarded-For source
               PROWLARR__POSTGRES__USER: prowlarr
               PROWLARR__POSTGRES__HOST: prowlarr-pg-rw.prowlarr.svc
               PROWLARR__POSTGRES__PORT: "5432"
