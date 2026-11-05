@@ -59,6 +59,8 @@ LINGARR_URL = os.environ.get("LINGARR_URL", "http://lingarr.lingarr.svc:9876").r
 LINGARR_API_KEY = os.environ.get("LINGARR_API_KEY", "")
 # Lingarr's own job timeout is 30 min; wait a bit longer so its error reaches us.
 LINGARR_TIMEOUT = float(os.environ.get("LINGARR_TIMEOUT", "1920"))
+# chunk size for the fallback when Lingarr fails the whole file (see lingarr_translate_retry)
+LINGARR_CHUNK_LINES = int(os.environ.get("LINGARR_CHUNK_LINES", "60"))
 # Sonarr/Radarr lookups so Lingarr requests carry the real media id (id 0 makes
 # Lingarr log a Sonarr 404 per request). Unset key = skip that lookup.
 SONARR_URL = os.environ.get("SONARR_URL", "http://sonarr.sonarr.svc:8989").rstrip("/")
@@ -384,6 +386,41 @@ def lingarr_translate(lines, source, target, title, media=("Episode", 0), timeou
     return results
 
 
+def lingarr_translate_retry(lines, source, target, title, media, name):
+    """lingarr_translate with retries, so a flaky translation does not cost a new
+    transcription: Lingarr fails the whole request when one of its batches comes back
+    unparseable, which is intermittent. Tries the whole file twice, then
+    LINGARR_CHUNK_LINES-line chunks (each tried twice). Raises if any chunk still fails,
+    so a partly untranslated file is never returned as a translation."""
+    err = None
+    for attempt in range(2):
+        try:
+            # a distinct title per attempt: Lingarr answers 409 to a duplicate in flight
+            return lingarr_translate(lines, source, target, title if not attempt else f"{title} [retry]", media)
+        except (OSError, ValueError, http.client.HTTPException) as e:
+            err = e
+            LOG.warning("translate file=%s: lingarr attempt %d failed (%s): %s", name, attempt + 1,
+                        type(e).__name__, e)
+    n = LINGARR_CHUNK_LINES
+    parts = [lines[i:i + n] for i in range(0, len(lines), n)]
+    if len(parts) < 2:
+        raise err
+    results = []
+    for k, part in enumerate(parts, 1):
+        for attempt in range(2):
+            try:
+                results += lingarr_translate(part, source, target, f"{title} [part {k}/{len(parts)}]"
+                                             + (" [retry]" if attempt else ""), media)
+                break
+            except (OSError, ValueError, http.client.HTTPException) as e:
+                LOG.warning("translate file=%s: lingarr part %d/%d attempt %d failed (%s): %s", name, k,
+                            len(parts), attempt + 1, type(e).__name__, e)
+                if attempt:
+                    raise
+    LOG.info("translate file=%s: lingarr succeeded in %d parts after whole-file failures", name, len(parts))
+    return results
+
+
 # --------------------------------------------------------------------------- audio / http helpers
 
 def wav_header(n_bytes):
@@ -677,7 +714,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                      name, lang, len(lines), t_transcribe, media[0], media[1])
             t1 = time.monotonic()
             try:
-                results = lingarr_translate(lines, lang, TRANSLATE_TARGET, title, media)
+                results = lingarr_translate_retry(lines, lang, TRANSLATE_TARGET, title, media, name)
             except (OSError, ValueError, http.client.HTTPException) as e:
                 LOG.error("translate file=%s: lingarr failed after %.0fs (%s): %s", name,
                           time.monotonic() - t1, type(e).__name__, e)

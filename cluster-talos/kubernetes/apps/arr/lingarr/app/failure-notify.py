@@ -26,6 +26,7 @@ DRY = os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes")
 LOOKBACK = dt.timedelta(hours=float(os.environ.get("LOOKBACK_HOURS", "30")))
 MIN_FAILURES = int(os.environ.get("MIN_FAILURES", "2"))
 MAX_LISTED = int(os.environ.get("MAX_LISTED", "5"))
+RETRY_SUFFIX = re.compile(r"( \[part \d+/\d+\]| \[retry\])+$")
 
 
 def log(*a):
@@ -59,8 +60,10 @@ def requests():
 def main():
     by_file = collections.defaultdict(list)
     for r in requests():
-        # requests made via /api/translate/content (e.g. by Bazarr) have no file
-        by_file[r.get("subtitleToTranslate") or r.get("title")].append(r)
+        # requests made via /api/translate/content (e.g. by Bazarr or the whisper
+        # adapter) have no file; the adapter's retries add " [retry]" / " [part k/n]"
+        key = r.get("subtitleToTranslate") or RETRY_SUFFIX.sub("", r.get("title") or "")
+        by_file[key].append(r)
     since = dt.datetime.now(dt.timezone.utc) - LOOKBACK
     stuck, recent_failed = [], 0
     for reqs in by_file.values():
