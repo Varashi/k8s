@@ -76,6 +76,36 @@ spec:
                 memory: 256Mi
               limits:
                 memory: 1Gi
+      # Lingarr has no outbound notifications: after the nightly run, report
+      # subtitles that keep failing to Home Assistant (phone notification).
+      failure-notify:
+        type: cronjob
+        cronjob:
+          schedule: "0 8 * * *"
+          timeZone: Europe/Brussels
+          concurrencyPolicy: Forbid
+          ttlSecondsAfterFinished: 172800
+          backoffLimit: 0
+        containers:
+          app:
+            image:
+              repository: python
+              tag: 3.15.1-slim@sha256:533b0b2f9b5d46fd097091cf826f27902f1d6c3bca714b6dc74551356aa97a51
+              pullPolicy: IfNotPresent
+            command: ["python3", "-u", "/scripts/failure-notify.py"]
+            env:
+              TZ: Europe/Brussels
+              PYTHONDONTWRITEBYTECODE: "1"
+              LINGARR_URL: http://lingarr.lingarr.svc:9876
+              HA_WEBHOOK_URL:
+                valueFrom:
+                  secretKeyRef:
+                    name: lingarr-failure-notify
+                    key: HA_WEBHOOK_URL
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
     service:
       app:
         controller: lingarr
@@ -114,11 +144,23 @@ spec:
       config:
         type: persistentVolumeClaim
         existingClaim: lingarr-config
-        globalMounts:
-          - path: /app/config
+        advancedMounts:
+          lingarr:
+            app:
+              - path: /app/config
       media:
         type: nfs
         server: ${SECRET_NFS_HOST}.${SECRET_DOMAIN}
         path: /mnt/DATA/mediapool
-        globalMounts:
-          - path: /mnt/skw-truenas-data
+        advancedMounts:
+          lingarr:
+            app:
+              - path: /mnt/skw-truenas-data
+      scripts:
+        type: configMap
+        name: lingarr-scripts
+        defaultMode: 0555
+        advancedMounts:
+          failure-notify:
+            app:
+              - path: /scripts
