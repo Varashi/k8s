@@ -346,7 +346,6 @@ sonarr:
           - dc262f88d74c651b12e9d90b39f6c753	#	Anime Web Tier 06 (FanSubs)
           - b4a1b3d705159cdca36d71e57ca86871	#	Anime Raws
           # Unwanted IDs
-          - e3515e519f3b1360cbfc17651944354c	#	Anime LQ Groups
           - d2d7b8a9d39413da5f44054080e028a3	#	v0
           - 9c14d194486c4014d422adc64092d794	#	Dubs Only
           - 07a32f77690263bb9fda1842db7e273f	#	VOSTFR
@@ -380,13 +379,13 @@ sonarr:
           - ed51973a811f51985f14e2f6f290e47a	#	Anime German Dual Audio
         assign_scores_to:
           - name: SD to 4K Anime
-            score: -10000
+            score: -7500
       - trash_ids:
           # No French Audio
           - 10e77b96ae4770a7de645a91a53ce29a	#	Anime French + Original Audio
         assign_scores_to:
           - name: SD to 4K Anime
-            score: -10000
+            score: -7500
       - trash_ids:
           # Boost 10bit
           - b2550eb333d27b75833e25b8c2557b38	#	10bit
@@ -415,25 +414,33 @@ sonarr:
       - trash_ids:
           # Anime must be EN+JA: block JA+PT/ES/IT "DUAL" releases (title says DUAL, so TRaSH
           # Anime Dual Audio gives +2000) and score already-imported non-English files out.
-          - local-anime-non-english-dual	#	Anime Non-English Dual (local, by language)
           - local-anime-non-english-dual-groups	#	Anime Non-English Dual Groups (local, by group)
         assign_scores_to:
           - name: SD to 4K Anime
             score: -10000
       - trash_ids:
-          # Cancel the Anime LQ Groups penalty for Anime Time (their EN+JA dual-audio
+          # Anime penalty tier (-7500): rejects a JA+other "DUAL" release before download
+          # (+2000 dual title + <=~2200 quality < 7500), but stays below the EN+JA audio bonus
+          # (+10000) so an EN+JA file with an extra track / LQ group still beats any JA-only release.
+          - local-anime-non-english-dual	#	Anime Non-English Dual (local, by language)
+          - e3515e519f3b1360cbfc17651944354c	#	Anime LQ Groups
+        assign_scores_to:
+          - name: SD to 4K Anime
+            score: -7500
+      - trash_ids:
+          # Cancel the Anime LQ Groups penalty (-7500) for Anime Time (their EN+JA dual-audio
           # files kept getting "upgraded" to anything, incl. non-English dual releases).
           - local-anime-time-exempt	#	Anime Time Exempt (local)
         assign_scores_to:
           - name: SD to 4K Anime
-            score: 10000
+            score: 7500
       - trash_ids:
-          # Reward actual EN+JA audio tracks. Anime Dual Audio only matches the release title, so
+          # Reward actual EN+JA audio tracks (+10000 > -7500 penalty tier). Anime Dual Audio only matches the release title, so
           # dual-audio files named without "Dual Audio" scored below JA-only CR releases (566).
           - local-anime-en-ja-audio	#	Anime EN+JA Audio (local, by language)
         assign_scores_to:
           - name: SD to 4K Anime
-            score: 2000
+            score: 10000
 
   sonarr-nl:
     base_url: https://nlsonarr.${SECRET_DOMAIN}
