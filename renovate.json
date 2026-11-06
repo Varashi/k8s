@@ -10,7 +10,11 @@
   ],
   "kubernetes": {
     "managerFilePatterns": ["/^cluster-talos/.+\\.ya?ml$/"],
-    "ignorePaths": ["cluster-talos/talos/nodes/patches/**"]
+    "ignorePaths": [
+      "**/vars/cluster-secrets.yaml",
+      "cluster-talos/kubernetes/bootstrap/flux-system/gotk-components.yaml",
+      "cluster-talos/talos/nodes/patches/**"
+    ]
   },
   "flux": {
     "managerFilePatterns": ["/^cluster-talos/.+\\.ya?ml$/"]
