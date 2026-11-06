@@ -18,6 +18,13 @@ spec:
     name: cloudflare-operator
   wait: true
   timeout: 5m
+  # Upstream dropped the config/manager `images:` override in v0.14.0, so the
+  # rendered Deployment references the placeholder `controller:latest`.
+  # Keep newTag in step with the GitRepository tag (Renovate groups both).
+  images:
+    - name: controller
+      newName: docker.io/adyanth/cloudflare-operator
+      newTag: 0.14.0
   patches:
     - target:
         kind: Deployment
