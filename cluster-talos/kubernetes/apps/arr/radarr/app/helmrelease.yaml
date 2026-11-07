@@ -49,6 +49,11 @@ spec:
             image:
               repository: ghcr.io/home-operations/radarr
               tag: 6.4.4.10685
+              # Capped below the next major in renovate.json until it is a stable upstream release
+              # (home-operations tags develop/prerelease builds as plain versions). Renovate tracks the
+              # line below via GitHub releases (prereleases ignored) and opens a PR only
+              # when a STABLE new major (Radarr v7) is published.
+              # radarr-upstream-stable: v6.4.4.10685
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
