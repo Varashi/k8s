@@ -45,6 +45,11 @@ spec:
             image:
               repository: ghcr.io/home-operations/prowlarr
               tag: 2.7.0.5723
+              # Capped below the next major in renovate.json until it is a stable upstream release
+              # (home-operations tags develop/prerelease builds as plain versions). Renovate tracks the
+              # line below via GitHub releases (prereleases ignored) and opens a PR only
+              # when a STABLE new major (Prowlarr v3) is published.
+              # prowlarr-upstream-stable: v2.7.0.5723
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
