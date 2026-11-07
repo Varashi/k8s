@@ -138,7 +138,7 @@ spec:
           fetch-model:
             image: &wcpp
               repository: ghcr.io/ggml-org/whisper.cpp
-              tag: main-vulkan@sha256:509566c4982f84231776376a7f1e34b54f0d0be75136349fbec40f9efb8888e6
+              tag: main-vulkan@sha256:7e5d7f9caae621eea9209173fad88b82f886fe6ff1f11f2bfb0fe6db5bcfadcb
               pullPolicy: IfNotPresent
             env:
               MODEL_FILE: &model ggml-large-v3-turbo-q8_0.bin
