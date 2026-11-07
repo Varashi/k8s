@@ -24,7 +24,7 @@ spec:
   images:
     - name: controller
       newName: docker.io/adyanth/cloudflare-operator
-      newTag: 0.14.0
+      newTag: 10.0.2
   patches:
     - target:
         kind: Deployment
