@@ -64,7 +64,7 @@ spec:
             image:
               repository: ghcr.io/connorgallopo/tracearr
               # Pinned (was :latest, frozen at 1.4.28 by spegel tag resolution). 2.x = separate reviewed upgrade.
-              tag: 2.8.3@sha256:df06e1a22b7eda67929a3076c5fe4ad2e03df8f92324ab09c2f3b18137a82c83
+              tag: 3.1.5@sha256:bf8c9e3ea2f2c70247f312e1bfcf7b2b5d66f366b24e301a4dddf692e933b389
             envFrom:
               - secretRef:
                   name: tracearr-secrets
