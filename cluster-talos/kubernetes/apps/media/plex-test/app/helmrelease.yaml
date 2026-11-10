@@ -193,6 +193,18 @@ spec:
               operator: Equal
               value: "true"
               effect: NoSchedule
+          # Never share a node with prod PMS: both config LUNs sit behind one
+          # iSCSI target and democratic-csi's unstage logs out the whole
+          # target, so co-location lets one PMS pull the other's disk (#335).
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: kubernetes.io/hostname
+                  namespaces: [plex]
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: plex
+                      app.kubernetes.io/controller: plex
           securityContext:
             supplementalGroups: [568]
 
