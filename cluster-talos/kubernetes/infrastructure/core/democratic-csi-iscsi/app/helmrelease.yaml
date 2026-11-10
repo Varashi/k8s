@@ -19,18 +19,19 @@ spec:
     # the iscsi target/lun in volumeAttributes (see plex-test config PV).
     csiDriver:
       name: org.democratic-csi.node-manual
-      # Network iSCSI attaches node-locally (NodeStage logs into the target),
-      # so the k8s VolumeAttachment / attach-detach-controller path is pure
-      # overhead — and it deadlocks RWO handoffs on a node change: a stale
-      # node.status.volumesAttached entry the controller won't release (node-
-      # manual ControllerUnpublish doesn't clear it, survives a KCM restart) →
-      # permanent "Multi-Attach" on the new node. attachRequired:false skips
-      # VolumeAttachments entirely → clean pod rolls AND clean dead-host
-      # failover (the static-PV comment's original intent). RWO is still
-      # enforced by the scheduler + Recreate strategy (one mount at a time).
+      # attachRequired:true (chart default) keeps the attach/detach
+      # controller's Multi-Attach check — the ONLY cross-node RWO guard; the
+      # scheduler doesn't enforce RWO and Recreate only orders rollouts.
+      # node-manual has no ControllerPublish, so attach/detach is bookkeeping:
+      # detach completes once the old node's kubelet reports NodeUnstage done.
+      # It was false from 2026-06-07 to 2026-11-10 to dodge "Multi-Attach"
+      # hangs that were really failed unstages: NodeUnstageVolume logs out of
+      # the whole iSCSI target, which broke two LUNs sharing one target. Keep
+      # ONE LUN PER TARGET, and ext4 MMP on every volume for dead-node
+      # failover (force-detach after ~6 min is bookkeeping only) (#335).
       # NOTE: attachRequired is IMMUTABLE — changing it needs the CSIDriver
       # object deleted so helm recreates it.
-      attachRequired: false
+      attachRequired: true
     storageClasses: []
     volumeSnapshotClasses: []
 
@@ -38,12 +39,11 @@ spec:
       config:
         driver: node-manual
 
-    # With attachRequired:false there are no VolumeAttachments to manage, and
-    # nothing to dynamically provision/resize/snapshot — the controller needs
-    # none of the external sidecars.
+    # The attacher sidecar records VolumeAttachments (attachRequired:true);
+    # nothing to dynamically provision/resize/snapshot.
     controller:
       externalAttacher:
-        enabled: false
+        enabled: true
       externalProvisioner:
         enabled: false
       externalResizer:
