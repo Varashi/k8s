@@ -469,7 +469,7 @@ spec:
     persistence:
       config:
         type: persistentVolumeClaim
-        existingClaim: plex-test-config-iscsi
+        existingClaim: plex-test-config-iscsi-v2
         advancedMounts:
           pms:
             app:

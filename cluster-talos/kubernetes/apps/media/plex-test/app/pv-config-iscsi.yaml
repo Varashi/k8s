@@ -39,3 +39,45 @@ spec:
   resources:
     requests:
       storage: 30Gi
+---
+# v2: own iSCSI target (one LUN per target) + ext4 MMP (#335). democratic-csi's
+# NodeUnstageVolume logs out of the whole target, so a target shared with prod
+# PMS let one unstage pull the other's disk. The v1 PV/PVC above (shared target,
+# LUN 1) is kept, unused, as rollback until the old LUN is removed.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: plex-test-config-iscsi-v2
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  claimRef:
+    namespace: plex-test
+    name: plex-test-config-iscsi-v2
+  csi:
+    driver: org.democratic-csi.node-manual
+    readOnly: false
+    fsType: ext4
+    volumeHandle: plex-test-config-iscsi-v2
+    volumeAttributes:
+      node_attach_driver: iscsi
+      provisioner_driver: node-manual
+      portal: "10.5.1.11:3260"
+      iqn: "iqn.1998-01.com.vmware:522667859353a3e7-17011f94217e499f"
+      lun: "0"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: plex-test-config-iscsi-v2
+  namespace: plex-test
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ""
+  volumeName: plex-test-config-iscsi-v2
+  resources:
+    requests:
+      storage: 50Gi
