@@ -7,7 +7,7 @@ cluster:
   # Kubernetes version (kubelet image tag). Must be pinned in templates because
   # talm apply strips unknown fields — if omitted, Talos defaults to its bundled
   # kubelet version (v1.35.0 for Talos v1.13), silently downgrading nodes.
-  kubernetesVersion: v1.36.1
+  kubernetesVersion: v1.37.2
   # etcd image pin (= Talos 1.14 default). Kept explicit so a future Talos
   # upgrade never bumps the etcd minor implicitly (minor bumps are one-way:
   # rollback = snapshot restore). Change deliberately, apply cp-3 → cp-2 → cp-1.
