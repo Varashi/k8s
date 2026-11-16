@@ -53,7 +53,7 @@ spec:
               # (home-operations tags develop/prerelease builds as plain versions). Renovate tracks the
               # line below via GitHub releases (prereleases ignored) and opens a PR only
               # when a STABLE new major (Radarr v7) is published.
-              # radarr-upstream-stable: v6.4.4.10685
+              # radarr-upstream-stable: v7.0.3.10918
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
