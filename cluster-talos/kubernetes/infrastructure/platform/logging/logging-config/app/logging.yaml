@@ -36,7 +36,7 @@ spec:
     # Operator generates the config; we tune resources + extra positions DB.
     image:
       repository: ghcr.io/fluent/fluent-bit
-      tag: 5.1.5@sha256:2740f387f6e68fab66d28e4fa6a853387b9cab6ffb4cb78958f69bba4eb0e7b4
+      tag: 5.1.5@sha256:25435e66b8da34975a615979e1297163f93690011d4d1900b6fa542e84ffb35f
       pullPolicy: IfNotPresent
     resources:
       requests: {cpu: 50m, memory: 100Mi}
