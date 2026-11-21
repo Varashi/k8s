@@ -138,7 +138,7 @@ spec:
           fetch-model:
             image: &wcpp
               repository: ghcr.io/ggml-org/whisper.cpp
-              tag: main-vulkan@sha256:7e5d7f9caae621eea9209173fad88b82f886fe6ff1f11f2bfb0fe6db5bcfadcb
+              tag: main-vulkan@sha256:44a17d2b7bc911666c6ebd62524d7ea6e59e9e25c81ddd21257f65b2ff764c28
               pullPolicy: IfNotPresent
             env:
               MODEL_FILE: &model ggml-large-v3-turbo-q8_0.bin
@@ -208,7 +208,7 @@ spec:
           adapter:
             image:
               repository: python
-              tag: 3.15.2-slim@sha256:e97b88e416c3c01eb427b21fd8cd3ebf006e6ee38afcfcc3cae1c54ee2ab0a75
+              tag: 3.15.2-slim@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928
               pullPolicy: IfNotPresent
             command: ["python3", "-u", "/adapter/whisper_adapter.py"]
             env:
