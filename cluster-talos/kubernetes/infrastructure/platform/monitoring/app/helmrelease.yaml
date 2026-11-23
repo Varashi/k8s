@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: prometheus
-      version: 29.x
+      version: 30.x
       sourceRef:
         kind: HelmRepository
         name: prometheus-community
