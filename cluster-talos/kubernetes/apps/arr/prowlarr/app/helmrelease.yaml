@@ -49,7 +49,7 @@ spec:
               # (home-operations tags develop/prerelease builds as plain versions). Renovate tracks the
               # line below via GitHub releases (prereleases ignored) and opens a PR only
               # when a STABLE new major (Prowlarr v3) is published.
-              # prowlarr-upstream-stable: v2.7.0.5723
+              # prowlarr-upstream-stable: v3.1.0.5799
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
