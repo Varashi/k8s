@@ -60,7 +60,7 @@ spec:
           app:
             image:
               repository: onerahmet/openai-whisper-asr-webservice
-              tag: v1.10.0@sha256:0616c3d5fc6924e9d59aa8a7a3a944fbe8f3a5d701e5fc1fa2ce5b933dfecb73
+              tag: v1.11.0@sha256:ee1be3f75828d009517d1f27be2a6a52d0ca5e8e9f6a0d75ed65fd492fa25810
               pullPolicy: IfNotPresent
             env:
               TZ: Europe/Brussels
@@ -138,7 +138,7 @@ spec:
           fetch-model:
             image: &wcpp
               repository: ghcr.io/ggml-org/whisper.cpp
-              tag: main-vulkan@sha256:7e5d7f9caae621eea9209173fad88b82f886fe6ff1f11f2bfb0fe6db5bcfadcb
+              tag: main-vulkan@sha256:d9107cdc971bdc11c08e5ae2864c3e0b3c8238f88f747e169a554052f621b8cc
               pullPolicy: IfNotPresent
             env:
               MODEL_FILE: &model ggml-large-v3-turbo-q8_0.bin
@@ -208,7 +208,7 @@ spec:
           adapter:
             image:
               repository: python
-              tag: 3.15.2-slim@sha256:e97b88e416c3c01eb427b21fd8cd3ebf006e6ee38afcfcc3cae1c54ee2ab0a75
+              tag: 3.15.2-slim@sha256:08a4c22c92b79ec821a7ad49768480039ee5b7accac3955228e75366e30abc8e
               pullPolicy: IfNotPresent
             command: ["python3", "-u", "/adapter/whisper_adapter.py"]
             env:
